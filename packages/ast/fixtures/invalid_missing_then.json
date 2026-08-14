@@ -1,0 +1,10 @@
+{
+  "version": 1,
+  "source": "cards",
+  "program": [
+    {
+      "op": "if",
+      "cond": { "check": "wall_ahead" }
+    }
+  ]
+}

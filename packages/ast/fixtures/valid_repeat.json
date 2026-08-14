@@ -1,0 +1,14 @@
+{
+  "version": 1,
+  "source": "cards",
+  "program": [
+    {
+      "op": "repeat",
+      "times": 4,
+      "body": [
+        { "op": "move", "steps": 1 },
+        { "op": "turn", "dir": "right" }
+      ]
+    }
+  ]
+}

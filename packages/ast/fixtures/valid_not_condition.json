@@ -1,0 +1,13 @@
+{
+  "version": 1,
+  "source": "cards",
+  "program": [
+    {
+      "op": "if",
+      "cond": { "check": "not", "of": { "check": "wall_ahead" } },
+      "then": [
+        { "op": "move", "steps": 1 }
+      ]
+    }
+  ]
+}

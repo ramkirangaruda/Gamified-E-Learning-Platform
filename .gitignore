@@ -1,0 +1,22 @@
+# Go
+/bin/
+*.exe
+*.test
+
+# Node / frontend (M2+)
+node_modules/
+dist/
+
+# Runtime data — never commit a child's save file or drive contents
+data/*.db
+data/*.db-journal
+
+# Local models / built key contents (M3+/M4+)
+models/*.gguf
+bin/win/
+bin/linux/
+
+# Editor/OS cruft
+.vscode/
+.DS_Store
+Thumbs.db

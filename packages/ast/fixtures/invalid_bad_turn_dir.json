@@ -1,0 +1,7 @@
+{
+  "version": 1,
+  "source": "cards",
+  "program": [
+    { "op": "turn", "dir": "up" }
+  ]
+}

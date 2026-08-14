@@ -1,0 +1,7 @@
+{
+  "version": 1,
+  "source": "cards",
+  "program": [
+    { "op": "repeat", "times": 4 }
+  ]
+}

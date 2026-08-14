@@ -1,0 +1,140 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://tessera-quest.local/packages/ast/schema.json",
+  "title": "Tessera Quest AST",
+  "description": "Shared program representation produced by every input surface (cards, blocks). Structural shape only: max nesting depth (4) and unknown-op rejection beyond what $ref/oneOf already express are enforced by the Go validator (validate.go), not by this schema alone.",
+  "type": "object",
+  "required": ["version", "source", "program"],
+  "additionalProperties": false,
+  "properties": {
+    "version": { "const": 1 },
+    "source": { "enum": ["cards", "blocks"] },
+    "program": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/node" }
+    }
+  },
+  "$defs": {
+    "node": {
+      "oneOf": [
+        { "$ref": "#/$defs/move" },
+        { "$ref": "#/$defs/turn" },
+        { "$ref": "#/$defs/wait" },
+        { "$ref": "#/$defs/pickup" },
+        { "$ref": "#/$defs/repeat" },
+        { "$ref": "#/$defs/if" },
+        { "$ref": "#/$defs/while" },
+        { "$ref": "#/$defs/call" },
+        { "$ref": "#/$defs/define" }
+      ]
+    },
+    "move": {
+      "type": "object",
+      "required": ["op", "steps"],
+      "additionalProperties": false,
+      "properties": {
+        "op": { "const": "move" },
+        "steps": { "type": "integer", "minimum": 1 }
+      }
+    },
+    "turn": {
+      "type": "object",
+      "required": ["op", "dir"],
+      "additionalProperties": false,
+      "properties": {
+        "op": { "const": "turn" },
+        "dir": { "enum": ["left", "right"] }
+      }
+    },
+    "wait": {
+      "type": "object",
+      "required": ["op", "ticks"],
+      "additionalProperties": false,
+      "properties": {
+        "op": { "const": "wait" },
+        "ticks": { "type": "integer", "minimum": 1 }
+      }
+    },
+    "pickup": {
+      "type": "object",
+      "required": ["op"],
+      "additionalProperties": false,
+      "properties": {
+        "op": { "const": "pickup" }
+      }
+    },
+    "repeat": {
+      "type": "object",
+      "required": ["op", "times", "body"],
+      "additionalProperties": false,
+      "properties": {
+        "op": { "const": "repeat" },
+        "times": { "type": "integer", "minimum": 1 },
+        "body": { "type": "array", "items": { "$ref": "#/$defs/node" } }
+      }
+    },
+    "if": {
+      "type": "object",
+      "required": ["op", "cond", "then"],
+      "additionalProperties": false,
+      "properties": {
+        "op": { "const": "if" },
+        "cond": { "$ref": "#/$defs/cond" },
+        "then": { "type": "array", "items": { "$ref": "#/$defs/node" } },
+        "else": { "type": "array", "items": { "$ref": "#/$defs/node" } }
+      }
+    },
+    "while": {
+      "type": "object",
+      "required": ["op", "cond", "body"],
+      "additionalProperties": false,
+      "properties": {
+        "op": { "const": "while" },
+        "cond": { "$ref": "#/$defs/cond" },
+        "body": { "type": "array", "items": { "$ref": "#/$defs/node" } }
+      }
+    },
+    "call": {
+      "type": "object",
+      "required": ["op", "name"],
+      "additionalProperties": false,
+      "properties": {
+        "op": { "const": "call" },
+        "name": { "type": "string", "minLength": 1 }
+      }
+    },
+    "define": {
+      "type": "object",
+      "required": ["op", "name", "body"],
+      "additionalProperties": false,
+      "properties": {
+        "op": { "const": "define" },
+        "name": { "type": "string", "minLength": 1 },
+        "body": { "type": "array", "items": { "$ref": "#/$defs/node" } }
+      }
+    },
+    "cond": {
+      "oneOf": [
+        { "$ref": "#/$defs/checkSimple" },
+        { "$ref": "#/$defs/checkNot" }
+      ]
+    },
+    "checkSimple": {
+      "type": "object",
+      "required": ["check"],
+      "additionalProperties": false,
+      "properties": {
+        "check": { "enum": ["wall_ahead", "on_goal", "item_here"] }
+      }
+    },
+    "checkNot": {
+      "type": "object",
+      "required": ["check", "of"],
+      "additionalProperties": false,
+      "properties": {
+        "check": { "const": "not" },
+        "of": { "$ref": "#/$defs/cond" }
+      }
+    }
+  }
+}
