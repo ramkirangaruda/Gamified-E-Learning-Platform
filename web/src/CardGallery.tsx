@@ -28,6 +28,10 @@ function CardTile({ id, type, label }: { id: number; type: string; label: string
       scrollbars: true,
       sounds: false,
       move: { drag: true, scrollbars: true, wheel: false },
+      // Same reasoning as Editor.tsx: without this, Blockly.inject defaults `media` to
+      // an absolute blockly-demo.appspot.com URL for its own chrome/icon sprites, even
+      // with trashcan/sounds off.
+      media: "/blockly-media/",
     });
 
     const block = workspace.newBlock(type);

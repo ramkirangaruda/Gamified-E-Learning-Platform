@@ -28,9 +28,31 @@ or logged in `DECISIONS.md` from when the GGUFs were originally fetched; flaggin
 discrepancy rather than guessing at an explanation. Treating ~1.9GB as the correct
 drive-payload figure for models going forward.
 
-Remaining items (1, 2, 4, 5) still in progress — see `DECISIONS.md` for entries as they
-land, and the top of this file will get a fresh queue-complete summary when all 6 are
-done, matching how the M2 and M3 queues were closed out.
+**Item 1 done:** hint perspective drift fixed structurally, three layers (few-shot
+examples in `BuildHintPrompt`, a `HasFirstPersonAuthorDrift` validator, retry-once-then-
+verbatim-fallback in `handleHint`). Real 150-generation benchmark against the actual
+0.6B model (every bank hint x10): **0/150 rejected (0.0%)**, well under the 10%
+threshold. Full breakdown in `DECISIONS.md`.
+
+**Item 2 done, and it found a real bug, not just confirmed a clean bill of health:**
+`Blockly.inject()` was defaulting its `media` option to
+`https://blockly-demo.appspot.com/...` for the trashcan icon, click/delete/disconnect
+sounds, and cursor graphics — nothing in `Editor.tsx`/`CardGallery.tsx` had ever set a
+local path. Fixed by vendoring Blockly's own `media/` assets into
+`web/public/blockly-media/` and pointing both `Blockly.inject()` call sites at it.
+Verified two ways: (1) static grep of the built bundle for `http(s)://`, `fonts.`,
+`cdn`, `googleapis`/`gstatic` — nothing else turned up, and the two `fetch(` call sites
+that did were individually inspected, not just pattern-matched (one is a genuinely
+unused React DOM helper, the other was the real Blockly media bug); (2) built the
+production bundle, built the Go binary, ran it from a real assembled drive layout (not
+Vite), loaded it in a browser, and captured every network request across a full session
+including a real `/api/hint` round trip — **23/23 requests to `localhost:8080`, zero
+external**. This is the audit result you asked for before doing the physical cable-pull
+test yourself.
+
+Remaining items (4, 5) still in progress — see `DECISIONS.md` for entries as they land,
+and the top of this file will get a fresh queue-complete summary when all 6 are done,
+matching how the M2 and M3 queues were closed out.
 
 ---
 

@@ -48,6 +48,12 @@ export default function Editor({ onWorkspaceReady }: EditorProps) {
       zoom: { controls: true, wheel: true, startScale: 1.0 },
       grid: { spacing: 20, length: 1, colour: "#e2e8f0", snap: false },
       move: { drag: true, scrollbars: true, wheel: true },
+      // Blockly.inject defaults `media` to an absolute
+      // https://blockly-demo.appspot.com/... URL when unset -- a real outbound
+      // dependency for the trashcan icon, delete/click sounds, and cursor graphics.
+      // /blockly-media/ is Blockly's own media/ directory copied verbatim into
+      // web/public (see DECISIONS.md), so this stays local under the offline build.
+      media: "/blockly-media/",
     });
 
     const detachIndentGuides = attachIndentGuides(workspace);
