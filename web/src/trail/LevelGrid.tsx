@@ -50,7 +50,8 @@ export default function LevelGrid({ levels, solvedIds, starsByLevel, onSelectLev
         {shown.map((level) => {
           const index = levels.indexOf(level);
           const solved = solvedSet.has(level.id);
-          const locked = index > current;
+          // See Trail.tsx: a solved level is never locked (§10).
+          const locked = index > current && !solved;
           const group = groupFor(level.teaches);
           const stars = starsByLevel[level.id] ?? 0;
 
