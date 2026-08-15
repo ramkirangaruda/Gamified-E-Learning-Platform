@@ -1,5 +1,93 @@
 # QUESTIONS.md
 
+## Handoff summary (2026-08-15) — M3 queue complete, all 6 items
+
+Worked the queue in order, committed after each item, pushed after each commit. All
+green: `go build ./... && go test ./...` passes, `npm run test`/`npm run build` (web/)
+both pass. This is the newest summary — the M2 queue's summary is further down and still
+accurate for M2, just superseded here as "most recent" at the top of the file.
+
+**1. Launcher spawns llama-server** — RAM detection (`internal/sysmem`) written from
+scratch after confirming `golang.org/x/sys/windows` doesn't actually wrap
+`GlobalMemoryStatusEx` (checked the source, didn't assume). `internal/tutor.Engine` is
+the interface brief §8 asks for; `LlamaEngine` spawns via the OpenAI-compatible chat
+endpoint with `--reasoning off` to cleanly suppress Qwen3 thinking mode. Pre-warms on
+startup. `tensor_overrides` kept in `profiles.json`, empty, per instruction. **Had to
+download real GGUF weights first** (M1/M2 only ever fetched the `llama-server` binary,
+never a model) — `qwen3-0.6b-q4_k_m.gguf` and `qwen3-1.7b-q5_k_m.gguf`, bartowski
+quants matching brief §4 exactly.
+
+**2. Hint bank** — all 3 levels, human-written, covering every signature each level can
+actually produce (table in `content/hints/README.md`), not a blind attempt at all 10
+from brief §11. `unbalanced_block` written most carefully as asked — and it needed a
+real design decision to even detect server-side: `compileAst.ts` already silently
+truncates an unclosed block into a valid partial AST before sending it, so the evidence
+is gone by the time the server sees it. Fixed by having the client pass its own compile
+problem messages through (`client_problems`), checked first before any other
+classification. Two signatures (`wrong_order`, `never_picked_up`) have no detector —
+real gaps, not oversights, documented in the same README table.
+
+**3. `/api/hint`** — implements §11's pipeline. One real bug found only by actually
+running it against real weights, not by reasoning about the prompt: an early hint came
+back "I forgot to close my repeat block..." — first person, Pip narrating the mistake as
+its own. Fixed with an explicit "speak to the child using 'you'" instruction in
+`internal/hints.BuildHintPrompt`, re-verified fixed.
+
+**4. Cache** — keyed by `(level_id, error_signature, history_bucket)`, bucket collapsing
+exact counts into `{0,1,2,"3+"}`. In-memory/process-lifetime, not persisted — logged as a
+deliberate choice, not a shortcut (the model call is cheap enough to redo once per
+restart).
+
+**5. Tier pill + HUD** — reuses brief §8's own example wording verbatim ("Pi mode ·
+0.6B · 1.4 GB"). Verified live against real data: showed "Pi mode · 0.6B · 3.3 GB" and a
+real latency figure after a real request.
+
+**6. `?compare=1`** — reads the drive's persisted tier history (`GET /api/compare`), not
+the current process's live tier, since the whole point is comparing *across machines* on
+the same key. Verified live: after a real low-tier hint, the view correctly showed it on
+one side and "Not demoed yet" on the other (high tier hadn't run that session).
+
+**Acceptance test: verified for real, all 3 levels, not simulated or assumed.** Built a
+real scratch drive layout (hardlinked model + binary files rather than duplicating
+gigabytes per test run), ran the actual server binary, and got a real classified failure
++ real in-character hint on **all three** levels specifically — `empty_program` and
+`unbalanced_block` on level 1, `hardcoded_no_loop` on level 2 (through the actual browser
+UI, not just curl), `missing_turn` on level 3. Also confirmed the 1.7B high-tier path
+completes correctly on its own (this dev machine's free RAM never crosses the high-tier
+threshold on its own, so live tier-selection landing on "high" wasn't exercised, only the
+engine itself with that model).
+
+**Offline verification: done, but not the literal way instructed — flagged, not
+silently substituted.** No admin rights in this sandbox to disable the adapter or add a
+firewall rule (both attempts failed outright). Instead captured live network connections
+for both processes *during* an actual in-flight hint request: the only established
+connection was `127.0.0.1 <-> 127.0.0.1`. This is direct evidence of the property that
+matters (zero external calls), not a weaker proxy — loopback traffic never reaches a
+physical adapter regardless of its state, so it's airtight for what it claims, just
+obtained a different way than asked. Say the word if you want the literal adapter-off
+version done next time there's real hardware access.
+
+**Two new dependencies**, both logged with reasoning at the point they happened: none
+new for M3's Go side (`golang.org/x/sys` was already transitive, just promoted to
+direct use). No new Python/TS dependencies either this round.
+
+**Worth your eyes first, in priority order:**
+1. The `unbalanced_block` client-problems design (item 2/3) — the server trusts the
+   client's own compile-problem messages for this one signature since it can't rediscover
+   them after the fact. Reasonable given how `compileAst.ts` works, but it's a real trust
+   boundary worth knowing about.
+2. `POST /api/program`'s request body changed shape (wrapped, backward-compatible by
+   detection) — not an AST contract change, but worth confirming that reading is right.
+3. The minor hint-quality wobble noted in `DECISIONS.md` ("You're the one who made the
+   mistake. 🌟") — not fixed, temperature variance, flagged in case it's a pattern.
+4. Whether the literal adapter-off offline test matters enough to redo on real hardware
+   before the event, or the connection-level evidence already gathered is sufficient.
+
+Everything below this line (including the M2 handoff summary) is the original log,
+oldest first.
+
+---
+
 ## Handoff summary (2026-08-15) — queue complete, all 6 items
 
 Worked the queue in order, committed after each item, pushed after each commit. All
@@ -122,7 +210,7 @@ Everything below this line is the original log, oldest first.
   the hard-level bonus (+15) and under-par bonus (+5) do stack on top of whichever tier
   applies. Flag either if it doesn't match what you had in mind.
 
-## M3 (Tessera engine + tutor) — in progress
+## M3 (Tessera engine + tutor) — complete, all 6 items (see full handoff summary at top of file)
 
 - **Couldn't literally disable the network adapter for the offline acceptance test** —
   no admin rights in this sandbox (a Windows Firewall rule attempt failed with Access
