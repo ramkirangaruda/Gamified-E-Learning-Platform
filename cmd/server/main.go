@@ -51,16 +51,22 @@ func main() {
 	}
 	defer st.Close()
 
-	engine := startTutorEngine(exeDir)
-	if engine != nil {
-		defer engine.Close()
-	}
-
+	// AUDIT P0-2: levels are loaded BEFORE the engine is started, deliberately. This used
+	// to be the other way round, and because log.Fatalf calls os.Exit (which does not run
+	// deferred functions), a bad content/levels directory exited the process with
+	// llama-server already spawned and never killed -- an orphan holding the model in RAM.
+	// Failing before there is anything to leak removes that path entirely.
 	levelsDir := filepath.Join(exeDir, "content", "levels")
 	hintsDir := filepath.Join(exeDir, "content", "hints")
-	srv, err := api.New(st, levelsDir, hintsDir, engine, *hintTimeout)
+	srv, err := api.New(st, levelsDir, hintsDir, nil, *hintTimeout)
 	if err != nil {
 		log.Fatalf("starting api server: %v", err)
+	}
+
+	engine := startTutorEngine(exeDir)
+	if engine != nil {
+		srv.SetEngine(engine)
+		defer engine.Close()
 	}
 	mux := srv.Mux()
 	log.Printf("tutor: hint generation timeout = %s", *hintTimeout)
@@ -110,7 +116,19 @@ func main() {
 
 	log.Printf("tessera quest listening on %s (data: %s, app: %s, levels: %s)", *addr, dbPath, appDir, levelsDir)
 	if err := httpServer.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-		log.Fatalf("http server: %v", err)
+		// AUDIT P0-2: NOT log.Fatalf. The realistic trigger here is "port already in
+		// use" -- someone launches twice, or relaunches after a crash left the old
+		// instance bound. os.Exit would skip every defer, orphaning llama-server with
+		// the model resident *and* leaving port 8090 held, so the next launch fails too.
+		// Kill the child explicitly, then exit with the same non-zero status.
+		log.Printf("http server: %v", err)
+		if engine != nil {
+			if cerr := engine.Close(); cerr != nil {
+				log.Printf("stopping tutor engine: %v", cerr)
+			}
+		}
+		st.Close()
+		os.Exit(1)
 	}
 }
 

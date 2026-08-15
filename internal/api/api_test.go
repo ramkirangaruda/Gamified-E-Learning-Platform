@@ -477,3 +477,73 @@ func TestIntegration_StateRoundTripsOverHTTP(t *testing.T) {
 		t.Fatalf("points did not round-trip: got %+v", after["learner"])
 	}
 }
+
+// AUDIT P0-2. cmd/server now constructs the Server with a nil engine (so a bad
+// content/levels dir fails before llama-server is ever spawned) and attaches the engine
+// afterwards. If SetEngine did not actually take effect, every hint would silently fall
+// back to un-rephrased bank text and the tier HUD would read "Tutor offline" for the
+// whole demo -- a failure that looks like "the model is broken" rather than a wiring bug.
+func TestSetEngine_AttachesEngineAfterConstruction(t *testing.T) {
+	dbPath := filepath.Join(t.TempDir(), "pet.db")
+	st, err := store.Open(dbPath)
+	if err != nil {
+		t.Fatalf("store.Open: %v", err)
+	}
+	defer st.Close()
+
+	srv, err := New(st, "../../content/levels", "../../content/hints", nil, 0)
+	if err != nil {
+		t.Fatalf("api.New: %v", err)
+	}
+	ts := httptest.NewServer(srv.Mux())
+	defer ts.Close()
+
+	// Before attaching: no tier is reported.
+	resp, err := http.Get(ts.URL + "/api/tier")
+	if err != nil {
+		t.Fatalf("GET /api/tier: %v", err)
+	}
+	var before struct {
+		Tier string `json:"tier"`
+	}
+	json.NewDecoder(resp.Body).Decode(&before)
+	resp.Body.Close()
+	if before.Tier != "" {
+		t.Fatalf("tier before SetEngine = %q, want empty", before.Tier)
+	}
+
+	srv.SetEngine(fakeEngine{tier: tutor.TierInfo{Tier: "low", Model: "fake-model.gguf", AvailableMB: 4000}})
+
+	resp2, err := http.Get(ts.URL + "/api/tier")
+	if err != nil {
+		t.Fatalf("GET /api/tier: %v", err)
+	}
+	var after struct {
+		Tier  string `json:"tier"`
+		Model string `json:"model"`
+	}
+	json.NewDecoder(resp2.Body).Decode(&after)
+	resp2.Body.Close()
+	if after.Tier != "low" || after.Model != "fake-model.gguf" {
+		t.Fatalf("tier after SetEngine = %+v, want low/fake-model.gguf", after)
+	}
+
+	// And the hint path must now actually use it (rephrased, not raw bank text).
+	hintResp, err := http.Post(ts.URL+"/api/hint", "application/json",
+		strings.NewReader(`{"level_id":"level-1","error_signature":"empty_program"}`))
+	if err != nil {
+		t.Fatalf("POST /api/hint: %v", err)
+	}
+	var got struct {
+		Hint string `json:"hint"`
+		Tier string `json:"tier"`
+	}
+	json.NewDecoder(hintResp.Body).Decode(&got)
+	hintResp.Body.Close()
+	if got.Tier != "low" {
+		t.Fatalf("hint response tier = %q, want low (engine not reaching the hint path)", got.Tier)
+	}
+	if got.Hint != "fake rephrased hint" {
+		t.Fatalf("hint = %q, want the engine's rephrasing", got.Hint)
+	}
+}
