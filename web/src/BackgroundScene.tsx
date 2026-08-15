@@ -23,22 +23,26 @@ export default function BackgroundScene() {
 
       <rect width="1600" height="900" fill="url(#quest-sky)" />
 
-      {/* sun */}
-      <circle cx="1420" cy="150" r="90" fill="#ffdb70" opacity="0.9" />
-      <circle cx="1420" cy="150" r="60" fill="#ffb703" />
+      {/* sun -- gentle glow pulse, quest-sun-pulse defined in index.css */}
+      <g className="quest-sun-pulse">
+        <circle cx="1420" cy="150" r="90" fill="#ffdb70" opacity="0.9" />
+        <circle cx="1420" cy="150" r="60" fill="#ffb703" />
+      </g>
 
-      {/* clouds */}
+      {/* clouds -- each drifts slowly at a different speed/offset so they don't move in
+          lockstep; class + inline animationDelay rather than three separate keyframe
+          rules for the same drift. */}
       <g fill="#ffffff" opacity="0.85">
-        <g transform="translate(220,120)">
+        <g className="quest-cloud-drift" style={{ animationDuration: "38s" }} transform="translate(220,120)">
           <ellipse cx="0" cy="0" rx="70" ry="30" />
           <ellipse cx="50" cy="-14" rx="46" ry="26" />
           <ellipse cx="-55" cy="-8" rx="40" ry="22" />
         </g>
-        <g transform="translate(760,90)">
+        <g className="quest-cloud-drift" style={{ animationDuration: "52s", animationDelay: "-10s" }} transform="translate(760,90)">
           <ellipse cx="0" cy="0" rx="55" ry="24" />
           <ellipse cx="40" cy="-10" rx="36" ry="20" />
         </g>
-        <g transform="translate(1080,210)">
+        <g className="quest-cloud-drift" style={{ animationDuration: "44s", animationDelay: "-25s" }} transform="translate(1080,210)">
           <ellipse cx="0" cy="0" rx="48" ry="20" />
           <ellipse cx="34" cy="-8" rx="30" ry="16" />
         </g>

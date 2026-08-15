@@ -130,3 +130,25 @@ body {
   animation: quest-pet-wobble 1.8s ease-in-out infinite;
   opacity: 0.85;
 }
+
+/* BackgroundScene.tsx -- slow, subtle, never distracting from the actual UI in front. */
+@keyframes quest-cloud-drift {
+  0% { transform: translateX(-30px); }
+  50% { transform: translateX(30px); }
+  100% { transform: translateX(-30px); }
+}
+.quest-cloud-drift {
+  animation-name: quest-cloud-drift;
+  animation-timing-function: ease-in-out;
+  animation-iteration-count: infinite;
+}
+
+@keyframes quest-sun-pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.85; transform: scale(1.04); }
+}
+.quest-sun-pulse {
+  animation: quest-sun-pulse 4.5s ease-in-out infinite;
+  transform-box: fill-box;
+  transform-origin: center;
+}

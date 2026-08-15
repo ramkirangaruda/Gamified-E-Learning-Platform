@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import type { Dir, ExecEvent, Grid, Pos } from "./executorTypes";
+import Icon from "./icons/Icon";
 
 // Pure trace player: this file must never decide whether a move is legal, whether the
 // goal was reached, or anything else "did the program work" -- that's 100% decided by
@@ -135,25 +136,28 @@ export default function GridRenderer({ grid, startPos, startDir, events, outcome
         <button
           type="button"
           onClick={() => setIndex(0)}
-          className="rounded-xl border-b-2 border-quest-ink/20 bg-white px-3 py-1.5 font-display text-sm font-bold text-quest-ink shadow-sm hover:-translate-y-0.5 transition-transform"
+          className="flex items-center gap-1.5 rounded-xl border-b-2 border-quest-ink/20 bg-white px-3 py-1.5 font-display text-sm font-bold text-quest-ink shadow-sm hover:-translate-y-0.5 transition-transform"
         >
-          ⟲ Reset
+          <Icon name="reset" size={15} />
+          Reset
         </button>
         <button
           type="button"
           onClick={() => setPlaying((p) => !p)}
           disabled={atEnd && !playing}
-          className="rounded-xl border-b-2 border-quest-sky-dark bg-quest-sky px-3 py-1.5 font-display text-sm font-bold text-white shadow-sm hover:-translate-y-0.5 transition-transform disabled:translate-y-0 disabled:opacity-40"
+          className="flex items-center gap-1.5 rounded-xl border-b-2 border-quest-sky-dark bg-quest-sky px-3 py-1.5 font-display text-sm font-bold text-white shadow-sm hover:-translate-y-0.5 transition-transform disabled:translate-y-0 disabled:opacity-40"
         >
-          {playing ? "⏸ Pause" : "▶ Play"}
+          <Icon name={playing ? "pause" : "play"} size={15} />
+          {playing ? "Pause" : "Play"}
         </button>
         <button
           type="button"
           onClick={() => setIndex((i) => Math.min(i + 1, events.length))}
           disabled={atEnd}
-          className="rounded-xl border-b-2 border-quest-ink/20 bg-white px-3 py-1.5 font-display text-sm font-bold text-quest-ink shadow-sm hover:-translate-y-0.5 transition-transform disabled:translate-y-0 disabled:opacity-40"
+          className="flex items-center gap-1.5 rounded-xl border-b-2 border-quest-ink/20 bg-white px-3 py-1.5 font-display text-sm font-bold text-quest-ink shadow-sm hover:-translate-y-0.5 transition-transform disabled:translate-y-0 disabled:opacity-40"
         >
-          ⏭ Step
+          <Icon name="step" size={15} />
+          Step
         </button>
         <span className="ml-2 font-display text-xs font-bold text-quest-ink/40">
           {index} / {events.length}
@@ -161,8 +165,9 @@ export default function GridRenderer({ grid, startPos, startDir, events, outcome
       </div>
 
       {atEnd && outcome && (
-        <div className={`font-display font-bold ${outcome === "solved" ? "text-quest-grass-dark" : "text-quest-ink/50"}`}>
-          {outcome === "solved" ? "🎉 Solved!" : "Not there yet — try again"}
+        <div className={`flex items-center gap-1.5 font-display font-bold ${outcome === "solved" ? "text-quest-grass-dark" : "text-quest-ink/50"}`}>
+          {outcome === "solved" && <Icon name="party" size={18} />}
+          {outcome === "solved" ? "Solved!" : "Not there yet — try again"}
         </div>
       )}
     </div>
