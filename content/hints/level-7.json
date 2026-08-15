@@ -1,0 +1,6 @@
+{
+  "empty_program": "Your workspace is empty! Try a 'while not at goal' block with a move card inside - it'll keep going until you get there.",
+  "unbalanced_block": "It looks like you opened a while block but forgot the 'end while' card that closes it. Every while needs its own end while right after the cards you want repeated.",
+  "infinite_loop": "Your program is looping and never stops! Make sure the while block's condition can actually become true - like reaching the goal - so it knows when to stop.",
+  "hardcoded_no_loop": "This road is long, and you don't even need to count the steps! Try a 'while not at goal' block with just one move card inside - it'll keep going until Pip gets there."
+}

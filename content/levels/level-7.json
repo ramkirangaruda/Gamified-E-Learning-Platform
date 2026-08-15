@@ -1,0 +1,15 @@
+{
+  "id": "level-7",
+  "name": "Turtle's Path",
+  "teaches": "while",
+  "hard": false,
+  "parBlocks": 6,
+  "startPos": [0, 0],
+  "startDir": "right",
+  "grid": {
+    "width": 7,
+    "height": 1,
+    "walls": [[false, false, false, false, false, false, false]],
+    "goal": [6, 0]
+  }
+}

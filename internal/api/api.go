@@ -231,6 +231,9 @@ func (s *Server) handleProgram(w http.ResponseWriter, r *http.Request) {
 			// seeing their result, but it's worth knowing about.
 			log.Printf("api: recording attempt: %v", err)
 		}
+		if err := s.store.RecordLevelAttempt(levelID, result.Outcome == "solved", time.Now().Unix()); err != nil {
+			log.Printf("api: recording level progress: %v", err)
+		}
 	}
 
 	writeJSON(w, http.StatusOK, programResponse{
@@ -344,13 +347,32 @@ func (s *Server) handleCompare(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, records)
 }
 
+// stateResponse adds solved_levels (from level_progress -- see
+// store.RecordLevelAttempt) on top of store.State's own persisted fields. Computed
+// fresh on every response rather than stored on State itself: it's derived,
+// order-independent truth about which levels have ever been solved, not something a
+// caller should be trusted to round-trip back unmodified the way learner/pet fields are.
+type stateResponse struct {
+	store.State
+	SolvedLevels []string `json:"solved_levels"`
+}
+
+func (s *Server) withSolvedLevels(w http.ResponseWriter, state *store.State) {
+	solved, err := s.store.GetSolvedLevelIDs()
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	writeJSON(w, http.StatusOK, stateResponse{State: *state, SolvedLevels: solved})
+}
+
 func (s *Server) handleGetState(w http.ResponseWriter, r *http.Request) {
 	state, err := s.store.GetState()
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
-	writeJSON(w, http.StatusOK, state)
+	s.withSolvedLevels(w, state)
 }
 
 func (s *Server) handlePostState(w http.ResponseWriter, r *http.Request) {
@@ -363,7 +385,7 @@ func (s *Server) handlePostState(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
-	writeJSON(w, http.StatusOK, state)
+	s.withSolvedLevels(w, &state)
 }
 
 func writeJSON(w http.ResponseWriter, status int, v interface{}) {

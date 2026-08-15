@@ -325,6 +325,55 @@ func (s *Store) CountAttemptsWithSignature(levelID, errorSignature string) (int,
 	return n, nil
 }
 
+// RecordLevelAttempt upserts level_progress -- present in the schema since M1 (brief
+// §7) but never given a writer until now, when the dashboard/reward code actually
+// needed per-level "has this been solved before" data. A single learner.highest_level
+// integer worked fine for a strictly linear 3-level progression, but breaks once levels
+// are reachable out of order through independent dashboard sections: solving level-7
+// first would make level-1..6 read as "already solved" under a highest-index check even
+// though none of them were ever attempted. first_solved_at is set exactly once (the
+// COALESCE keeps whatever was already there, so a later re-solve never overwrites the
+// real first-solve timestamp); attempts_count increments on every attempt regardless of
+// outcome.
+func (s *Store) RecordLevelAttempt(levelID string, solved bool, ts int64) error {
+	var firstSolvedAt sql.NullInt64
+	if solved {
+		firstSolvedAt = sql.NullInt64{Int64: ts, Valid: true}
+	}
+	_, err := s.db.Exec(
+		`INSERT INTO level_progress (level_id, first_solved_at, attempts_count) VALUES (?, ?, 1)
+		 ON CONFLICT(level_id) DO UPDATE SET
+		   attempts_count = attempts_count + 1,
+		   first_solved_at = COALESCE(level_progress.first_solved_at, excluded.first_solved_at)`,
+		levelID, firstSolvedAt,
+	)
+	if err != nil {
+		return fmt.Errorf("store: recording level attempt: %w", err)
+	}
+	return nil
+}
+
+// GetSolvedLevelIDs returns every level_id ever solved at least once -- the correct,
+// order-independent replacement for a highest-index check (see RecordLevelAttempt).
+// Never nil on success, even with zero rows, so callers can serialize it straight to
+// JSON as `[]` instead of `null`.
+func (s *Store) GetSolvedLevelIDs() ([]string, error) {
+	rows, err := s.db.Query(`SELECT level_id FROM level_progress WHERE first_solved_at IS NOT NULL`)
+	if err != nil {
+		return nil, fmt.Errorf("store: reading solved levels: %w", err)
+	}
+	defer rows.Close()
+	ids := []string{}
+	for rows.Next() {
+		var id string
+		if err := rows.Scan(&id); err != nil {
+			return nil, fmt.Errorf("store: scanning solved level id: %w", err)
+		}
+		ids = append(ids, id)
+	}
+	return ids, rows.Err()
+}
+
 // TierHintRecord is one tier's most recent generated hint -- see tier_hint_history's
 // comment for why this needs to persist on the drive rather than live in memory.
 type TierHintRecord struct {
