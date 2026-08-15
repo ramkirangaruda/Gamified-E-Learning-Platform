@@ -1,6 +1,7 @@
 import { useState } from "react";
 import CompareView from "./CompareView";
 import Dashboard from "./Dashboard";
+import StyleGuide from "./StyleGuide";
 import PlayPage from "./PlayPage";
 
 // ?compare=1 is a demo asset (brief §8/queue item 6), not a dev flag someone stumbles
@@ -12,9 +13,14 @@ import PlayPage from "./PlayPage";
 // dependency for one back-and-forth transition would be the kind of thing this project
 // deliberately avoids elsewhere (brief's "minimal dependencies," DECISIONS.md).
 function App() {
-  const isCompareView = new URLSearchParams(window.location.search).get("compare") === "1";
+  const params = new URLSearchParams(window.location.search);
+  const isCompareView = params.get("compare") === "1";
+  const isStyleGuide = params.get("styleguide") === "1";
   const [selectedLevelId, setSelectedLevelId] = useState<string | null>(null);
 
+  // Dev review surface, same gating rationale as ?compare=1: reachable on purpose, never
+  // stumbled into by a child.
+  if (isStyleGuide) return <StyleGuide />;
   if (isCompareView) return <CompareView />;
 
   if (selectedLevelId) {

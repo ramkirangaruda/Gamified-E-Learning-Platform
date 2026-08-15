@@ -1,47 +1,9 @@
 @import "tailwindcss";
+@import "./tokens.css";
 
-/* Baloo 2 (OFL-licensed, vendored in public/fonts/ -- see Baloo2-OFL.txt) is a rounded,
-   friendly display face used for headings/buttons/nav chrome, matching the reference the
-   frontend is styled after (sesamestreet.org/games): big rounded type, not a corporate
-   dashboard sans. Self-hosted like Blockly's media assets -- no CDN, works offline. Body
-   copy (hint text, level descriptions) stays on the default sans stack instead: young
-   readers need a plain, unambiguous letterform for actual reading, not a novelty display
-   face applied everywhere. */
-@font-face {
-  font-family: "Baloo 2";
-  src: url("/fonts/Baloo2-Variable.ttf") format("truetype-variations");
-  font-weight: 400 800;
-  font-display: swap;
-}
-
-@theme {
-  --font-display: "Baloo 2", ui-rounded, "Segoe UI", sans-serif;
-
-  /* Warm, saturated, character-driven palette -- the reference site's game tiles and
-     nav use one bold hue per element rather than a gray dashboard scale. */
-  --color-quest-cream: #fff8ec;
-  --color-quest-sun: #ffb703;
-  --color-quest-sun-dark: #e08e00;
-  --color-quest-coral: #ff6b6b;
-  --color-quest-coral-dark: #e14f4f;
-  --color-quest-sky: #3bb4e5;
-  --color-quest-sky-dark: #1f96c9;
-  --color-quest-grass: #4caf50;
-  --color-quest-grass-dark: #388e3c;
-  --color-quest-grape: #9b6bdb;
-  --color-quest-grape-dark: #7a4bc0;
-  --color-quest-ink: #4a3f35;
-}
-
-:root {
-  color-scheme: light;
-}
-
-body {
-  margin: 0;
-  background: var(--color-quest-cream);
-  color: var(--color-quest-ink);
-}
+/* Everything below is component-level CSS. All design tokens (palette, type,
+   geometry, tap targets, motion policy) live in tokens.css -- add tokens there,
+   not here. */
 
 /* Indent guides (web/src/blocks/indentGuides.ts) -- decorative only, never on a card
    block's own rendered shape. */

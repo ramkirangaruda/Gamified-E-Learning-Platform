@@ -5,7 +5,7 @@
 // Same discipline as animals/AnimalMascot.tsx and BackgroundScene.tsx: hand-authored
 // shapes, not sourced from anywhere, so there's nothing to license.
 
-export type IconName = "star" | "trophy" | "apple" | "check" | "party" | "play" | "reset" | "step" | "pause";
+export type IconName = "star" | "trophy" | "apple" | "check" | "party" | "play" | "reset" | "step" | "pause" | "lock";
 
 interface IconProps {
   name: IconName;
@@ -79,6 +79,14 @@ export default function Icon({ name, size = 18, className }: IconProps) {
         <svg {...props}>
           <path d="M5 12 A 7 7 0 1 1 8 17.6" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" />
           <path d="M5 12 V 7 M5 12 H10" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+      );
+    case "lock":
+      return (
+        <svg {...props}>
+          {/* "Not yet", never failure -- a closed padlock with a soft body, no red, no cross. */}
+          <path d="M8 10 V7.5 A4 4 0 0 1 16 7.5 V10" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" />
+          <rect x="4.5" y="10" width="15" height="10.5" rx="3" fill="currentColor" />
         </svg>
       );
     case "step":
