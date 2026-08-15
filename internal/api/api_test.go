@@ -606,3 +606,120 @@ func TestPrewarmThenFirstHint_StillPopulatesCompareAndLatency(t *testing.T) {
 		t.Fatalf("cached hint response has no latency_ms field -- the tier HUD shows no latency: %+v", raw)
 	}
 }
+
+// promptCapturingEngine records every prompt it is asked to complete, so a test can
+// assert what the model was actually told -- the only way to verify brief §11's
+// "acknowledge the child has made this mistake before" step end to end.
+type promptCapturingEngine struct {
+	tier    tutor.TierInfo
+	prompts []string
+}
+
+func (p *promptCapturingEngine) Complete(_ context.Context, req tutor.CompletionRequest) (tutor.CompletionResult, error) {
+	p.prompts = append(p.prompts, req.Prompt)
+	return tutor.CompletionResult{Text: "You added one step too many -- try a smaller repeat!", LatencyMs: 7}, nil
+}
+func (p *promptCapturingEngine) TierInfo() tutor.TierInfo { return p.tier }
+func (p *promptCapturingEngine) Close() error             { return nil }
+
+// AUDIT: §13 demo-script step 4 is the single most load-bearing beat that is actually
+// built ("deliberately make the classic off_by_one_repeat mistake. Pip ... gives a hint --
+// pointing out this child has done it before"). Classification was covered by
+// TestClassify_OffByOneRepeat, but nothing tested that a REPEATED mistake actually
+// reaches the model with the history clause attached. This walks the real path the demo
+// walks: two failing runs through /api/program, then /api/hint.
+func TestDemoScript_RepeatedMistakeTellsTheModelAboutTheHistory(t *testing.T) {
+	dbPath := filepath.Join(t.TempDir(), "pet.db")
+	st, err := store.Open(dbPath)
+	if err != nil {
+		t.Fatalf("store.Open: %v", err)
+	}
+	defer st.Close()
+
+	engine := &promptCapturingEngine{tier: tutor.TierInfo{Tier: "low", Model: "fake-model.gguf"}}
+	srv, err := New(st, "../../content/levels", "../../content/hints", engine, 0)
+	if err != nil {
+		t.Fatalf("api.New: %v", err)
+	}
+	ts := httptest.NewServer(srv.Mux())
+	defer ts.Close()
+
+	// level-2 needs 11 moves; 10 is the classic off-by-one a child actually makes.
+	offByOne := `{"ast":{"version":1,"source":"blocks","program":[
+		{"op":"repeat","times":4,"body":[{"op":"move","steps":1}]},
+		{"op":"repeat","times":3,"body":[{"op":"move","steps":1}]},
+		{"op":"repeat","times":3,"body":[{"op":"move","steps":1}]}
+	]},"client_problems":[]}`
+
+	runOnce := func() string {
+		resp, err := http.Post(ts.URL+"/api/program?level_id=level-2", "application/json", strings.NewReader(offByOne))
+		if err != nil {
+			t.Fatalf("POST /api/program: %v", err)
+		}
+		defer resp.Body.Close()
+		var out struct {
+			Outcome        string `json:"outcome"`
+			ErrorSignature string `json:"error_signature"`
+		}
+		json.NewDecoder(resp.Body).Decode(&out)
+		if out.Outcome != "failed" {
+			t.Fatalf("outcome = %q, want failed", out.Outcome)
+		}
+		return out.ErrorSignature
+	}
+
+	askForHint := func() string {
+		resp, err := http.Post(ts.URL+"/api/hint", "application/json",
+			strings.NewReader(`{"level_id":"level-2","error_signature":"off_by_one_repeat"}`))
+		if err != nil {
+			t.Fatalf("POST /api/hint: %v", err)
+		}
+		defer resp.Body.Close()
+		var out struct {
+			Hint string `json:"hint"`
+		}
+		json.NewDecoder(resp.Body).Decode(&out)
+		return out.Hint
+	}
+
+	// First mistake: classified correctly, and the model must NOT be told about history
+	// that hasn't happened yet.
+	if sig := runOnce(); sig != "off_by_one_repeat" {
+		t.Fatalf("first attempt error_signature = %q, want off_by_one_repeat -- the demo's whole step 4 hinges on this", sig)
+	}
+	if hint := askForHint(); hint == "" {
+		t.Fatal("first hint was empty")
+	}
+	if len(engine.prompts) != 1 {
+		t.Fatalf("expected 1 model call, got %d", len(engine.prompts))
+	}
+	if strings.Contains(engine.prompts[0], "times before") {
+		t.Fatalf("first-ever mistake was described to the model as a repeat offence:\n%s", engine.prompts[0])
+	}
+
+	// Same mistake again -- this is the beat that is on camera.
+	if sig := runOnce(); sig != "off_by_one_repeat" {
+		t.Fatalf("second attempt error_signature = %q, want off_by_one_repeat", sig)
+	}
+	if hint := askForHint(); hint == "" {
+		t.Fatal("second hint was empty")
+	}
+	if len(engine.prompts) != 2 {
+		t.Fatalf("expected a fresh generation for the repeat mistake (different history bucket), got %d model calls", len(engine.prompts))
+	}
+	second := engine.prompts[1]
+	if !strings.Contains(second, "made this mistake 1 time(s) before") {
+		t.Fatalf("repeat mistake did not tell the model about the child's history:\n%s", second)
+	}
+
+	// §11's absolute rule, re-asserted on the demo path specifically: the model is handed
+	// the verified hint to rephrase and is never shown the child's program.
+	if !strings.Contains(second, "Hint:") {
+		t.Fatalf("prompt does not carry the verified hint text to rephrase:\n%s", second)
+	}
+	for _, leak := range []string{`"op"`, "repeat\",\"times", "move\",\"steps", "version\":1"} {
+		if strings.Contains(second, leak) {
+			t.Fatalf("the child's program leaked into the model prompt (%q):\n%s", leak, second)
+		}
+	}
+}
