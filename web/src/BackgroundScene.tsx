@@ -23,26 +23,30 @@ export default function BackgroundScene() {
 
       <rect width="1600" height="900" fill="url(#quest-sky)" />
 
-      {/* sun -- gentle glow pulse, quest-sun-pulse defined in index.css */}
-      <g className="quest-sun-pulse">
+      {/* Sun and clouds are STATIC, deliberately.
+          They used to carry quest-sun-pulse and quest-cloud-drift -- four infinite
+          animations running behind every screen for as long as the app was open. The pet
+          now holds the project's single idle-animation exception, and that exception is
+          for the pet alone: a companion that breathes is worth compositor time, ambient
+          scenery moving behind it is not. Removing these also means the idle cost of the
+          whole app is one thing that can be measured and reasoned about, rather than five
+          things layered on top of each other. */}
+      <g>
         <circle cx="1420" cy="150" r="90" fill="#ffdb70" opacity="0.9" />
         <circle cx="1420" cy="150" r="60" fill="#ffb703" />
       </g>
 
-      {/* clouds -- each drifts slowly at a different speed/offset so they don't move in
-          lockstep; class + inline animationDelay rather than three separate keyframe
-          rules for the same drift. */}
       <g fill="#ffffff" opacity="0.85">
-        <g className="quest-cloud-drift" style={{ animationDuration: "38s" }} transform="translate(220,120)">
+        <g transform="translate(220,120)">
           <ellipse cx="0" cy="0" rx="70" ry="30" />
           <ellipse cx="50" cy="-14" rx="46" ry="26" />
           <ellipse cx="-55" cy="-8" rx="40" ry="22" />
         </g>
-        <g className="quest-cloud-drift" style={{ animationDuration: "52s", animationDelay: "-10s" }} transform="translate(760,90)">
+        <g transform="translate(760,90)">
           <ellipse cx="0" cy="0" rx="55" ry="24" />
           <ellipse cx="40" cy="-10" rx="36" ry="20" />
         </g>
-        <g className="quest-cloud-drift" style={{ animationDuration: "44s", animationDelay: "-25s" }} transform="translate(1080,210)">
+        <g transform="translate(1080,210)">
           <ellipse cx="0" cy="0" rx="48" ry="20" />
           <ellipse cx="34" cy="-8" rx="30" ry="16" />
         </g>

@@ -115,10 +115,8 @@ export default function Trail({ levels, solvedIds, starsByLevel, onSelectLevel, 
                     {EVOLUTION_MARKERS.map((m) =>
                       m.afterSolved === index + 1 ? (
                         <div key={m.label} className="mt-1 flex flex-col items-center">
-                          <div className="scale-50">
-                            <Pet mood="happy" name="" evolutionStage={petStage} />
-                          </div>
-                          <div className="-mt-3 rounded-chunk-sm border-2 border-quest-gold-dark bg-quest-gold px-2 py-0.5 font-display text-[10px] font-bold text-quest-ink">
+                          <Pet mood="happy" evolutionStage={petStage} size={52} />
+                          <div className="-mt-1 rounded-chunk-sm border-2 border-quest-gold-dark bg-quest-gold px-2 py-0.5 font-display text-[10px] font-bold text-quest-ink">
                             {m.label}
                           </div>
                         </div>

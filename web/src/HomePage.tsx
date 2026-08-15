@@ -1,16 +1,18 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import BackgroundScene from "./BackgroundScene";
-import Icon from "./icons/Icon";
-import Pet from "./pet/Pet";
 import LevelGrid from "./trail/LevelGrid";
 import Trail from "./trail/Trail";
 import { ChunkyButton } from "./ui/Chunky";
-import { fetchLevels, fetchState, type GameState, type LevelDef } from "./api";
-import { friendlyError } from "./friendlyError";
+import { usePet } from "./pet/PetProvider";
 
 // The home screen. Trail is primary ("where am I, what's next"); the grid is secondary
-// ("where was that one about loops"). Replaces the old four-card Dashboard, which did not
-// scale past a handful of levels and had no notion of progress.
+// ("where was that one about loops").
+//
+// Levels, points, hunger and solved state all come from PetProvider now rather than being
+// fetched here. That removed a duplicated /api/levels + /api/state pair (this page and
+// PlayPage each had their own) which could disagree with each other until whichever
+// request landed last, and it is what lets the pet bar and the trail agree instantly
+// after a solve without either one re-fetching.
 
 type View = "trail" | "grid";
 
@@ -22,15 +24,8 @@ interface HomePageProps {
 }
 
 export default function HomePage({ onSelectLevel, lite, onToggleLite }: HomePageProps) {
-  const [levels, setLevels] = useState<LevelDef[]>([]);
-  const [state, setState] = useState<GameState | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const { state, levels, error } = usePet();
   const [view, setView] = useState<View>("trail");
-
-  useEffect(() => {
-    fetchLevels().then(setLevels).catch((e) => setError(friendlyError("levels", e)));
-    fetchState().then(setState).catch(() => setState(null));
-  }, []);
 
   const solvedIds = state?.solved_levels ?? [];
   // Stars are not persisted per level yet (the store keeps solved/attempts, not a star
@@ -43,34 +38,17 @@ export default function HomePage({ onSelectLevel, lite, onToggleLite }: HomePage
   const solvedCount = solvedIds.length;
 
   return (
-    <div className="relative min-h-screen w-screen overflow-x-hidden">
+    <div className="relative min-h-[calc(100vh-var(--pet-bar-h))] w-full overflow-x-hidden">
       <BackgroundScene />
 
-      <header className="relative mx-auto mb-6 max-w-5xl px-6 pt-8">
-        <div className="flex flex-wrap items-center justify-between gap-4 rounded-chunk-lg border-[var(--outline-chunk)] border-white bg-white/75 px-6 py-4 shadow-chunk backdrop-blur-sm">
-          <div className="flex items-center gap-3">
-            <Pet mood={solvedCount > 0 ? "happy" : "idle"} evolutionStage={state?.pet.evolution_stage ?? 0} name="" />
-            <div>
-              <h1 className="font-display text-3xl font-bold text-quest-ink">Tessera Quest</h1>
-              <p className="font-medium text-quest-ink-soft">
-                {solvedCount === 0 ? "Let's start your first level!" : `${solvedCount} of ${levels.length} done — nice work.`}
-              </p>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-3">
-            <div className="flex items-center gap-3 rounded-chunk border-[var(--outline-chunk)] border-quest-ink bg-quest-ink px-4 py-2 font-display text-sm font-bold text-white">
-              <span className="flex items-center gap-1.5">
-                <Icon name="star" />
-                {state?.learner.points ?? 0}
-              </span>
-              <span className="h-4 w-px bg-white/25" />
-              <span className="flex items-center gap-1.5">
-                <Icon name="trophy" />
-                {solvedCount}
-              </span>
-            </div>
-          </div>
+      <header className="relative mx-auto mb-6 max-w-5xl px-6 pt-6">
+        <div className="rounded-chunk-lg border-[var(--outline-chunk)] border-white bg-white/75 px-6 py-4 shadow-chunk backdrop-blur-sm">
+          <h1 className="font-display text-3xl font-bold text-quest-ink">Tessera Quest</h1>
+          <p className="font-medium text-quest-ink-soft">
+            {solvedCount === 0
+              ? "Let's start your first level!"
+              : `${solvedCount} of ${levels.length} done — nice work.`}
+          </p>
         </div>
 
         <div className="mt-4 flex gap-2">
@@ -91,7 +69,11 @@ export default function HomePage({ onSelectLevel, lite, onToggleLite }: HomePage
           </ChunkyButton>
         </div>
 
-        {error && <p className="mt-4 font-medium text-quest-coral-dark">{error}</p>}
+        {error === "levels" && (
+          <p className="mt-4 font-medium text-quest-coral-dark">
+            I couldn't find the levels just now. Try starting Tessera Quest again.
+          </p>
+        )}
       </header>
 
       <main className="relative">

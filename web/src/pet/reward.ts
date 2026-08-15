@@ -73,11 +73,9 @@ export function clampHunger(value: number): number {
   return Math.max(0, Math.min(100, value));
 }
 
-export type PetMood = "idle" | "happy" | "confused" | "hungry";
-
-export function moodFromHunger(hunger: number, lastOutcome?: "solved" | "failed" | null): PetMood {
-  if (lastOutcome === "solved") return "happy";
-  if (lastOutcome === "failed") return "confused";
-  if (hunger < 25) return "hungry";
-  return "idle";
-}
+// PetMood and the rules for choosing one moved to pet/mood.ts when the pet became a
+// persistent companion. The old `moodFromHunger(hunger, lastOutcome)` could only express
+// four moods and only knew two facts about the world, so it could not react to anything
+// that wasn't a finished run. mood.ts's machine subsumes it: `hungry` is one of its
+// sustained moods and the outcome cases are now transient reactions with priorities.
+// This file is back to being purely the §10 economy.

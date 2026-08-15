@@ -34,10 +34,18 @@ interface EditorProps {
    *  the page can call compileWorkspaceToAst(workspace) on demand -- the editor itself
    *  doesn't know what "running" means, it just owns the Blockly instance. */
   onWorkspaceReady?: (workspace: Blockly.WorkspaceSvg | null) => void;
+  /** Fired when a block is picked up or dropped. The pet uses it to look over
+   *  (`curious`); the editor itself neither knows nor cares that a pet exists. */
+  onBlockActivity?: () => void;
 }
 
-export default function Editor({ onWorkspaceReady }: EditorProps) {
+export default function Editor({ onWorkspaceReady, onBlockActivity }: EditorProps) {
   const hostRef = useRef<HTMLDivElement>(null);
+  // Kept in a ref so the listener below can stay registered for the lifetime of the
+  // workspace without the injection effect depending on the callback -- re-running that
+  // effect would tear down and reinject the whole Blockly instance.
+  const activityRef = useRef(onBlockActivity);
+  activityRef.current = onBlockActivity;
 
   useEffect(() => {
     if (!hostRef.current) return;
@@ -58,6 +66,16 @@ export default function Editor({ onWorkspaceReady }: EditorProps) {
 
     const detachIndentGuides = attachIndentGuides(workspace);
     onWorkspaceReady?.(workspace);
+
+    // BLOCK_DRAG covers pick-up and drop; BLOCK_MOVE covers a snap into place (including
+    // one made with the keyboard). Both are the same signal to the pet: the child is
+    // building something right now.
+    const onEvent = (e: Blockly.Events.Abstract) => {
+      if (e.type === Blockly.Events.BLOCK_DRAG || e.type === Blockly.Events.BLOCK_MOVE) {
+        activityRef.current?.();
+      }
+    };
+    workspace.addChangeListener(onEvent);
 
     if (import.meta.env.DEV) {
       (window as unknown as { __workspace: typeof workspace }).__workspace = workspace;

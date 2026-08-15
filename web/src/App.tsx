@@ -3,6 +3,8 @@ import CompareView from "./CompareView";
 import HomePage from "./HomePage";
 import { applyLite, setOverride, storedOverride } from "./lite";
 import { fetchTierInfo } from "./api";
+import PetBar from "./pet/PetBar";
+import { PetProvider } from "./pet/PetProvider";
 import StyleGuide from "./StyleGuide";
 import PlayPage from "./PlayPage";
 
@@ -51,14 +53,28 @@ function App() {
   }
 
   // Dev review surface, same gating rationale as ?compare=1: reachable on purpose, never
-  // stumbled into by a child.
+  // stumbled into by a child. Both sit outside the pet shell -- neither is a place a
+  // child is playing, so a companion bar on top of them would be noise.
   if (isStyleGuide) return <StyleGuide />;
   if (isCompareView) return <CompareView />;
 
-  if (selectedLevelId) {
-    return <PlayPage initialLevelId={selectedLevelId} onBackToDashboard={() => setSelectedLevelId(null)} />;
-  }
-  return <HomePage onSelectLevel={setSelectedLevelId} lite={lite} onToggleLite={toggleLite} />;
+  // The shell. PetProvider and PetBar are mounted ONCE, outside the page switch below,
+  // which is the whole of what makes the pet persistent: switching pages replaces only
+  // what is inside <main>, so the pet's state, mood and animation phase are never torn
+  // down. Putting the bar inside either page -- even identically in both -- would remount
+  // it on every navigation and reset all three.
+  return (
+    <PetProvider>
+      <PetBar />
+      <main className="pt-[var(--pet-bar-h)]">
+        {selectedLevelId ? (
+          <PlayPage initialLevelId={selectedLevelId} onBackToDashboard={() => setSelectedLevelId(null)} />
+        ) : (
+          <HomePage onSelectLevel={setSelectedLevelId} lite={lite} onToggleLite={toggleLite} />
+        )}
+      </main>
+    </PetProvider>
+  );
 }
 
 export default App;
