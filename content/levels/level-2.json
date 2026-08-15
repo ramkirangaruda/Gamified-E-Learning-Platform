@@ -1,0 +1,15 @@
+{
+  "id": "level-2",
+  "name": "Long Road",
+  "teaches": "repeat",
+  "hard": false,
+  "parBlocks": 9,
+  "startPos": [0, 0],
+  "startDir": "right",
+  "grid": {
+    "width": 12,
+    "height": 1,
+    "walls": [[false, false, false, false, false, false, false, false, false, false, false, false]],
+    "goal": [11, 0]
+  }
+}

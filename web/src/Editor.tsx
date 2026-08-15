@@ -2,6 +2,7 @@ import { useEffect, useRef } from "react";
 import * as Blockly from "blockly/core";
 import { CARDS, CardCategory, registerCardBlocks } from "./blocks/cardBlocks";
 import { attachIndentGuides } from "./blocks/indentGuides";
+import { compileWorkspaceToAst } from "./blocks/compileAst";
 
 registerCardBlocks();
 
@@ -46,6 +47,8 @@ export default function Editor() {
 
     if (import.meta.env.DEV) {
       (window as unknown as { __workspace: typeof workspace }).__workspace = workspace;
+      (window as unknown as { __compileWorkspaceToAst: typeof compileWorkspaceToAst }).__compileWorkspaceToAst =
+        compileWorkspaceToAst;
     }
 
     return () => {
