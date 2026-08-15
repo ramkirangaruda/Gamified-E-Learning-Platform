@@ -20,6 +20,7 @@ import {
   type TierInfo,
 } from "./api";
 import type { ExecResult } from "./executorTypes";
+import { friendlyError } from "./friendlyError";
 
 // The page-level wiring for M2's acceptance test (brief §12) plus M3's tutor pipeline
 // (brief §11/§12): solve three levels with a mouse, watch the pet react, get a real
@@ -44,15 +45,15 @@ export default function PlayPage({ initialLevelId, onBackToDashboard }: PlayPage
   const [tierInfo, setTierInfo] = useState<TierInfo | null>(null);
   const [hintText, setHintText] = useState<string | null>(null);
   const [hintLatencyMs, setHintLatencyMs] = useState<number | null>(null);
-  // No backend attempts log yet (M1/M2 deferred internal/store's attempts table until
-  // something needs it) -- first-try tracking is client-side only for now and resets on
-  // reload. Logged in DECISIONS.md; real persistence is a straightforward follow-up once
-  // the attempts table has a writer.
+  // First-try tracking is client-side only and resets on reload (AUDIT P2): the server's
+  // attempts table does have a real writer now, so deriving this server-side is possible
+  // -- it just isn't done yet. Bounded by the alreadySolved gate below, so the worst case
+  // is a level's genuine first solve being scored as first-try after a page refresh.
   const [attemptCounts, setAttemptCounts] = useState<Record<string, number>>({});
 
   useEffect(() => {
-    fetchLevels().then(setLevels).catch((e) => setRunError(String(e)));
-    fetchState().then(setState).catch((e) => setRunError(String(e)));
+    fetchLevels().then(setLevels).catch((e) => setRunError(friendlyError("levels", e)));
+    fetchState().then(setState).catch((e) => setRunError(friendlyError("state", e)));
     fetchTierInfo().then(setTierInfo).catch(() => setTierInfo(null));
   }, []);
 
@@ -148,7 +149,7 @@ export default function PlayPage({ initialLevelId, onBackToDashboard }: PlayPage
         }
       }
     } catch (e) {
-      setRunError(String(e));
+      setRunError(friendlyError("run", e));
     } finally {
       setRunning(false);
     }

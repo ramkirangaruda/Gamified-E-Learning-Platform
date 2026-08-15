@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { fetchCompare, type TierHintRecord } from "./api";
 import Pet from "./pet/Pet";
+import { friendlyError } from "./friendlyError";
 
 // Queue item 6, and explicitly not a dev tool: "how I show judges the same key
 // producing better hints on better hardware." Reads whatever's in tier_hint_history
@@ -46,7 +47,7 @@ export default function CompareView() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    fetchCompare().then(setRecords).catch((e) => setError(String(e)));
+    fetchCompare().then(setRecords).catch((e) => setError(friendlyError("compare", e)));
   }, []);
 
   const low = records?.find((r) => r.tier === "low");
