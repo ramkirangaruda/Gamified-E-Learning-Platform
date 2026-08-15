@@ -242,15 +242,28 @@ func (s *Server) handleHint(w http.ResponseWriter, r *http.Request) {
 	var latencyMs int64
 	if s.engine != nil {
 		prompt := hints.BuildHintPrompt(hintText, priorCount)
-		result, err := s.engine.Complete(r.Context(), tutor.CompletionRequest{Task: "hint", Prompt: prompt, MaxTokens: 60})
-		if err != nil {
-			// Model unavailable/failed: fall back to the verified hint text verbatim.
-			// brief §11 — a lookup/generation failure is never a reason to show nothing
-			// or let anything free-generate; the pre-written hint is always safe to show.
-			log.Printf("api: hint completion failed, using verified text verbatim: %v", err)
-		} else {
+		// Perspective-drift layer 3 (layers 1/2 are BuildHintPrompt's instruction +
+		// few-shot examples): validate the completion and retry once before falling
+		// back. A drifting completion (Pip narrating the child's mistake as its own,
+		// e.g. "I forgot to close my repeat block...") must never reach a child even
+		// after the prompt-level fixes, since a 0.6B model can still roll one. Two
+		// attempts total, then the verified hint text verbatim -- the same fallback
+		// path already used for a hard engine error, per brief §11's rule that a
+		// generation failure (of any kind) is never a reason to show nothing or let
+		// anything free-generate.
+		for attempt := 1; attempt <= 2; attempt++ {
+			result, err := s.engine.Complete(r.Context(), tutor.CompletionRequest{Task: "hint", Prompt: prompt, MaxTokens: 60})
+			if err != nil {
+				log.Printf("api: hint completion failed (attempt %d), using verified text verbatim: %v", attempt, err)
+				break
+			}
+			latencyMs += result.LatencyMs
+			if hints.HasFirstPersonAuthorDrift(result.Text) {
+				log.Printf("api: hint completion rejected for first-person perspective drift (attempt %d): %q", attempt, result.Text)
+				continue
+			}
 			finalText = result.Text
-			latencyMs = result.LatencyMs
+			break
 		}
 	}
 
