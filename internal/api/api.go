@@ -114,6 +114,8 @@ func (s *Server) PrewarmHints(ctx context.Context) {
 	}
 	start := time.Now()
 	warmed, skipped := 0, 0
+	info := s.engine.TierInfo()
+	tierName, model := info.Tier, info.Model
 	for _, levelID := range s.levelOrder {
 		bank, err := hints.LoadBank(s.hintsDir, levelID)
 		if err != nil {
@@ -128,6 +130,23 @@ func (s *Server) PrewarmHints(ctx context.Context) {
 			}
 			gen := hints.GenerateVerifiedHint(ctx, s.engine, bank.Lookup(signature), 0)
 			s.hintCache.Set(levelID, signature, bucket, gen.Text)
+			// AUDIT P1-1: record these too. Pre-warming means a child's first mistake
+			// always hits the cache, and the cache-hit path returns before
+			// RecordTierHint -- so without this, tier_hint_history stayed empty and
+			// ?compare=1 (brief §8's judge-facing asset) showed "Not demoed yet" for both
+			// tiers all demo. These are real generations with real latencies, so
+			// recording them is honest, and it means the compare view has something to
+			// show the moment startup finishes rather than only after a repeat mistake.
+			if gen.FromModel {
+				rec := store.TierHintRecord{
+					Tier: tierName, Model: model, HintText: gen.Text,
+					LevelID: levelID, ErrorSignature: signature,
+					LatencyMs: gen.LatencyMs, Ts: time.Now().Unix(),
+				}
+				if err := s.store.RecordTierHint(rec); err != nil {
+					log.Printf("api: prewarm: recording tier hint history: %v", err)
+				}
+			}
 			warmed++
 		}
 	}
@@ -262,8 +281,12 @@ type hintResponse struct {
 	ErrorSignature string `json:"error_signature,omitempty"`
 	Tier           string `json:"tier,omitempty"`
 	Model          string `json:"model,omitempty"`
-	LatencyMs      int64  `json:"latency_ms,omitempty"`
-	Cached         bool   `json:"cached"`
+	// AUDIT P1-1: deliberately NOT omitempty. A cache hit has a genuine latency of ~0,
+	// and omitempty made the field vanish entirely, so the frontend's `latency_ms ?? null`
+	// blanked the tier HUD's latency readout on every pre-warmed (i.e. every first) hint.
+	// Sending an explicit 0 lets the HUD say "instant" rather than say nothing.
+	LatencyMs int64 `json:"latency_ms"`
+	Cached    bool  `json:"cached"`
 }
 
 // handleHint implements brief §11's pipeline: look up the verified hint for the

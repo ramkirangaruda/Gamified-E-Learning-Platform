@@ -44,7 +44,10 @@ export default function TierHUD({ tier, lastLatencyMs }: TierHUDProps) {
       {lastLatencyMs !== null && (
         <>
           <span className="text-white/40">·</span>
-          <span className="text-quest-sun">{lastLatencyMs}ms</span>
+          {/* AUDIT P1-1: a pre-warmed (cached) hint has a real latency of 0, which used
+              to render as a bare "0ms" or -- before the API sent the field at all --
+              as nothing. "instant" is both truthful and the better demo line. */}
+          <span className="text-quest-sun">{lastLatencyMs > 0 ? `${lastLatencyMs}ms` : "instant"}</span>
         </>
       )}
     </div>

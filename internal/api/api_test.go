@@ -547,3 +547,62 @@ func TestSetEngine_AttachesEngineAfterConstruction(t *testing.T) {
 		t.Fatalf("hint = %q, want the engine's rephrasing", got.Hint)
 	}
 }
+
+// AUDIT P1-1. -prewarm-hints defaults to true, so every (level, signature) pair is
+// cached at history bucket 0 before a child touches anything -- which means a child's
+// FIRST mistake always hits the cache. handleHint's cache-hit branch returned early,
+// before RecordTierHint, so tier_hint_history stayed empty and ?compare=1 (the
+// judge-facing "same key, better hardware" asset, brief §8) rendered "Not demoed yet"
+// for both tiers for the whole demo. The cached response also omitted latency_ms, so the
+// tier HUD showed no latency figure at all on the first hint.
+func TestPrewarmThenFirstHint_StillPopulatesCompareAndLatency(t *testing.T) {
+	dbPath := filepath.Join(t.TempDir(), "pet.db")
+	st, err := store.Open(dbPath)
+	if err != nil {
+		t.Fatalf("store.Open: %v", err)
+	}
+	defer st.Close()
+
+	engine := &countingEngine{tier: tutor.TierInfo{Tier: "low", Model: "fake-model.gguf"}}
+	srv, err := New(st, "../../content/levels", "../../content/hints", engine, 0)
+	if err != nil {
+		t.Fatalf("api.New: %v", err)
+	}
+	// Exactly what the launcher does at startup.
+	srv.PrewarmHints(context.Background())
+
+	// ?compare=1 must have something to show as soon as prewarm finishes -- those are
+	// real generations with real latencies, so recording them is honest.
+	recs, err := st.GetTierHints()
+	if err != nil {
+		t.Fatalf("GetTierHints: %v", err)
+	}
+	if len(recs) == 0 {
+		t.Fatal("tier_hint_history empty after prewarm -- ?compare=1 would show 'Not demoed yet'")
+	}
+	if recs[0].Tier != "low" || recs[0].HintText == "" {
+		t.Fatalf("tier hint record looks wrong: %+v", recs[0])
+	}
+
+	ts := httptest.NewServer(srv.Mux())
+	defer ts.Close()
+
+	// §13 step 4's first hint: off_by_one_repeat on level-2, served from the warm cache.
+	resp, err := http.Post(ts.URL+"/api/hint", "application/json",
+		strings.NewReader(`{"level_id":"level-2","error_signature":"off_by_one_repeat"}`))
+	if err != nil {
+		t.Fatalf("POST /api/hint: %v", err)
+	}
+	defer resp.Body.Close()
+
+	var raw map[string]any
+	if err := json.NewDecoder(resp.Body).Decode(&raw); err != nil {
+		t.Fatalf("decoding: %v", err)
+	}
+	if cached, _ := raw["cached"].(bool); !cached {
+		t.Fatalf("expected the first hint to be served from the prewarmed cache, got %+v", raw)
+	}
+	if _, present := raw["latency_ms"]; !present {
+		t.Fatalf("cached hint response has no latency_ms field -- the tier HUD shows no latency: %+v", raw)
+	}
+}
