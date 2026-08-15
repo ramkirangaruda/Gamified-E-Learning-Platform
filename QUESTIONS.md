@@ -50,9 +50,26 @@ including a real `/api/hint` round trip — **23/23 requests to `localhost:8080`
 external**. This is the audit result you asked for before doing the physical cable-pull
 test yourself.
 
-Remaining items (4, 5) still in progress — see `DECISIONS.md` for entries as they land,
-and the top of this file will get a fresh queue-complete summary when all 6 are done,
-matching how the M2 and M3 queues were closed out.
+**Item 5 done:** hint pre-warming + hard generation timeout. `internal/api.PrewarmHints`
+generates every bank entry (14 total) at history bucket 0 in a background goroutine at
+startup, sharing the exact retry/validate/fallback logic a live request uses
+(`hints.GenerateVerifiedHint`, extracted so there's one copy of that logic, not two).
+Configurable via `-prewarm-hints` (default true), logs how long it took. `DefaultHintTimeout
+= 8s` (`-hint-timeout` to override) bounds a single `/api/hint` request's total wait on
+the model before falling back to the verified text verbatim — chosen from real x64
+numbers (~0.6-1.2s per generation) plus the queue's own "several seconds on the Pi"
+framing. **Verified for real**: ran the built launcher against the real 0.6B model from
+a real drive layout — prewarm log showed `cached 14 hints ... in 13.312s` running
+concurrently with the server already accepting requests, then a request for an
+untouched-yet signature (`level-2/unbalanced_block`, what would be a child's actual
+first-ever hint) came back in **0.173s** with `"cached":true` instead of a live
+~0.7-1.2s generation. That's the acceptance criterion ("so the first hint a child sees
+is instant") demonstrated, not assumed.
+
+Remaining item (4, ARM cross-compile + Pi bring-up) still in progress — see
+`DECISIONS.md` for entries as they land, and the top of this file will get a fresh
+queue-complete summary when all 6 are done, matching how the M2 and M3 queues were
+closed out.
 
 ---
 

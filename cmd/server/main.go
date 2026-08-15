@@ -31,6 +31,8 @@ const llamaServerPort = 8090
 
 func main() {
 	addr := flag.String("addr", ":8080", "listen address")
+	prewarmHints := flag.Bool("prewarm-hints", true, "pre-generate and cache every bank hint at startup (queue item 5) so a child's first hint is instant, not a wait for the first-ever generation on that machine")
+	hintTimeout := flag.Duration("hint-timeout", api.DefaultHintTimeout, "hard timeout on a single hint generation before falling back to the verified hint text verbatim")
 	flag.Parse()
 
 	exeDir, err := paths.ExeDir()
@@ -56,11 +58,29 @@ func main() {
 
 	levelsDir := filepath.Join(exeDir, "content", "levels")
 	hintsDir := filepath.Join(exeDir, "content", "hints")
-	srv, err := api.New(st, levelsDir, hintsDir, engine)
+	srv, err := api.New(st, levelsDir, hintsDir, engine, *hintTimeout)
 	if err != nil {
 		log.Fatalf("starting api server: %v", err)
 	}
 	mux := srv.Mux()
+	log.Printf("tutor: hint generation timeout = %s", *hintTimeout)
+
+	// Runs in the background, not before ListenAndServe below: the server should start
+	// answering /api/levels etc. immediately rather than making the whole app wait on
+	// however long warming every bank entry takes (worse on the Pi -- see
+	// DECISIONS.md). A child needs to load the app, pick a level, and fail once before
+	// ever reaching a hint request, which is real headroom compared to warm-up time even
+	// on slow hardware. A generous but bounded deadline (distinct from the
+	// per-request hint-timeout flag, which is deliberately tighter) keeps this from
+	// running forever if something's stuck, without needing to finish before the demo
+	// can start.
+	if *prewarmHints && engine != nil {
+		go func() {
+			prewarmCtx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
+			defer cancel()
+			srv.PrewarmHints(prewarmCtx)
+		}()
+	}
 
 	// app/ is the built React/Blockly bundle (brief's drive layout, app/) — empty until
 	// the frontend is built and placed there. http.Dir on a not-yet-existing directory

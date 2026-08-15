@@ -8,7 +8,9 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
+	"github.com/ramkirangaruda/Gamified-E-Learning-Platform/internal/hints"
 	"github.com/ramkirangaruda/Gamified-E-Learning-Platform/internal/store"
 	"github.com/ramkirangaruda/Gamified-E-Learning-Platform/internal/tutor"
 )
@@ -44,6 +46,139 @@ func (f *driftingEngine) Complete(_ context.Context, req tutor.CompletionRequest
 func (f *driftingEngine) TierInfo() tutor.TierInfo { return f.tier }
 func (f *driftingEngine) Close() error             { return nil }
 
+// countingEngine records how many times Complete was called, alongside every request's
+// prompt -- used to prove PrewarmHints hits the model exactly once per bank entry, not
+// zero (silently skipping) and not more (redundant work Pi hardware can't spare).
+type countingEngine struct {
+	tier  tutor.TierInfo
+	calls int
+}
+
+func (c *countingEngine) Complete(_ context.Context, req tutor.CompletionRequest) (tutor.CompletionResult, error) {
+	c.calls++
+	return tutor.CompletionResult{Text: "a correctly rephrased hint, second person throughout", LatencyMs: 5}, nil
+}
+func (c *countingEngine) TierInfo() tutor.TierInfo { return c.tier }
+func (c *countingEngine) Close() error             { return nil }
+
+// content/hints/{level-1,level-2,level-3}.json currently define 3 + 6 + 5 = 14 total
+// (level_id, error_signature) entries -- see content/hints/README.md's coverage table.
+// This test intentionally hardcodes that count rather than computing it dynamically, so
+// a bank edit that silently changes the total is caught here as a test failure, not
+// missed entirely.
+const totalBankHintEntries = 14
+
+func TestPrewarmHints_PopulatesCacheExactlyOncePerBankEntry(t *testing.T) {
+	dbPath := filepath.Join(t.TempDir(), "pet.db")
+	st, err := store.Open(dbPath)
+	if err != nil {
+		t.Fatalf("store.Open: %v", err)
+	}
+	defer st.Close()
+
+	engine := &countingEngine{tier: tutor.TierInfo{Tier: "low", Model: "fake-model.gguf"}}
+	srv, err := New(st, "../../content/levels", "../../content/hints", engine, 0)
+	if err != nil {
+		t.Fatalf("api.New: %v", err)
+	}
+
+	srv.PrewarmHints(context.Background())
+
+	if engine.calls != totalBankHintEntries {
+		t.Fatalf("engine.calls = %d, want %d (one per bank entry)", engine.calls, totalBankHintEntries)
+	}
+	// Spot-check a couple of entries actually landed in the cache at bucket 0, and that
+	// a would-be request for one wouldn't need to touch the model at all.
+	if _, ok := srv.hintCache.Get("level-2", "unbalanced_block", hints.HistoryBucket(0)); !ok {
+		t.Fatal("level-2/unbalanced_block not found in cache after prewarm")
+	}
+	if _, ok := srv.hintCache.Get("level-3", "missing_turn", hints.HistoryBucket(0)); !ok {
+		t.Fatal("level-3/missing_turn not found in cache after prewarm")
+	}
+
+	// Warming again must not regenerate anything already cached -- a restart-free
+	// re-warm (or a request racing the first warm-up) should be free.
+	srv.PrewarmHints(context.Background())
+	if engine.calls != totalBankHintEntries {
+		t.Fatalf("engine.calls after second prewarm = %d, want unchanged %d (already-cached entries must be skipped)", engine.calls, totalBankHintEntries)
+	}
+}
+
+// slowEngine takes longer than a configured hintTimeout to respond, respecting ctx
+// cancellation the way a real HTTP call to llama-server would -- proves handleHint's
+// timeout is actually wired to a real context deadline, not just that
+// hints.GenerateVerifiedHint honors one in isolation (already covered in
+// internal/hints/generate_test.go).
+type slowEngine struct {
+	tier  tutor.TierInfo
+	delay time.Duration
+}
+
+func (s slowEngine) Complete(ctx context.Context, _ tutor.CompletionRequest) (tutor.CompletionResult, error) {
+	select {
+	case <-time.After(s.delay):
+		return tutor.CompletionResult{Text: "too slow to matter"}, nil
+	case <-ctx.Done():
+		return tutor.CompletionResult{}, ctx.Err()
+	}
+}
+func (s slowEngine) TierInfo() tutor.TierInfo { return s.tier }
+func (s slowEngine) Close() error             { return nil }
+
+func TestIntegration_HintTimesOutToVerifiedText(t *testing.T) {
+	dbPath := filepath.Join(t.TempDir(), "pet.db")
+	st, err := store.Open(dbPath)
+	if err != nil {
+		t.Fatalf("store.Open: %v", err)
+	}
+	defer st.Close()
+
+	engine := slowEngine{tier: tutor.TierInfo{Tier: "low"}, delay: 2 * time.Second}
+	srv, err := New(st, "../../content/levels", "../../content/hints", engine, 50*time.Millisecond)
+	if err != nil {
+		t.Fatalf("api.New: %v", err)
+	}
+	ts := httptest.NewServer(srv.Mux())
+	defer ts.Close()
+
+	start := time.Now()
+	resp, err := http.Post(ts.URL+"/api/hint", "application/json", strings.NewReader(`{"level_id":"level-1","error_signature":"empty_program"}`))
+	if err != nil {
+		t.Fatalf("POST /api/hint: %v", err)
+	}
+	defer resp.Body.Close()
+	elapsed := time.Since(start)
+
+	var got struct {
+		Hint string `json:"hint"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&got); err != nil {
+		t.Fatalf("decoding response: %v", err)
+	}
+	const verifiedText = "Your workspace is empty! Drag a 'move forward' card from the Movement toolbox onto the canvas to get started."
+	if got.Hint != verifiedText {
+		t.Fatalf("hint = %q, want verified text verbatim after timeout", got.Hint)
+	}
+	if elapsed > time.Second {
+		t.Fatalf("request took %s, want it to respect the 50ms hint timeout rather than wait out the 2s slow engine", elapsed)
+	}
+}
+
+func TestPrewarmHints_NoEngineIsNoop(t *testing.T) {
+	dbPath := filepath.Join(t.TempDir(), "pet.db")
+	st, err := store.Open(dbPath)
+	if err != nil {
+		t.Fatalf("store.Open: %v", err)
+	}
+	defer st.Close()
+
+	srv, err := New(st, "../../content/levels", "../../content/hints", nil, 0)
+	if err != nil {
+		t.Fatalf("api.New: %v", err)
+	}
+	srv.PrewarmHints(context.Background()) // must not panic on a nil engine
+}
+
 // Integration test for the AST -> executor -> trace path, exercised the same way the
 // frontend actually calls it: real HTTP, real level content from content/levels/, a
 // real (temp-file) SQLite store. Blockly workspace -> AST compilation is covered
@@ -64,7 +199,7 @@ func newTestServerWithEngine(t *testing.T, engine tutor.Engine) *httptest.Server
 	}
 	t.Cleanup(func() { st.Close() })
 
-	srv, err := New(st, "../../content/levels", "../../content/hints", engine)
+	srv, err := New(st, "../../content/levels", "../../content/hints", engine, 0)
 	if err != nil {
 		t.Fatalf("api.New: %v", err)
 	}
