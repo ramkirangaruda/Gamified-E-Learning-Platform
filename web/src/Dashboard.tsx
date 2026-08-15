@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import AnimalMascot, { type AnimalKind } from "./animals/AnimalMascot";
+import BackgroundScene from "./BackgroundScene";
 import { fetchLevels, fetchState, type GameState, type LevelDef } from "./api";
 
 // The landing screen (queue: "a dashboard with animal cartoon themes and different
@@ -24,7 +25,7 @@ interface SectionMeta {
 const SECTIONS: SectionMeta[] = [
   { teaches: "move", title: "Move it, Monkey!", blurb: "Move and turn to get where you're going", animal: "monkey", bg: "bg-quest-sun", border: "border-quest-sun-dark" },
   { teaches: "repeat", title: "Loopy Land", blurb: "Repeat a pattern instead of placing it by hand", animal: "rabbit", bg: "bg-quest-coral", border: "border-quest-coral-dark" },
-  { teaches: "if_wall_ahead", title: "Decision Den", blurb: "Check the wall and decide what to do", animal: "owl", bg: "bg-quest-grape", border: "border-quest-grape" },
+  { teaches: "if_wall_ahead", title: "Decision Den", blurb: "Check the wall and decide what to do", animal: "owl", bg: "bg-quest-grape", border: "border-quest-grape-dark" },
   { teaches: "while", title: "While Woods", blurb: "Keep going until you actually get there", animal: "turtle", bg: "bg-quest-grass", border: "border-quest-grass-dark" },
 ];
 
@@ -45,15 +46,16 @@ export default function Dashboard({ onSelectLevel }: DashboardProps) {
   const levelsFor = (teaches: string) => levels.filter((l) => l.teaches === teaches);
 
   return (
-    <div className="min-h-screen w-screen bg-quest-cream p-8">
-      <div className="mx-auto max-w-5xl">
-        <div className="mb-8 flex items-center justify-between">
+    <div className="relative min-h-screen w-screen overflow-hidden p-8">
+      <BackgroundScene />
+      <div className="relative mx-auto max-w-5xl">
+        <div className="mb-8 flex items-center justify-between rounded-3xl bg-white/60 px-6 py-4 shadow-sm backdrop-blur-sm">
           <div>
-            <h1 className="font-display text-4xl font-bold text-quest-ink">Tessera Quest</h1>
-            <p className="mt-1 font-medium text-quest-ink/60">Pick a friend, pick a level, and start coding!</p>
+            <h1 className="font-display text-4xl font-bold text-quest-ink drop-shadow-sm">Tessera Quest</h1>
+            <p className="mt-1 font-medium text-quest-ink/70">Pick a friend, pick a level, and start coding!</p>
           </div>
           {state && (
-            <div className="rounded-2xl bg-white/70 px-4 py-2 font-display text-sm font-bold text-quest-ink shadow-sm">
+            <div className="rounded-2xl bg-white/90 px-4 py-2 font-display text-sm font-bold text-quest-ink shadow-sm">
               ⭐ {state.learner.points} pts · 🏆 {state.solved_levels.length} solved
             </div>
           )}
@@ -67,7 +69,7 @@ export default function Dashboard({ onSelectLevel }: DashboardProps) {
             return (
               <div
                 key={section.teaches}
-                className={`flex flex-col gap-4 rounded-3xl border-4 ${section.border} ${section.bg} p-5 shadow-lg`}
+                className={`flex flex-col gap-4 rounded-3xl border-4 ${section.border} ${section.bg} p-5 shadow-xl`}
               >
                 <div className="flex items-center gap-4">
                   <div className="rounded-full bg-white/90 p-1 shadow-md">
