@@ -1,6 +1,7 @@
 package api
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -9,7 +10,21 @@ import (
 	"testing"
 
 	"github.com/ramkirangaruda/Gamified-E-Learning-Platform/internal/store"
+	"github.com/ramkirangaruda/Gamified-E-Learning-Platform/internal/tutor"
 )
+
+// fakeEngine stands in for a real llama-server in tests -- these are HTTP/store
+// integration tests for the plumbing around the model, not a way to test the model
+// itself (that's internal/tutor's own manual, real-weights test). Deterministically
+// echoes the prompt's length so a test can assert *something* changed without needing
+// real inference.
+type fakeEngine struct{ tier tutor.TierInfo }
+
+func (f fakeEngine) Complete(_ context.Context, req tutor.CompletionRequest) (tutor.CompletionResult, error) {
+	return tutor.CompletionResult{Text: "fake rephrased hint", LatencyMs: 1}, nil
+}
+func (f fakeEngine) TierInfo() tutor.TierInfo { return f.tier }
+func (f fakeEngine) Close() error             { return nil }
 
 // Integration test for the AST -> executor -> trace path, exercised the same way the
 // frontend actually calls it: real HTTP, real level content from content/levels/, a
@@ -26,7 +41,7 @@ func newTestServer(t *testing.T) *httptest.Server {
 	}
 	t.Cleanup(func() { st.Close() })
 
-	srv, err := New(st, "../../content/levels")
+	srv, err := New(st, "../../content/levels", "../../content/hints", fakeEngine{tier: tutor.TierInfo{Tier: "low", Model: "fake-model.gguf", AvailableMB: 4000}})
 	if err != nil {
 		t.Fatalf("api.New: %v", err)
 	}

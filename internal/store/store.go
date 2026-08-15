@@ -108,6 +108,21 @@ var schemaStatements = []string{
 		first_solved_at INTEGER,
 		attempts_count INTEGER DEFAULT 0
 	)`,
+	// Not in brief §7's original schema -- added for the ?compare=1 demo view (brief §8:
+	// "same key producing better hints on better hardware"). The comparison is across
+	// *different machines* (low tier on the Pi, high tier on a laptop), so "last hint
+	// per tier" has to travel on the drive and survive the unplug, not just live in one
+	// process's memory -- an in-memory-only cache would lose the Pi's hint the moment
+	// the key comes out. One row per tier, upserted each time that tier generates a hint.
+	`CREATE TABLE IF NOT EXISTS tier_hint_history (
+		tier TEXT PRIMARY KEY,
+		model TEXT,
+		hint_text TEXT,
+		level_id TEXT,
+		error_signature TEXT,
+		latency_ms INTEGER,
+		ts INTEGER
+	)`,
 }
 
 func (s *Store) migrate() error {
@@ -268,6 +283,94 @@ func (s *Store) createDefaultPet() (*Pet, error) {
 		return nil, fmt.Errorf("store: creating default pet: %w", err)
 	}
 	return p, nil
+}
+
+// Attempt is one row of the attempts table — the tutor's memory (brief §7: "Never
+// prune it") and, from M3 on, an actual writer: every /api/program run is logged here
+// so /api/hint can query how many times this child has hit a given error_signature.
+type Attempt struct {
+	ID             int64  `json:"id"`
+	LevelID        string `json:"level_id"`
+	ASTJSON        string `json:"ast_json"`
+	Outcome        string `json:"outcome"`
+	ErrorSignature string `json:"error_signature"`
+	TicksUsed      int    `json:"ticks_used"`
+	Ts             int64  `json:"ts"`
+}
+
+func (s *Store) RecordAttempt(a Attempt) error {
+	_, err := s.db.Exec(
+		`INSERT INTO attempts (level_id, ast_json, outcome, error_signature, ticks_used, ts) VALUES (?, ?, ?, ?, ?, ?)`,
+		a.LevelID, a.ASTJSON, a.Outcome, a.ErrorSignature, a.TicksUsed, a.Ts,
+	)
+	if err != nil {
+		return fmt.Errorf("store: recording attempt: %w", err)
+	}
+	return nil
+}
+
+// CountAttemptsWithSignature answers brief §11's "query the attempts table for this
+// child's history on similar signatures" step — how many times has this exact mistake
+// happened on this level before (not counting the current one, which the caller records
+// separately after this is read, so a first-time mistake correctly reads as 0).
+func (s *Store) CountAttemptsWithSignature(levelID, errorSignature string) (int, error) {
+	var n int
+	err := s.db.QueryRow(
+		`SELECT COUNT(*) FROM attempts WHERE level_id = ? AND error_signature = ?`,
+		levelID, errorSignature,
+	).Scan(&n)
+	if err != nil {
+		return 0, fmt.Errorf("store: counting attempts: %w", err)
+	}
+	return n, nil
+}
+
+// TierHintRecord is one tier's most recent generated hint -- see tier_hint_history's
+// comment for why this needs to persist on the drive rather than live in memory.
+type TierHintRecord struct {
+	Tier           string `json:"tier"`
+	Model          string `json:"model"`
+	HintText       string `json:"hint_text"`
+	LevelID        string `json:"level_id"`
+	ErrorSignature string `json:"error_signature"`
+	LatencyMs      int64  `json:"latency_ms"`
+	Ts             int64  `json:"ts"`
+}
+
+func (s *Store) RecordTierHint(rec TierHintRecord) error {
+	_, err := s.db.Exec(
+		`INSERT INTO tier_hint_history (tier, model, hint_text, level_id, error_signature, latency_ms, ts)
+		 VALUES (?, ?, ?, ?, ?, ?, ?)
+		 ON CONFLICT(tier) DO UPDATE SET model=excluded.model, hint_text=excluded.hint_text,
+			level_id=excluded.level_id, error_signature=excluded.error_signature,
+			latency_ms=excluded.latency_ms, ts=excluded.ts`,
+		rec.Tier, rec.Model, rec.HintText, rec.LevelID, rec.ErrorSignature, rec.LatencyMs, rec.Ts,
+	)
+	if err != nil {
+		return fmt.Errorf("store: recording tier hint: %w", err)
+	}
+	return nil
+}
+
+// GetTierHints returns whichever tiers have ever generated a hint on this drive --
+// zero, one, or two rows. The ?compare=1 view (brief §8) treats a missing tier as "not
+// demoed yet on that hardware," not an error.
+func (s *Store) GetTierHints() ([]TierHintRecord, error) {
+	rows, err := s.db.Query(`SELECT tier, model, hint_text, level_id, error_signature, latency_ms, ts FROM tier_hint_history`)
+	if err != nil {
+		return nil, fmt.Errorf("store: reading tier hint history: %w", err)
+	}
+	defer rows.Close()
+
+	var out []TierHintRecord
+	for rows.Next() {
+		var rec TierHintRecord
+		if err := rows.Scan(&rec.Tier, &rec.Model, &rec.HintText, &rec.LevelID, &rec.ErrorSignature, &rec.LatencyMs, &rec.Ts); err != nil {
+			return nil, fmt.Errorf("store: scanning tier hint row: %w", err)
+		}
+		out = append(out, rec)
+	}
+	return out, rows.Err()
 }
 
 func (s *Store) getInventory() ([]InventoryItem, error) {
