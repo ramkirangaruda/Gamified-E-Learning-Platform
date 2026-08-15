@@ -92,12 +92,16 @@ func (s *Server) handleGetLevels(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, ordered)
 }
 
-// programRequestWrapper is the M3 request shape: {"ast": <AST envelope>,
-// "client_problems": [...]}. NOTE, logged prominently per instruction: this changes
-// POST /api/program's request contract from M1/M2 ("body is a raw AST JSON" verbatim) to
-// this wrapper -- kept backward-compatible below by detecting which shape arrived, but
-// new callers should send the wrapper. This is a change to the *HTTP envelope*, not to
-// the AST contract itself (packages/ast's node shapes are untouched) -- see DECISIONS.md.
+// programRequestWrapper is POST /api/program's request shape: {"ast": <AST envelope>,
+// "client_problems": [...]}. This changed from M1/M2's "body is a raw AST JSON" verbatim
+// to this wrapper when M3 needed a place to carry client_problems -- a change to the
+// *HTTP envelope*, not to the AST contract itself (packages/ast's node shapes are
+// untouched). The legacy raw-AST shape (accepted for backward compatibility through the
+// end of M3) has been dropped: web/src/api.ts is and always has been the only real
+// caller, it has sent this wrapper since the day it was introduced, and no other
+// consumer of this endpoint exists yet (the camera/Hub Mode pipeline isn't wired to call
+// this endpoint at all so far). Keeping dual-shape detection alive to protect a caller
+// that doesn't exist was limbo, not compatibility -- see DECISIONS.md.
 type programRequestWrapper struct {
 	AST            json.RawMessage `json:"ast"`
 	ClientProblems []string        `json:"client_problems"`
@@ -110,13 +114,13 @@ func (s *Server) handleProgram(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	astBytes := body
-	var clientProblems []string
 	var wrapper programRequestWrapper
-	if json.Unmarshal(body, &wrapper) == nil && len(wrapper.AST) > 0 {
-		astBytes = wrapper.AST
-		clientProblems = wrapper.ClientProblems
+	if err := json.Unmarshal(body, &wrapper); err != nil || len(wrapper.AST) == 0 {
+		writeError(w, http.StatusBadRequest, `expected body shape {"ast": <AST envelope>, "client_problems": [...]}`)
+		return
 	}
+	astBytes := wrapper.AST
+	clientProblems := wrapper.ClientProblems
 
 	program, err := ast.Validate(astBytes)
 	if err != nil {

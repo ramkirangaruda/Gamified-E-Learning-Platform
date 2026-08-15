@@ -30,8 +30,16 @@ export interface AstProgram {
   program: AstNode[];
 }
 
+// A closed set, not free text: the server (internal/hints.Classify) matches on `code`
+// to detect unbalanced_block, not on `message` wording. Keeping these as a fixed enum
+// means a copy-edit to `message` can never silently break hint classification the way
+// substring-matching prose once could -- see DECISIONS.md's "client-trusted signal"
+// entry for the full reasoning on why this is client-computed at all.
+export type ProblemCode = "nesting_too_deep" | "unclosed_block" | "orphan_closer";
+
 export interface CompileProblem {
   blockId: string;
+  code: ProblemCode;
   message: string;
 }
 
@@ -61,14 +69,14 @@ function compileList(
 
     if (block.type in REPEAT_TIMES) {
       if (depth + 1 > MAX_DEPTH) {
-        problems.push({ blockId: openerId, message: `nesting too deep (max ${MAX_DEPTH})` });
+        problems.push({ blockId: openerId, code: "nesting_too_deep", message: `nesting too deep (max ${MAX_DEPTH})` });
         block = block.getNextBlock() as Blockly.BlockSvg | null;
         continue;
       }
       const inner = compileList(block.getNextBlock() as Blockly.BlockSvg | null, depth + 1, problems, new Set(["card_end_repeat"]));
       nodes.push({ op: "repeat", times: REPEAT_TIMES[block.type], body: inner.nodes });
       if (!inner.next) {
-        problems.push({ blockId: openerId, message: "repeat never closed" });
+        problems.push({ blockId: openerId, code: "unclosed_block", message: "repeat never closed" });
         return { nodes, next: null };
       }
       block = inner.next.getNextBlock() as Blockly.BlockSvg | null;
@@ -94,7 +102,7 @@ function compileList(
 
       case "card_if_wall_ahead": {
         if (depth + 1 > MAX_DEPTH) {
-          problems.push({ blockId: openerId, message: `nesting too deep (max ${MAX_DEPTH})` });
+          problems.push({ blockId: openerId, code: "nesting_too_deep", message: `nesting too deep (max ${MAX_DEPTH})` });
           break;
         }
         const thenPart = compileList(
@@ -104,7 +112,7 @@ function compileList(
           new Set(["card_else", "card_end_if"]),
         );
         if (!thenPart.next) {
-          problems.push({ blockId: openerId, message: "if never closed with end if" });
+          problems.push({ blockId: openerId, code: "unclosed_block", message: "if never closed with end if" });
           return { nodes, next: null };
         }
         let elseNodes: AstNode[] | undefined;
@@ -112,7 +120,7 @@ function compileList(
         if (closer.type === "card_else") {
           const elsePart = compileList(closer.getNextBlock() as Blockly.BlockSvg | null, depth + 1, problems, new Set(["card_end_if"]));
           if (!elsePart.next) {
-            problems.push({ blockId: openerId, message: "if never closed with end if" });
+            problems.push({ blockId: openerId, code: "unclosed_block", message: "if never closed with end if" });
             return { nodes, next: null };
           }
           elseNodes = elsePart.nodes;
@@ -125,13 +133,13 @@ function compileList(
 
       case "card_while_not_goal": {
         if (depth + 1 > MAX_DEPTH) {
-          problems.push({ blockId: openerId, message: `nesting too deep (max ${MAX_DEPTH})` });
+          problems.push({ blockId: openerId, code: "nesting_too_deep", message: `nesting too deep (max ${MAX_DEPTH})` });
           break;
         }
         const inner = compileList(block.getNextBlock() as Blockly.BlockSvg | null, depth + 1, problems, new Set(["card_end_while"]));
         nodes.push({ op: "while", cond: { check: "not", of: { check: "on_goal" } }, body: inner.nodes });
         if (!inner.next) {
-          problems.push({ blockId: openerId, message: "while never closed" });
+          problems.push({ blockId: openerId, code: "unclosed_block", message: "while never closed" });
           return { nodes, next: null };
         }
         block = inner.next.getNextBlock() as Blockly.BlockSvg | null;
@@ -146,7 +154,7 @@ function compileList(
         // keep compiling the rest of the stack. indentGuides.ts already flags this
         // visually; the compiler shouldn't also block the child from testing whatever
         // part of their program *is* well-formed.
-        problems.push({ blockId: openerId, message: `${block.type} with no matching opener` });
+        problems.push({ blockId: openerId, code: "orphan_closer", message: `${block.type} with no matching opener` });
         break;
     }
 

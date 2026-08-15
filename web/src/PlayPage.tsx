@@ -67,7 +67,8 @@ export default function PlayPage() {
     try {
       const { program, problems } = compileWorkspaceToAst(workspace);
       const blocksUsed = workspace.getAllBlocks(false).length;
-      const clientProblems = problems.map((p) => p.message);
+      // The server matches on `code`, not prose -- see compileAst.ts's ProblemCode.
+      const clientProblems = problems.map((p) => p.code);
       const execResult = await runProgram(level.id, program, clientProblems);
       setResult(execResult);
 

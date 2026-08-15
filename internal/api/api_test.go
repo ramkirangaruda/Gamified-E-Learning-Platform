@@ -53,10 +53,10 @@ func newTestServer(t *testing.T) *httptest.Server {
 func TestIntegration_SolveLevel1OverHTTP(t *testing.T) {
 	ts := newTestServer(t)
 
-	programJSON := `{"version":1,"source":"blocks","program":[
+	programJSON := `{"ast":{"version":1,"source":"blocks","program":[
 		{"op":"repeat","times":4,"body":[{"op":"move","steps":1}]},
 		{"op":"move","steps":1}
-	]}`
+	]},"client_problems":[]}`
 
 	resp, err := http.Post(ts.URL+"/api/program?level_id=level-1", "application/json", strings.NewReader(programJSON))
 	if err != nil {
@@ -92,7 +92,7 @@ func TestIntegration_SolveLevel1OverHTTP(t *testing.T) {
 func TestIntegration_UnknownLevelIs404(t *testing.T) {
 	ts := newTestServer(t)
 
-	resp, err := http.Post(ts.URL+"/api/program?level_id=nope", "application/json", strings.NewReader(`{"version":1,"source":"blocks","program":[]}`))
+	resp, err := http.Post(ts.URL+"/api/program?level_id=nope", "application/json", strings.NewReader(`{"ast":{"version":1,"source":"blocks","program":[]}}`))
 	if err != nil {
 		t.Fatalf("POST /api/program: %v", err)
 	}
@@ -106,7 +106,7 @@ func TestIntegration_UnknownLevelIs404(t *testing.T) {
 func TestIntegration_InvalidASTIs400NotCrash(t *testing.T) {
 	ts := newTestServer(t)
 
-	resp, err := http.Post(ts.URL+"/api/program?level_id=level-1", "application/json", strings.NewReader(`{"version":1,"source":"blocks","program":[{"op":"not_a_real_op"}]}`))
+	resp, err := http.Post(ts.URL+"/api/program?level_id=level-1", "application/json", strings.NewReader(`{"ast":{"version":1,"source":"blocks","program":[{"op":"not_a_real_op"}]}}`))
 	if err != nil {
 		t.Fatalf("POST /api/program: %v", err)
 	}
@@ -114,6 +114,23 @@ func TestIntegration_InvalidASTIs400NotCrash(t *testing.T) {
 
 	if resp.StatusCode != http.StatusBadRequest {
 		t.Fatalf("status = %d, want 400 (unknown op must be a friendly error, never a crash)", resp.StatusCode)
+	}
+}
+
+// The legacy "body is a raw AST" shape (pre-M3) is deliberately no longer accepted --
+// see programRequestWrapper's comment in api.go for why this was resolved rather than
+// left as permanent dual-shape support.
+func TestIntegration_LegacyRawASTShapeIsRejected(t *testing.T) {
+	ts := newTestServer(t)
+
+	resp, err := http.Post(ts.URL+"/api/program?level_id=level-1", "application/json", strings.NewReader(`{"version":1,"source":"blocks","program":[]}`))
+	if err != nil {
+		t.Fatalf("POST /api/program: %v", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusBadRequest {
+		t.Fatalf("status = %d, want 400 (legacy raw-AST body shape must be rejected, not silently accepted)", resp.StatusCode)
 	}
 }
 
