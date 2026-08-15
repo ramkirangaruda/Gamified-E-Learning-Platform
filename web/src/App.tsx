@@ -1,8 +1,12 @@
+import CompareView from "./CompareView";
 import PlayPage from "./PlayPage";
 
-// Home Mode: editor + grid renderer + pet, wired together (brief §2/§12 M2).
+// ?compare=1 is a demo asset (brief §8/queue item 6), not a dev flag someone stumbles
+// into by accident -- still gated behind an explicit query param since it's not part of
+// the normal child-facing flow.
 function App() {
-  return <PlayPage />;
+  const isCompareView = new URLSearchParams(window.location.search).get("compare") === "1";
+  return isCompareView ? <CompareView /> : <PlayPage />;
 }
 
 export default App;
