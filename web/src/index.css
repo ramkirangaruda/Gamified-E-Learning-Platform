@@ -114,3 +114,54 @@
   transform-box: fill-box;
   transform-origin: center;
 }
+
+/* ---------------------------------------------------------------------------
+ * Event-triggered polish. Every rule below animates ONLY transform/opacity, runs
+ * once (no infinite iteration), and is applied by adding a class in response to an
+ * event -- never on mount, never while idle. tokens.css's [data-lite="on"] and the
+ * prefers-reduced-motion block both switch all of it off.
+ *
+ * Deliberately absent: ambient background motion, particle effects, anything on a
+ * requestAnimationFrame loop. On a 4 GB Pi also running llama-server, idle CPU is the
+ * budget that matters and continuous animation spends it for nothing.
+ * ------------------------------------------------------------------------- */
+
+/* Level complete -- a single celebratory pop on the board. */
+@keyframes quest-celebrate-pop {
+  0% { transform: scale(1); }
+  40% { transform: scale(1.06); }
+  100% { transform: scale(1); }
+}
+.quest-celebrate {
+  animation: quest-celebrate-pop 0.5s ease-out;
+}
+
+/* Speech bubble arriving with a hint. */
+@keyframes quest-bubble-in {
+  0% { opacity: 0; transform: translateY(6px) scale(0.96); }
+  100% { opacity: 1; transform: translateY(0) scale(1); }
+}
+.quest-bubble-in {
+  animation: quest-bubble-in 0.28s ease-out;
+}
+
+/* Trail node advancing to the next level. */
+@keyframes quest-node-advance {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.15); }
+  100% { transform: scale(1); }
+}
+.quest-node-advance {
+  animation: quest-node-advance 0.45s ease-out;
+}
+
+/* Points ticking up -- the number itself, not a layout property. */
+@keyframes quest-count-bump {
+  0% { transform: scale(1); }
+  35% { transform: scale(1.25); }
+  100% { transform: scale(1); }
+}
+.quest-count-bump {
+  animation: quest-count-bump 0.35s ease-out;
+  display: inline-block;
+}

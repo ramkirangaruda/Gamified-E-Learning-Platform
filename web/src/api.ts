@@ -52,6 +52,9 @@ export interface TierInfo {
   model: string;
   available_mb: number;
   selected_at_ms: number;
+  /** Whether the launcher decided decorative animation should be off (--lite, or auto
+   *  for the low RAM tier). The UI toggle can override it for the session. */
+  lite: boolean;
 }
 
 export interface HintResult {

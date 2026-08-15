@@ -14,10 +14,15 @@ interface SpeechBubbleProps {
 export const IDLE_LINE = "Hi! I'm Pip. Build your program, hit Run, and I'll help if you get stuck!";
 
 export default function SpeechBubble({ text = IDLE_LINE }: SpeechBubbleProps) {
+  // key on the text so React remounts the node when a new hint arrives -- that restart
+  // is what re-triggers the one-shot entrance animation. quest-decorative marks it as
+  // something lite mode switches off.
   return (
-    <div className="relative max-w-xs rounded-3xl border-2 border-quest-sun bg-white px-4 py-3 text-sm font-medium text-quest-ink shadow-md">
+    <div
+      key={text}
+      className="quest-decorative quest-bubble-in relative max-w-xs rounded-chunk-lg border-[var(--outline-chunk)] border-quest-repeat bg-white px-4 py-3 text-sm font-medium text-quest-ink shadow-chunk">
       {text}
-      <div className="absolute -bottom-2 left-8 h-4 w-4 rotate-45 border-b-2 border-r-2 border-quest-sun bg-white" />
+      <div className="absolute -bottom-2 left-8 h-4 w-4 rotate-45 border-b-[var(--outline-chunk)] border-r-[var(--outline-chunk)] border-quest-repeat bg-white" />
     </div>
   );
 }

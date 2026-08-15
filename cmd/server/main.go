@@ -33,6 +33,7 @@ func main() {
 	addr := flag.String("addr", ":8080", "listen address")
 	prewarmHints := flag.Bool("prewarm-hints", true, "pre-generate and cache every bank hint at startup (queue item 5) so a child's first hint is instant, not a wait for the first-ever generation on that machine")
 	hintTimeout := flag.Duration("hint-timeout", api.DefaultHintTimeout, "hard timeout on a single hint generation before falling back to the verified hint text verbatim")
+	lite := flag.Bool("lite", false, "disable all decorative animation (auto-enabled on the low RAM tier; the UI toggle can still override per session)")
 	flag.Parse()
 
 	exeDir, err := paths.ExeDir()
@@ -68,6 +69,21 @@ func main() {
 		srv.SetEngine(engine)
 		defer engine.Close()
 	}
+
+	// The hub is a 4 GB Pi also running llama-server, so decorative animation is off by
+	// default there. Auto-enabling lite from the selected tier rather than from a
+	// separate hardware probe keeps one source of truth: whatever decided we get the
+	// small model also decides we skip the flourish. -lite forces it on regardless.
+	liteMode := *lite
+	if !liteMode && engine != nil && engine.TierInfo().Tier == "low" {
+		liteMode = true
+		log.Printf("lite mode: on (auto -- low RAM tier)")
+	} else if liteMode {
+		log.Printf("lite mode: on (--lite)")
+	} else {
+		log.Printf("lite mode: off")
+	}
+	srv.SetLiteMode(liteMode)
 	mux := srv.Mux()
 	log.Printf("tutor: hint generation timeout = %s", *hintTimeout)
 
