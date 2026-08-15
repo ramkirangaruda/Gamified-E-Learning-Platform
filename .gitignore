@@ -14,6 +14,7 @@ dist/
 # Runtime data — never commit a child's save file or drive contents
 data/*.db
 data/*.db-journal
+data/*.corrupt-*
 
 # Local models / built key contents (M3+/M4+)
 models/*.gguf

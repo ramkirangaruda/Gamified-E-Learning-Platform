@@ -15,8 +15,10 @@ import (
 	"database/sql"
 	"encoding/hex"
 	"fmt"
+	"log"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/ramkirangaruda/Gamified-E-Learning-Platform/internal/paths"
@@ -41,7 +43,109 @@ type Store struct {
 	db *sql.DB
 }
 
+// Open opens pet.db, recovering from a corrupt/truncated file rather than failing.
+//
+// AUDIT P0-3: this used to be openRaw alone, so a malformed pet.db made cmd/server's
+// log.Fatalf fire and the app refused to start -- the child's key was a brick with no
+// visible explanation. That is squarely on the demo path: §13 step 6 yanks a live key
+// out on stage, and a yank during a write is exactly how SQLite ends up "not a database"
+// or "disk image is malformed" (both reproduced in recovery_test.go).
+//
+// Recovery order, most-preserving first: restore the last clean snapshot (backup.db), and
+// only if that also fails, quarantine the bad file and start fresh. The corrupt bytes are
+// always kept (renamed, never deleted) so nothing is unrecoverable after the fact. A
+// failure that is NOT corruption still surfaces as an error -- this must not paper over
+// a read-only drive or a bad path.
+//
+// This is deliberately NOT the full write-then-rename + backup scheme brief §7 describes
+// and PLAN.md scoped to M4; it is the minimum that stops a bad file from ending the demo.
 func Open(dbPath string) (*Store, error) {
+	s, err := openRaw(dbPath)
+	if err == nil {
+		s.snapshotBackup(dbPath)
+		return s, nil
+	}
+	if !isCorruptionError(err) {
+		return nil, err
+	}
+
+	log.Printf("store: %s is corrupt (%v) -- attempting recovery", dbPath, err)
+	quarantined, qerr := quarantineCorrupt(dbPath)
+	if qerr != nil {
+		return nil, fmt.Errorf("store: %s is corrupt and could not be quarantined: %w", dbPath, qerr)
+	}
+	log.Printf("store: corrupt file preserved at %s", quarantined)
+
+	// Best case: the last clean snapshot is still readable, so real progress survives.
+	backupPath := filepath.Join(filepath.Dir(dbPath), "backup.db")
+	if _, statErr := os.Stat(backupPath); statErr == nil {
+		if copyErr := copyFile(backupPath, dbPath); copyErr == nil {
+			if restored, rerr := openRaw(dbPath); rerr == nil {
+				log.Printf("store: recovered from %s -- the child's progress is intact", backupPath)
+				return restored, nil
+			}
+			log.Printf("store: %s is unusable too; starting fresh", backupPath)
+			_ = os.Remove(dbPath)
+		}
+	}
+
+	// Worst case: nothing readable survives. A fresh save file beats a dead app.
+	fresh, ferr := openRaw(dbPath)
+	if ferr != nil {
+		return nil, fmt.Errorf("store: could not create a fresh database after corruption: %w", ferr)
+	}
+	log.Printf("store: no usable backup; started a fresh save file (previous data preserved at %s)", quarantined)
+	return fresh, nil
+}
+
+// isCorruptionError matches the two errors a mid-write yank actually produces, both
+// reproduced in recovery_test.go. Deliberately narrow: anything else (permissions, a
+// directory in the way, a full disk) must keep failing loudly.
+func isCorruptionError(err error) bool {
+	msg := strings.ToLower(err.Error())
+	return strings.Contains(msg, "file is not a database") ||
+		strings.Contains(msg, "disk image is malformed") ||
+		strings.Contains(msg, "database corrupt")
+}
+
+func quarantineCorrupt(dbPath string) (string, error) {
+	dest := fmt.Sprintf("%s.corrupt-%d", dbPath, time.Now().Unix())
+	if err := os.Rename(dbPath, dest); err != nil {
+		return "", err
+	}
+	return dest, nil
+}
+
+// snapshotBackup copies the just-opened, known-good pet.db to backup.db. Called
+// immediately after a clean open and before any write, so the file on disk is quiescent
+// (rollback journal, synchronous=FULL -- between transactions the .db is self-contained).
+// Best-effort by design: a read-only drive or a full disk should not stop the game from
+// starting, it should just mean there is no snapshot to fall back to.
+func (s *Store) snapshotBackup(dbPath string) {
+	info, err := os.Stat(dbPath)
+	if err != nil || info.Size() == 0 {
+		return
+	}
+	backupPath := filepath.Join(filepath.Dir(dbPath), "backup.db")
+	if err := copyFile(dbPath, backupPath); err != nil {
+		log.Printf("store: could not write %s (continuing without a snapshot): %v", backupPath, err)
+	}
+}
+
+func copyFile(src, dst string) error {
+	data, err := os.ReadFile(src)
+	if err != nil {
+		return err
+	}
+	tmp := dst + ".tmp"
+	if err := os.WriteFile(tmp, data, 0o644); err != nil {
+		return err
+	}
+	// Rename over the destination so a snapshot is never observed half-written.
+	return os.Rename(tmp, dst)
+}
+
+func openRaw(dbPath string) (*Store, error) {
 	db, err := sql.Open("sqlite", dbPath)
 	if err != nil {
 		return nil, fmt.Errorf("store: opening %s: %w", dbPath, err)
