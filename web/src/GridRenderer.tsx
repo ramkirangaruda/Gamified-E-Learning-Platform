@@ -14,19 +14,21 @@ const CELL_PX = 56;
 const DIR_ANGLE: Record<Dir, number> = { right: 0, down: 90, left: 180, up: -90 };
 const TURN_ORDER: Dir[] = ["up", "right", "down", "left"];
 
-function applyTurn(dir: Dir, turn: "left" | "right"): Dir {
+export function applyTurn(dir: Dir, turn: "left" | "right"): Dir {
   const i = TURN_ORDER.indexOf(dir);
   const next = turn === "right" ? (i + 1) % 4 : (i + 3) % 4;
   return TURN_ORDER[next];
 }
 
-interface ReplayState {
+export interface ReplayState {
   pos: Pos;
   dir: Dir;
   lastEvent: ExecEvent | null;
 }
 
-function replay(events: ExecEvent[], startPos: Pos, startDir: Dir, uptoIndex: number): ReplayState {
+/** Exported for testing (GridRenderer.test.ts) -- this is the one function in the file
+ *  that looks like "logic," so it's the one worth a unit test independent of React. */
+export function replay(events: ExecEvent[], startPos: Pos, startDir: Dir, uptoIndex: number): ReplayState {
   let pos = startPos;
   let dir = startDir;
   let lastEvent: ExecEvent | null = null;
