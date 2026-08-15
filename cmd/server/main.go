@@ -52,6 +52,13 @@ func main() {
 	}
 	defer st.Close()
 
+	// Hunger is session-scoped (brief §10), and a session is one run of the launcher.
+	// Non-fatal on failure: a pet that starts the session on yesterday's hunger is a
+	// cosmetic wrong number, not a reason to refuse to open the child's save file.
+	if err := st.StartSession(); err != nil {
+		log.Printf("starting pet session: %v", err)
+	}
+
 	// AUDIT P0-2: levels are loaded BEFORE the engine is started, deliberately. This used
 	// to be the other way round, and because log.Fatalf calls os.Exit (which does not run
 	// deferred functions), a bad content/levels directory exited the process with
