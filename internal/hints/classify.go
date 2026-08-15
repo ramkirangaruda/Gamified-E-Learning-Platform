@@ -22,12 +22,11 @@ const (
 	SigNoConditionUsed = "no_condition_used"
 	SigOffByOneRepeat  = "off_by_one_repeat"
 	SigOvershotGoal    = "overshot_goal"
-	// SigWrongOrder and SigNeverPickedUp exist in brief §11's taxonomy but have no
-	// detector here: wrong_order would need diffing against a canonical solution
-	// (nothing in this system tracks one per level, and building that is a bigger
-	// scope than three levels justify yet), and never_picked_up is moot -- none of the
-	// 3 current levels have an item to pick up. Both are real gaps, not oversights;
-	// logged in DECISIONS.md.
+	SigNeverPickedUp   = "never_picked_up"
+	// SigWrongOrder is the one signature from brief §11 still without a detector: it
+	// would need diffing a child's program against a canonical per-level solution, and
+	// nothing in this system tracks one. A real gap, not an oversight; logged in
+	// DECISIONS.md and in content/hints/README.md's coverage table.
 )
 
 // clientProblemCode mirrors web/src/blocks/compileAst.ts's ProblemCode -- a closed set,
@@ -74,10 +73,18 @@ type level struct {
 	Teaches  string
 	StartPos executor.Pos
 	Goal     executor.Pos
+	// HasItems drives the never_picked_up check. Only whether the level has any
+	// collectibles matters here, not where they are.
+	HasItems bool
 }
 
 func LevelFor(l levels.Level) level {
-	return level{Teaches: l.Teaches, StartPos: l.StartExecPos(), Goal: l.Grid.Goal}
+	return level{
+		Teaches:  l.Teaches,
+		StartPos: l.StartExecPos(),
+		Goal:     l.Grid.Goal,
+		HasItems: len(l.Grid.Items) > 0,
+	}
 }
 
 // Classify returns one of the Sig* constants, or "" if nothing here recognizes the
@@ -103,8 +110,18 @@ func Classify(in ClassifyInput) string {
 		return ""
 	}
 
+	// A level whose route has collectibles cannot be finished without gathering them
+	// (internal/executor only opens the goal once Items is empty), so "you never picked
+	// anything up" is both detectable and the most useful thing to say. Checked before the
+	// teaches-specific rules because on a composition level it is almost always the real
+	// reason a run failed. Closes the never_picked_up gap documented in
+	// content/hints/README.md.
+	if in.Level.HasItems && !usesOp(in.Program, "pickup") {
+		return SigNeverPickedUp
+	}
+
 	switch in.Level.Teaches {
-	case "repeat":
+	case "repeat", "nested_repeat":
 		if !usesOp(in.Program, "repeat") && !usesOp(in.Program, "while") {
 			return SigHardcodedNoLoop
 		}
@@ -125,7 +142,7 @@ func Classify(in ClassifyInput) string {
 			return SigMissingTurn
 		}
 
-	case "while":
+	case "while", "composition":
 		// Mirrors the "repeat" branch's own repeat-or-while tolerance above: a while-
 		// teaching level accepting a repeat-based solve too (and vice versa) is
 		// intentional, not a gap -- both are legitimate loop constructs, and a level
@@ -155,6 +172,14 @@ func usesOp(nodes []ast.Node, op string) bool {
 			}
 		case ast.TurnNode:
 			if op == "turn" {
+				return true
+			}
+		case ast.PickupNode:
+			if op == "pickup" {
+				return true
+			}
+		case ast.MoveNode:
+			if op == "move" {
 				return true
 			}
 		}

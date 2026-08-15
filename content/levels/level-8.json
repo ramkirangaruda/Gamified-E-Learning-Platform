@@ -1,20 +1,38 @@
 {
   "id": "level-8",
-  "name": "Turtle's Long Trek",
-  "teaches": "while",
-  "hard": true,
-  "parBlocks": 6,
-  "startPos": [0, 0],
+  "name": "Twelve Steps",
+  "teaches": "repeat",
+  "difficulty": "medium",
+  "concept": "The longer the road, the more a repeat card saves you.",
+  "parBlocks": 10,
+  "startPos": [
+    0,
+    0
+  ],
   "startDir": "right",
   "grid": {
-    "width": 4,
-    "height": 4,
+    "width": 13,
+    "height": 1,
     "walls": [
-      [false, false, false, true],
-      [true, true, false, true],
-      [true, true, false, true],
-      [true, true, false, true]
+      [
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false
+      ]
     ],
-    "goal": [2, 3]
+    "goal": [
+      12,
+      0
+    ]
   }
 }

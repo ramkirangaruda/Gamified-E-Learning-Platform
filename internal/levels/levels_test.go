@@ -11,28 +11,22 @@ const levelsDir = "../../content/levels"
 
 // Each level's actual acceptance test: a hand-authored solution, run through the real
 // executor, must come back "solved". A level whose intended solution doesn't actually
-// solve it is a content bug, not a code bug -- this catches it the same way M1's
-// fixtures caught executor bugs, before it reaches a playtester.
+// solve it is a content bug, not a code bug -- this catches it before it reaches a
+// playtester, and it is the gate the build queue requires every level to pass before it
+// ships.
+//
+// Every solution below uses ONLY the 14 printed cards, and only repeat counts 2/3/4 --
+// those are the only repeat cards that physically exist, so a solution needing "repeat 5"
+// would be unbuildable on the desk even though the AST would accept it.
 var solutions = map[string]string{
 	"level-1": `{"version":1,"source":"cards","program":[
-		{"op":"repeat","times":4,"body":[{"op":"move","steps":1}]},
+		{"op":"move","steps":1},
+		{"op":"move","steps":1},
+		{"op":"move","steps":1},
+		{"op":"move","steps":1},
 		{"op":"move","steps":1}
 	]}`,
 	"level-2": `{"version":1,"source":"cards","program":[
-		{"op":"repeat","times":4,"body":[{"op":"move","steps":1}]},
-		{"op":"repeat","times":4,"body":[{"op":"move","steps":1}]},
-		{"op":"repeat","times":3,"body":[{"op":"move","steps":1}]}
-	]}`,
-	"level-3": `{"version":1,"source":"cards","program":[
-		{"op":"move","steps":1},
-		{"op":"move","steps":1},
-		{"op":"move","steps":1},
-		{"op":"if","cond":{"check":"wall_ahead"},"then":[{"op":"turn","dir":"right"}]},
-		{"op":"move","steps":1},
-		{"op":"move","steps":1},
-		{"op":"move","steps":1}
-	]}`,
-	"level-4": `{"version":1,"source":"cards","program":[
 		{"op":"move","steps":1},
 		{"op":"move","steps":1},
 		{"op":"turn","dir":"right"},
@@ -40,37 +34,104 @@ var solutions = map[string]string{
 		{"op":"move","steps":1},
 		{"op":"move","steps":1}
 	]}`,
-	"level-5": `{"version":1,"source":"cards","program":[
-		{"op":"repeat","times":3,"body":[
-			{"op":"move","steps":1},
-			{"op":"turn","dir":"right"},
-			{"op":"move","steps":1},
-			{"op":"turn","dir":"left"}
-		]}
-	]}`,
-	"level-6": `{"version":1,"source":"cards","program":[
+	"level-3": `{"version":1,"source":"cards","program":[
 		{"op":"move","steps":1},
+		{"op":"turn","dir":"right"},
 		{"op":"move","steps":1},
+		{"op":"turn","dir":"left"},
 		{"op":"move","steps":1},
-		{"op":"if","cond":{"check":"wall_ahead"},"then":[{"op":"turn","dir":"right"}]},
-		{"op":"move","steps":1},
-		{"op":"move","steps":1},
-		{"op":"move","steps":1},
-		{"op":"if","cond":{"check":"wall_ahead"},"then":[{"op":"turn","dir":"right"}]},
-		{"op":"move","steps":1},
+		{"op":"turn","dir":"right"},
 		{"op":"move","steps":1},
 		{"op":"move","steps":1}
 	]}`,
+	"level-4": `{"version":1,"source":"cards","program":[
+		{"op":"move","steps":1},
+		{"op":"move","steps":1},
+		{"op":"move","steps":1},
+		{"op":"turn","dir":"right"},
+		{"op":"move","steps":1},
+		{"op":"move","steps":1},
+		{"op":"turn","dir":"right"},
+		{"op":"move","steps":1},
+		{"op":"move","steps":1},
+		{"op":"turn","dir":"left"},
+		{"op":"move","steps":1},
+		{"op":"move","steps":1},
+		{"op":"turn","dir":"left"},
+		{"op":"move","steps":1},
+		{"op":"move","steps":1}
+	]}`,
+	"level-5": `{"version":1,"source":"cards","program":[
+		{"op":"repeat","times":4,"body":[{"op":"move","steps":1}]}
+	]}`,
+	"level-6": `{"version":1,"source":"cards","program":[
+		{"op":"repeat","times":4,"body":[{"op":"move","steps":1}]},
+		{"op":"repeat","times":4,"body":[{"op":"move","steps":1}]}
+	]}`,
 	"level-7": `{"version":1,"source":"cards","program":[
-		{"op":"while","cond":{"check":"not","of":{"check":"on_goal"}},"body":[
-			{"op":"move","steps":1}
-		]}
+		{"op":"repeat","times":4,"body":[{"op":"move","steps":1}]},
+		{"op":"move","steps":1},
+		{"op":"move","steps":1},
+		{"op":"turn","dir":"right"},
+		{"op":"repeat","times":4,"body":[{"op":"move","steps":1}]},
+		{"op":"move","steps":1},
+		{"op":"move","steps":1}
 	]}`,
 	"level-8": `{"version":1,"source":"cards","program":[
-		{"op":"while","cond":{"check":"not","of":{"check":"on_goal"}},"body":[
-			{"op":"if","cond":{"check":"wall_ahead"},"then":[{"op":"turn","dir":"right"}]},
-			{"op":"move","steps":1}
-		]}
+		{"op":"repeat","times":4,"body":[{"op":"move","steps":1}]},
+		{"op":"repeat","times":4,"body":[{"op":"move","steps":1}]},
+		{"op":"repeat","times":4,"body":[{"op":"move","steps":1}]}
+	]}`,
+	"level-9": `{"version":1,"source":"cards","program":[
+		{"op":"repeat","times":3,"body":[{"op":"move","steps":1},{"op":"turn","dir":"right"},{"op":"move","steps":1},{"op":"turn","dir":"left"}]}
+	]}`,
+	"level-10": `{"version":1,"source":"cards","program":[
+		{"op":"repeat","times":4,"body":[{"op":"repeat","times":2,"body":[{"op":"move","steps":1}]}]}
+	]}`,
+	"level-11": `{"version":1,"source":"cards","program":[
+		{"op":"repeat","times":4,"body":[{"op":"repeat","times":3,"body":[{"op":"move","steps":1}]}]}
+	]}`,
+	"level-12": `{"version":1,"source":"cards","program":[
+		{"op":"repeat","times":3,"body":[{"op":"repeat","times":2,"body":[{"op":"move","steps":1},{"op":"turn","dir":"right"},{"op":"move","steps":1},{"op":"turn","dir":"left"}]}]}
+	]}`,
+	"level-13": `{"version":1,"source":"cards","program":[
+		{"op":"repeat","times":4,"body":[{"op":"repeat","times":2,"body":[{"op":"move","steps":1},{"op":"turn","dir":"right"},{"op":"move","steps":1},{"op":"turn","dir":"left"}]}]}
+	]}`,
+	"level-14": `{"version":1,"source":"cards","program":[
+		{"op":"repeat","times":4,"body":[{"op":"if","cond":{"check":"wall_ahead"},"then":[{"op":"turn","dir":"right"}]},{"op":"move","steps":1}]}
+	]}`,
+	"level-15": `{"version":1,"source":"cards","program":[
+		{"op":"repeat","times":2,"body":[{"op":"repeat","times":4,"body":[{"op":"if","cond":{"check":"wall_ahead"},"then":[{"op":"turn","dir":"right"}]},{"op":"move","steps":1}]}]}
+	]}`,
+	"level-16": `{"version":1,"source":"cards","program":[
+		{"op":"repeat","times":3,"body":[{"op":"repeat","times":3,"body":[{"op":"if","cond":{"check":"wall_ahead"},"then":[{"op":"turn","dir":"right"}]},{"op":"move","steps":1}]}]}
+	]}`,
+	"level-17": `{"version":1,"source":"cards","program":[
+		{"op":"repeat","times":4,"body":[{"op":"if","cond":{"check":"wall_ahead"},"then":[{"op":"turn","dir":"right"}],"else":[{"op":"move","steps":1}]}]}
+	]}`,
+	"level-18": `{"version":1,"source":"cards","program":[
+		{"op":"repeat","times":3,"body":[{"op":"repeat","times":4,"body":[{"op":"if","cond":{"check":"wall_ahead"},"then":[{"op":"turn","dir":"right"}]},{"op":"move","steps":1}]}]}
+	]}`,
+	"level-19": `{"version":1,"source":"cards","program":[
+		{"op":"while","cond":{"check":"not","of":{"check":"on_goal"}},"body":[{"op":"move","steps":1}]}
+	]}`,
+	"level-20": `{"version":1,"source":"cards","program":[
+		{"op":"while","cond":{"check":"not","of":{"check":"on_goal"}},"body":[{"op":"move","steps":1}]}
+	]}`,
+	"level-21": `{"version":1,"source":"cards","program":[
+		{"op":"while","cond":{"check":"not","of":{"check":"on_goal"}},"body":[{"op":"if","cond":{"check":"wall_ahead"},"then":[{"op":"turn","dir":"right"}]},{"op":"move","steps":1}]}
+	]}`,
+	"level-22": `{"version":1,"source":"cards","program":[
+		{"op":"while","cond":{"check":"not","of":{"check":"on_goal"}},"body":[{"op":"if","cond":{"check":"wall_ahead"},"then":[{"op":"turn","dir":"right"}]},{"op":"move","steps":1}]}
+	]}`,
+	"level-23": `{"version":1,"source":"cards","program":[
+		{"op":"while","cond":{"check":"not","of":{"check":"on_goal"}},"body":[{"op":"move","steps":1},{"op":"pickup"}]}
+	]}`,
+	"level-24": `{"version":1,"source":"cards","program":[
+		{"op":"while","cond":{"check":"not","of":{"check":"on_goal"}},"body":[{"op":"move","steps":1},{"op":"pickup"}]}
+	]}`,
+	"level-25": `{"version":1,"source":"cards","program":[
+		{"op":"while","cond":{"check":"not","of":{"check":"on_goal"}},"body":[{"op":"if","cond":{"check":"wall_ahead"},"then":[{"op":"turn","dir":"right"}]},{"op":"move","steps":1},{"op":"pickup"}]}
 	]}`,
 }
 
@@ -79,12 +140,24 @@ func TestLevelsLoad(t *testing.T) {
 	if err != nil {
 		t.Fatalf("LoadAll: %v", err)
 	}
-	if len(lvls) != 8 {
-		t.Fatalf("expected 8 levels, got %d", len(lvls))
+	if len(lvls) != 25 {
+		t.Fatalf("expected 25 levels, got %d", len(lvls))
 	}
 	for _, lvl := range lvls {
 		if lvl.ParBlocks <= 0 {
 			t.Errorf("%s: parBlocks = %d, want > 0", lvl.ID, lvl.ParBlocks)
+		}
+		if lvl.Concept == "" {
+			t.Errorf("%s: missing concept line", lvl.ID)
+		}
+		switch lvl.Difficulty {
+		case "easy", "medium", "hard":
+		default:
+			t.Errorf("%s: difficulty = %q, want easy|medium|hard", lvl.ID, lvl.Difficulty)
+		}
+		// Hard is derived from Difficulty at load time; §10's hard-points bonus reads it.
+		if lvl.Hard != (lvl.Difficulty == "hard") {
+			t.Errorf("%s: Hard=%v does not match Difficulty=%q", lvl.ID, lvl.Hard, lvl.Difficulty)
 		}
 		if len(lvl.Grid.Walls) != lvl.Grid.Height {
 			t.Errorf("%s: walls has %d rows, want %d (grid.height)", lvl.ID, len(lvl.Grid.Walls), lvl.Grid.Height)
@@ -92,6 +165,13 @@ func TestLevelsLoad(t *testing.T) {
 		for y, row := range lvl.Grid.Walls {
 			if len(row) != lvl.Grid.Width {
 				t.Errorf("%s: walls row %d has %d cols, want %d (grid.width)", lvl.ID, y, len(row), lvl.Grid.Width)
+			}
+		}
+		// A collectible sitting on the goal would deadlock: stepping on the goal ends a
+		// `while not at goal` loop, but the goal does not open while an item is uncollected.
+		for _, it := range lvl.Grid.Items {
+			if it == lvl.Grid.Goal {
+				t.Errorf("%s: a collectible sits on the goal cell", lvl.ID)
 			}
 		}
 	}
@@ -120,9 +200,91 @@ func TestLevelsAreSolvable(t *testing.T) {
 
 			result := executor.Run(lvl.Grid, lvl.StartExecPos(), dir, program.Program)
 			if result.Outcome != "solved" {
-				t.Fatalf("outcome = %q (error_signature=%q), want solved -- level content bug, not an executor bug",
-					result.Outcome, result.ErrorSignature)
+				t.Fatalf("outcome = %q (error_signature=%q, ticks=%d), want solved -- level content bug, not an executor bug",
+					result.Outcome, result.ErrorSignature, result.TicksUsed)
 			}
+			// Brief §9's hard budget. A solution that only just fits is a warning sign
+			// that the level is too long for the age group, not just for the executor.
+			if result.TicksUsed > 500 {
+				t.Fatalf("solution used %d ticks, over the 500 budget", result.TicksUsed)
+			}
+		})
+	}
+}
+
+// countCards counts the *physical cards* a program needs, which is what parBlocks is
+// compared against (PlayPage passes workspace.getAllBlocks().length). Openers need their
+// closing card counted too -- "end repeat", "end if", "end while" are real cards on the
+// desk, not punctuation.
+func countCards(nodes []ast.Node) int {
+	total := 0
+	for _, n := range nodes {
+		switch v := n.(type) {
+		case ast.RepeatNode:
+			total += 2 + countCards(v.Body) // repeat N + end repeat
+		case ast.WhileNode:
+			total += 2 + countCards(v.Body) // while + end while
+		case ast.IfNode:
+			total += 2 + countCards(v.Then) // if + end if
+			if v.Else != nil {
+				total += 1 + countCards(v.Else) // else card
+			}
+		default:
+			total++
+		}
+	}
+	return total
+}
+
+// The build queue's explicit content rule: "for repeat levels the naive unlooped solution
+// must exceed par so the bonus rewards the intended learning". If par were set loosely, a
+// child could hardcode every step, come in under par, and be rewarded for exactly the
+// habit the level exists to break.
+//
+// "Naive" is derived from the real trace rather than guessed: every move/turn/pickup the
+// solution actually performs is one card if written out longhand.
+func TestRepeatLevelsRewardLooping(t *testing.T) {
+	lvls, err := LoadAll(levelsDir)
+	if err != nil {
+		t.Fatalf("LoadAll: %v", err)
+	}
+
+	for _, lvl := range lvls {
+		lvl := lvl
+		t.Run(lvl.ID, func(t *testing.T) {
+			program, err := ast.Validate([]byte(solutions[lvl.ID]))
+			if err != nil {
+				t.Fatalf("solution AST invalid: %v", err)
+			}
+			dir, _ := lvl.StartExecDir()
+			result := executor.Run(lvl.Grid, lvl.StartExecPos(), dir, program.Program)
+
+			naive := 0
+			for _, e := range result.Events {
+				switch e.Type {
+				case "move", "turn", "pickup":
+					naive++
+				}
+			}
+			looped := countCards(program.Program)
+
+			// True for every level: the intended solution must actually be buildable
+			// within par, or par is unreachable and the bonus is dead.
+			if looped > lvl.ParBlocks {
+				t.Errorf("intended solution needs %d cards but par is %d -- par is unreachable", looped, lvl.ParBlocks)
+			}
+
+			switch lvl.Teaches {
+			case "repeat", "nested_repeat":
+				if naive <= lvl.ParBlocks {
+					t.Errorf("naive unlooped solution is %d cards and par is %d -- hardcoding would earn the under-par bonus, which is exactly backwards for a %s level",
+						naive, lvl.ParBlocks, lvl.Teaches)
+				}
+				if looped >= naive {
+					t.Errorf("looped solution (%d cards) is not better than hardcoding (%d) -- this level does not motivate the concept", looped, naive)
+				}
+			}
+			t.Logf("%-9s %-14s looped=%2d par=%2d naive=%2d", lvl.ID, lvl.Teaches, looped, lvl.ParBlocks, naive)
 		})
 	}
 }

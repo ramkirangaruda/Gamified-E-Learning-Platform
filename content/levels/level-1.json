@@ -1,15 +1,31 @@
 {
   "id": "level-1",
-  "name": "Straight Line",
+  "name": "First Steps",
   "teaches": "move",
-  "hard": false,
+  "difficulty": "easy",
+  "concept": "Cards run from top to bottom, one after another.",
   "parBlocks": 5,
-  "startPos": [0, 0],
+  "startPos": [
+    0,
+    0
+  ],
   "startDir": "right",
   "grid": {
     "width": 6,
     "height": 1,
-    "walls": [[false, false, false, false, false, false]],
-    "goal": [5, 0]
+    "walls": [
+      [
+        false,
+        false,
+        false,
+        false,
+        false,
+        false
+      ]
+    ],
+    "goal": [
+      5,
+      0
+    ]
   }
 }

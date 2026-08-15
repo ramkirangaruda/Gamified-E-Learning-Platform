@@ -1,20 +1,24 @@
 {
-  "id": "level-6",
-  "name": "Eight in a Row",
-  "teaches": "repeat",
-  "difficulty": "easy",
-  "concept": "Two repeat cards beat writing every step by hand.",
-  "parBlocks": 7,
+  "id": "level-11",
+  "name": "Twelve, Nested",
+  "teaches": "nested_repeat",
+  "difficulty": "medium",
+  "concept": "Four groups of three is twelve -- let the cards do the counting.",
+  "parBlocks": 8,
   "startPos": [
     0,
     0
   ],
   "startDir": "right",
   "grid": {
-    "width": 9,
+    "width": 13,
     "height": 1,
     "walls": [
       [
+        false,
+        false,
+        false,
+        false,
         false,
         false,
         false,
@@ -27,7 +31,7 @@
       ]
     ],
     "goal": [
-      8,
+      12,
       0
     ]
   }

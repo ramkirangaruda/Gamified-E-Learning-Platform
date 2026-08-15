@@ -1,10 +1,10 @@
 {
-  "id": "level-4",
-  "name": "The Long Way",
-  "teaches": "move",
+  "id": "level-21",
+  "name": "While Around the Bend",
+  "teaches": "while",
   "difficulty": "medium",
-  "concept": "A long path is just many small steps in the right order.",
-  "parBlocks": 15,
+  "concept": "Combine while with a wall check to handle corners.",
+  "parBlocks": 8,
   "startPos": [
     0,
     0
@@ -12,47 +12,40 @@
   "startDir": "right",
   "grid": {
     "width": 5,
-    "height": 5,
+    "height": 4,
     "walls": [
       [
         false,
         false,
         false,
         false,
-        true
+        false
       ],
       [
         true,
         true,
         true,
-        false,
-        true
+        true,
+        false
       ],
       [
         true,
-        false,
-        false,
-        false,
-        true
+        true,
+        true,
+        true,
+        false
       ],
       [
         true,
-        false,
         true,
         true,
-        true
-      ],
-      [
         true,
-        false,
-        false,
-        false,
-        true
+        false
       ]
     ],
     "goal": [
-      3,
-      4
+      4,
+      3
     ]
   }
 }

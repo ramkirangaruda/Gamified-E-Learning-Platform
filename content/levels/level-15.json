@@ -1,0 +1,55 @@
+{
+  "id": "level-15",
+  "name": "Look Before You Step",
+  "teaches": "if_wall_ahead",
+  "difficulty": "medium",
+  "concept": "The same look-then-step idea, on a longer road.",
+  "parBlocks": 9,
+  "startPos": [
+    0,
+    0
+  ],
+  "startDir": "right",
+  "grid": {
+    "width": 6,
+    "height": 4,
+    "walls": [
+      [
+        false,
+        false,
+        false,
+        false,
+        false,
+        false
+      ],
+      [
+        true,
+        true,
+        true,
+        true,
+        true,
+        false
+      ],
+      [
+        true,
+        true,
+        true,
+        true,
+        true,
+        false
+      ],
+      [
+        true,
+        true,
+        true,
+        true,
+        true,
+        false
+      ]
+    ],
+    "goal": [
+      5,
+      3
+    ]
+  }
+}

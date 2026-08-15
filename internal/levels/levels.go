@@ -10,19 +10,28 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strconv"
+	"strings"
 
 	"github.com/ramkirangaruda/Gamified-E-Learning-Platform/internal/executor"
 )
 
 type Level struct {
-	ID        string         `json:"id"`
-	Name      string         `json:"name"`
-	Teaches   string         `json:"teaches"`
-	Hard      bool           `json:"hard"`
-	ParBlocks int            `json:"parBlocks"`
-	StartPos  [2]int         `json:"startPos"`
-	StartDir  string         `json:"startDir"`
-	Grid      executor.Grid  `json:"grid"`
+	ID      string `json:"id"`
+	Name    string `json:"name"`
+	Teaches string `json:"teaches"`
+	// Difficulty is the authored tag (easy|medium|hard). Hard is derived from it at load
+	// time rather than stored twice in the JSON -- one source of truth in the content,
+	// and the frontend keeps the boolean it already reads (pet/reward.ts's hard-points
+	// bonus, brief §10) with no change on that side.
+	Difficulty string `json:"difficulty"`
+	Hard       bool   `json:"hard"`
+	// Concept is the one-line "what this level teaches", shown on the trail.
+	Concept   string        `json:"concept"`
+	ParBlocks int           `json:"parBlocks"`
+	StartPos  [2]int        `json:"startPos"`
+	StartDir  string        `json:"startDir"`
+	Grid      executor.Grid `json:"grid"`
 }
 
 func (l Level) StartExecPos() executor.Pos {
@@ -68,7 +77,19 @@ func LoadAll(dir string) ([]Level, error) {
 			names = append(names, e.Name())
 		}
 	}
-	sort.Strings(names)
+	// Natural sort, not lexicographic. With 25 levels a plain string sort orders
+	// level-1, level-10, level-11 ... level-2, level-20 -- which silently scrambles the
+	// entire teaching progression, since level order IS the curriculum order everywhere
+	// downstream (the trail, the dashboard, "what's next"). Falls back to string order
+	// for any filename without a trailing number.
+	sort.Slice(names, func(i, j int) bool {
+		ni, oki := trailingNumber(names[i])
+		nj, okj := trailingNumber(names[j])
+		if oki && okj && ni != nj {
+			return ni < nj
+		}
+		return names[i] < names[j]
+	})
 
 	levels := make([]Level, 0, len(names))
 	skipped := 0
@@ -90,6 +111,7 @@ func LoadAll(dir string) ([]Level, error) {
 			skipped++
 			continue
 		}
+		lvl.Hard = lvl.Difficulty == "hard"
 		levels = append(levels, lvl)
 	}
 
@@ -100,4 +122,23 @@ func LoadAll(dir string) ([]Level, error) {
 		log.Printf("levels: loaded %d level(s), skipped %d unusable file(s)", len(levels), skipped)
 	}
 	return levels, nil
+}
+
+// trailingNumber pulls the digits off the end of a filename stem ("level-12.json" -> 12)
+// so LoadAll can order the curriculum numerically. Returns false when there is no
+// trailing number, letting the caller fall back to string order.
+func trailingNumber(name string) (int, bool) {
+	stem := strings.TrimSuffix(name, filepath.Ext(name))
+	i := len(stem)
+	for i > 0 && stem[i-1] >= '0' && stem[i-1] <= '9' {
+		i--
+	}
+	if i == len(stem) {
+		return 0, false
+	}
+	n, err := strconv.Atoi(stem[i:])
+	if err != nil {
+		return 0, false
+	}
+	return n, true
 }

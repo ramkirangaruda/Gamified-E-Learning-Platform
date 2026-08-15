@@ -89,11 +89,11 @@ func TestPrewarmHints_PopulatesCacheExactlyOncePerBankEntry(t *testing.T) {
 	}
 	// Spot-check a couple of entries actually landed in the cache at bucket 0, and that
 	// a would-be request for one wouldn't need to touch the model at all.
-	if _, ok := srv.hintCache.Get("level-2", "unbalanced_block", hints.HistoryBucket(0)); !ok {
-		t.Fatal("level-2/unbalanced_block not found in cache after prewarm")
+	if _, ok := srv.hintCache.Get("level-8", "unbalanced_block", hints.HistoryBucket(0)); !ok {
+		t.Fatal("level-8/unbalanced_block not found in cache after prewarm")
 	}
-	if _, ok := srv.hintCache.Get("level-3", "missing_turn", hints.HistoryBucket(0)); !ok {
-		t.Fatal("level-3/missing_turn not found in cache after prewarm")
+	if _, ok := srv.hintCache.Get("level-14", "missing_turn", hints.HistoryBucket(0)); !ok {
+		t.Fatal("level-14/missing_turn not found in cache after prewarm")
 	}
 
 	// Warming again must not regenerate anything already cached -- a restart-free
@@ -276,10 +276,13 @@ func TestIntegration_SolvedLevelsTracksRealSolvesOutOfOrder(t *testing.T) {
 
 	// Solve level-3 (a "later" level by filename order) without ever touching level-1
 	// or level-2 -- exactly what the dashboard's free section navigation allows.
+	// level-3 "Zigzag" -- see internal/levels' solutions map, which is the verified
+	// source of truth for what actually solves each level.
 	level3Solution := `{"ast":{"version":1,"source":"blocks","program":[
-		{"op":"move","steps":1},{"op":"move","steps":1},{"op":"move","steps":1},
-		{"op":"if","cond":{"check":"wall_ahead"},"then":[{"op":"turn","dir":"right"}]},
-		{"op":"move","steps":1},{"op":"move","steps":1},{"op":"move","steps":1}
+		{"op":"move","steps":1},{"op":"turn","dir":"right"},
+		{"op":"move","steps":1},{"op":"turn","dir":"left"},
+		{"op":"move","steps":1},{"op":"turn","dir":"right"},
+		{"op":"move","steps":1},{"op":"move","steps":1}
 	]},"client_problems":[]}`
 	resp, err := http.Post(ts.URL+"/api/program?level_id=level-3", "application/json", strings.NewReader(level3Solution))
 	if err != nil {
@@ -433,10 +436,10 @@ func TestIntegration_LevelsListMatchesContent(t *testing.T) {
 	if err := json.NewDecoder(resp.Body).Decode(&got); err != nil {
 		t.Fatalf("decoding response: %v", err)
 	}
-	if len(got) != 8 {
-		t.Fatalf("got %d levels, want 8", len(got))
+	if len(got) != 25 {
+		t.Fatalf("got %d levels, want 25", len(got))
 	}
-	if got[0].ID != "level-1" || got[7].ID != "level-8" {
+	if got[0].ID != "level-1" || got[24].ID != "level-25" {
 		t.Fatalf("levels not in expected order: %+v", got)
 	}
 }
@@ -589,7 +592,7 @@ func TestPrewarmThenFirstHint_StillPopulatesCompareAndLatency(t *testing.T) {
 
 	// §13 step 4's first hint: off_by_one_repeat on level-2, served from the warm cache.
 	resp, err := http.Post(ts.URL+"/api/hint", "application/json",
-		strings.NewReader(`{"level_id":"level-2","error_signature":"off_by_one_repeat"}`))
+		strings.NewReader(`{"level_id":"level-8","error_signature":"off_by_one_repeat"}`))
 	if err != nil {
 		t.Fatalf("POST /api/hint: %v", err)
 	}
@@ -644,15 +647,16 @@ func TestDemoScript_RepeatedMistakeTellsTheModelAboutTheHistory(t *testing.T) {
 	ts := httptest.NewServer(srv.Mux())
 	defer ts.Close()
 
-	// level-2 needs 11 moves; 10 is the classic off-by-one a child actually makes.
+	// level-8 "Twelve Steps" needs 12 moves; 11 is the classic off-by-one a child
+	// actually makes (repeat 4 + repeat 4 + repeat 3).
 	offByOne := `{"ast":{"version":1,"source":"blocks","program":[
 		{"op":"repeat","times":4,"body":[{"op":"move","steps":1}]},
-		{"op":"repeat","times":3,"body":[{"op":"move","steps":1}]},
+		{"op":"repeat","times":4,"body":[{"op":"move","steps":1}]},
 		{"op":"repeat","times":3,"body":[{"op":"move","steps":1}]}
 	]},"client_problems":[]}`
 
 	runOnce := func() string {
-		resp, err := http.Post(ts.URL+"/api/program?level_id=level-2", "application/json", strings.NewReader(offByOne))
+		resp, err := http.Post(ts.URL+"/api/program?level_id=level-8", "application/json", strings.NewReader(offByOne))
 		if err != nil {
 			t.Fatalf("POST /api/program: %v", err)
 		}
@@ -670,7 +674,7 @@ func TestDemoScript_RepeatedMistakeTellsTheModelAboutTheHistory(t *testing.T) {
 
 	askForHint := func() string {
 		resp, err := http.Post(ts.URL+"/api/hint", "application/json",
-			strings.NewReader(`{"level_id":"level-2","error_signature":"off_by_one_repeat"}`))
+			strings.NewReader(`{"level_id":"level-8","error_signature":"off_by_one_repeat"}`))
 		if err != nil {
 			t.Fatalf("POST /api/hint: %v", err)
 		}
@@ -747,18 +751,18 @@ func TestDemoScript_RepeatHintVisiblyAcknowledgesTheHistory(t *testing.T) {
 
 	offByOne := `{"ast":{"version":1,"source":"blocks","program":[
 		{"op":"repeat","times":4,"body":[{"op":"move","steps":1}]},
-		{"op":"repeat","times":3,"body":[{"op":"move","steps":1}]},
+		{"op":"repeat","times":4,"body":[{"op":"move","steps":1}]},
 		{"op":"repeat","times":3,"body":[{"op":"move","steps":1}]}
 	]},"client_problems":[]}`
 
 	hintAfterAnotherMistake := func() string {
-		resp, err := http.Post(ts.URL+"/api/program?level_id=level-2", "application/json", strings.NewReader(offByOne))
+		resp, err := http.Post(ts.URL+"/api/program?level_id=level-8", "application/json", strings.NewReader(offByOne))
 		if err != nil {
 			t.Fatalf("POST /api/program: %v", err)
 		}
 		resp.Body.Close()
 		hr, err := http.Post(ts.URL+"/api/hint", "application/json",
-			strings.NewReader(`{"level_id":"level-2","error_signature":"off_by_one_repeat"}`))
+			strings.NewReader(`{"level_id":"level-8","error_signature":"off_by_one_repeat"}`))
 		if err != nil {
 			t.Fatalf("POST /api/hint: %v", err)
 		}

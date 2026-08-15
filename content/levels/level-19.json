@@ -1,21 +1,20 @@
 {
-  "id": "level-6",
-  "name": "Eight in a Row",
-  "teaches": "repeat",
+  "id": "level-19",
+  "name": "Until the Goal",
+  "teaches": "while",
   "difficulty": "easy",
-  "concept": "Two repeat cards beat writing every step by hand.",
-  "parBlocks": 7,
+  "concept": "While keeps going until you arrive -- no counting needed.",
+  "parBlocks": 5,
   "startPos": [
     0,
     0
   ],
   "startDir": "right",
   "grid": {
-    "width": 9,
+    "width": 8,
     "height": 1,
     "walls": [
       [
-        false,
         false,
         false,
         false,
@@ -27,7 +26,7 @@
       ]
     ],
     "goal": [
-      8,
+      7,
       0
     ]
   }
