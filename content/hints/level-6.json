@@ -1,7 +1,8 @@
 {
-  "empty_program": "Your workspace is empty! This maze has two corners in it - start by dragging some 'move forward' cards onto the canvas.",
-  "unbalanced_block": "Looks like you opened an 'if wall ahead' block but forgot the 'end if' card. Every if needs its own end if right after the cards inside it - and if you used 'else', that goes in between the two.",
-  "infinite_loop": "Your program is stuck looping! If you used a while block, make sure its condition can eventually become true.",
-  "no_condition_used": "This maze has two turns in it - your program needs to sense the wall each time and react to it. Try adding an 'if wall ahead' block before each turn.",
-  "missing_turn": "You're checking for the wall - nice! But once you find it, you still need to actually turn, at both corners. Add a 'turn right' (or 'turn left') card inside each if block."
+  "empty_program": "Empty! This road is long and every step is the same -- 'repeat' cards will save you a lot of dragging.",
+  "unbalanced_block": "Every 'repeat' card needs an 'end repeat' card below it, with the steps you want repeated in between. Find the repeat that's still waiting for its partner.",
+  "infinite_loop": "Your program went round and round and never stopped. A 'while not at goal' only ends when you actually reach the goal -- check yours can get there.",
+  "hardcoded_no_loop": "That's a lot of cards for one straight road! A 'repeat' card does the same step again and again for you.",
+  "off_by_one_repeat": "Nearly! Add up all the steps your repeat cards make together, and compare that with the squares to the flag.",
+  "overshot_goal": "You overshot the flag. Add up the total steps your repeats make -- it's more than the road is long."
 }

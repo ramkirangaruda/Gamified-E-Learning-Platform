@@ -1,6 +1,6 @@
 import { useState } from "react";
 import CompareView from "./CompareView";
-import Dashboard from "./Dashboard";
+import HomePage from "./HomePage";
 import StyleGuide from "./StyleGuide";
 import PlayPage from "./PlayPage";
 
@@ -26,7 +26,7 @@ function App() {
   if (selectedLevelId) {
     return <PlayPage initialLevelId={selectedLevelId} onBackToDashboard={() => setSelectedLevelId(null)} />;
   }
-  return <Dashboard onSelectLevel={setSelectedLevelId} />;
+  return <HomePage onSelectLevel={setSelectedLevelId} />;
 }
 
 export default App;

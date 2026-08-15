@@ -1,0 +1,7 @@
+{
+  "empty_program": "Nothing yet! Two things to collect on this road, and the flag stays shut until you have both.",
+  "unbalanced_block": "Every 'while not at goal' needs an 'end while' below it, wrapping the steps you want to keep doing. Check yours has one.",
+  "infinite_loop": "Your program went round and round and never stopped. A 'while not at goal' only ends when you actually reach the goal -- check yours can get there.",
+  "hardcoded_no_loop": "A while loop will carry you all the way along without you counting a single square.",
+  "never_picked_up": "You passed both of them by! Nothing was collected, so the flag stayed shut. A 'pick up' card inside your loop gathers as you travel."
+}

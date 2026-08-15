@@ -1,6 +1,8 @@
 {
-  "empty_program": "Your workspace is empty! Try a 'while not at goal' block with a move card inside - it'll keep going until you get there.",
-  "unbalanced_block": "It looks like you opened a while block but forgot the 'end while' card that closes it. Every while needs its own end while right after the cards you want repeated.",
-  "infinite_loop": "Your program is looping and never stops! Make sure the while block's condition can actually become true - like reaching the goal - so it knows when to stop.",
-  "hardcoded_no_loop": "This road is long, and you don't even need to count the steps! Try a 'while not at goal' block with just one move card inside - it'll keep going until Pip gets there."
+  "empty_program": "Nothing yet! This road goes straight, turns one corner, then goes straight again. Try repeating each straight part.",
+  "unbalanced_block": "Every 'repeat' card needs an 'end repeat' card below it, with the steps you want repeated in between. Find the repeat that's still waiting for its partner.",
+  "infinite_loop": "Your program went round and round and never stopped. A 'while not at goal' only ends when you actually reach the goal -- check yours can get there.",
+  "hardcoded_no_loop": "Both straight stretches repeat the same step. A 'repeat' card for each one is much less dragging than every step by hand.",
+  "off_by_one_repeat": "One step out! Count each straight stretch separately -- the bit before the corner and the bit after.",
+  "overshot_goal": "You went too far. Check each straight stretch on its own: how many squares before the corner, and how many after?"
 }

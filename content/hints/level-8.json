@@ -1,6 +1,8 @@
 {
-  "empty_program": "Your workspace is empty! This road bends once - try a 'while not at goal' block with an 'if wall ahead' check and a move card inside.",
-  "unbalanced_block": "It looks like you opened a block but forgot its matching end card. Every while, if, and repeat needs its own closing card right after everything you want inside it.",
-  "infinite_loop": "Your program is looping and never stops! Make sure the while block's condition can actually become true - like reaching the goal - so it knows when to stop.",
-  "hardcoded_no_loop": "This road bends and you don't know exactly how far it goes! Try a 'while not at goal' block that checks for the wall and turns when it needs to, instead of counting each step by hand."
+  "empty_program": "Empty workspace! This is the longest straight road yet -- exactly what repeat cards are for.",
+  "unbalanced_block": "Every 'repeat' card needs an 'end repeat' card below it, with the steps you want repeated in between. Find the repeat that's still waiting for its partner.",
+  "infinite_loop": "Your program went round and round and never stopped. A 'while not at goal' only ends when you actually reach the goal -- check yours can get there.",
+  "hardcoded_no_loop": "That's a card for every single square! One repeat card can stand in for a whole run of the same step.",
+  "off_by_one_repeat": "Just one out! Add up what all your repeats do together and compare it with the length of the road.",
+  "overshot_goal": "Too far! Your repeats add up to more steps than there are squares. Total them up and compare."
 }

@@ -1,0 +1,8 @@
+{
+  "empty_program": "Nothing here yet! Look at the path -- the same little pattern of moves and turns happens again and again.",
+  "unbalanced_block": "Every 'repeat' card needs an 'end repeat' card below it, with the steps you want repeated in between. Find the repeat that's still waiting for its partner.",
+  "infinite_loop": "Your program went round and round and never stopped. A 'while not at goal' only ends when you actually reach the goal -- check yours can get there.",
+  "hardcoded_no_loop": "Look closely at the path: the same short pattern repeats. A repeat card can hold that whole pattern, not just one card.",
+  "off_by_one_repeat": "Almost! Work out the pattern that repeats, then count how many times it happens along the path.",
+  "overshot_goal": "You've gone past the flag -- your pattern repeats more times than the staircase has steps."
+}

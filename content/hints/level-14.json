@@ -1,0 +1,7 @@
+{
+  "empty_program": "Empty! Here's the new idea: instead of remembering where the corner is, you can *ask* whether a wall is in front of you.",
+  "unbalanced_block": "Every 'if wall ahead' needs an 'end if' below it. If you used 'else' too, it goes between them: if, then what to do, else, then what to do, end if.",
+  "infinite_loop": "Your program looped forever. That usually means it got stuck against a wall: if you never turn, you'll push at the same wall for ever.",
+  "no_condition_used": "This level is about asking a question first. Try an 'if wall ahead' card so your program can notice the corner by itself.",
+  "missing_turn": "Good -- you're checking for the wall! But noticing it isn't enough: put a turn card inside the if, so you actually turn when the answer is yes."
+}

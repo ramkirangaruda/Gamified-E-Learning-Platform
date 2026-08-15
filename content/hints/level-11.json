@@ -1,0 +1,8 @@
+{
+  "empty_program": "Nothing yet! This road is long, but nested repeats mean you only need a few cards.",
+  "unbalanced_block": "Every 'repeat' card needs an 'end repeat' card below it, with the steps you want repeated in between. Find the repeat that's still waiting for its partner.",
+  "infinite_loop": "Your program went round and round and never stopped. A 'while not at goal' only ends when you actually reach the goal -- check yours can get there.",
+  "hardcoded_no_loop": "This road is long enough that repeats really pay off -- and a repeat inside a repeat pays off even more.",
+  "off_by_one_repeat": "So close! Multiply your inside repeat count by your outside one, and compare that with the road's length.",
+  "overshot_goal": "Past the flag! Multiply the two repeat numbers together -- that total is bigger than the road."
+}

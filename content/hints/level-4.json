@@ -1,5 +1,5 @@
 {
-  "empty_program": "Your workspace is empty! This road bends partway through, so you'll need some 'move forward' cards and a 'turn' card to get all the way to the goal.",
-  "unbalanced_block": "Looks like you started a block (like repeat or if) but never added its matching end card. Every open card needs a closing partner right after everything you want inside it.",
-  "infinite_loop": "Your program got stuck looping forever! If you used a while block, check that its condition can actually become true - like reaching the goal - so the loop knows when to stop."
+  "empty_program": "Nothing to run yet! This is a long winding path -- take it one corner at a time. Add the steps for the first straight bit.",
+  "unbalanced_block": "Every block card you open needs its matching end card underneath it. Look down your stack for one that never got closed.",
+  "infinite_loop": "Your program went round and round and never stopped. A 'while not at goal' only ends when you actually reach the goal -- check yours can get there."
 }

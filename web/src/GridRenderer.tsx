@@ -11,7 +11,13 @@ import Icon from "./icons/Icon";
 // rendering the robot sprite's orientation. That's presentation, not a movement rule:
 // every move/bump/goal outcome still comes verbatim from the trace.
 
+// The board is drawn at a fixed internal cell size and then scaled to fit its container
+// via the SVG viewBox. The 25-level curriculum has boards from 3x3 up to 13x1 and 9x9;
+// at a fixed pixel size the wide ones overflowed the play panel and got clipped. Scaling
+// via viewBox (rather than recomputing a cell size in JS) means no resize listener, no
+// layout thrash, and the whole thing stays one declarative SVG.
 const CELL_PX = 56;
+const MAX_BOARD_PX = 420;
 const DIR_ANGLE: Record<Dir, number> = { right: 0, down: 90, left: 180, up: -90 };
 const TURN_ORDER: Dir[] = ["up", "right", "down", "left"];
 
@@ -86,9 +92,10 @@ export default function GridRenderer({ grid, startPos, startDir, events, outcome
   return (
     <div className="flex flex-col items-center gap-3">
       <svg
-        width={grid.width * CELL_PX}
-        height={grid.height * CELL_PX}
-        className="rounded-2xl border-4 border-white bg-quest-cream shadow-inner"
+        viewBox={`0 0 ${grid.width * CELL_PX} ${grid.height * CELL_PX}`}
+        width={Math.min(grid.width * CELL_PX, MAX_BOARD_PX)}
+        height={(Math.min(grid.width * CELL_PX, MAX_BOARD_PX) * grid.height) / grid.width}
+        className="max-w-full rounded-chunk border-[var(--outline-chunk-thick)] border-white bg-quest-cream shadow-chunk"
       >
         {grid.walls.map((row, y) =>
           row.map(

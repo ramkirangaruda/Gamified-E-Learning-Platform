@@ -1,0 +1,7 @@
+{
+  "empty_program": "Empty workspace! This road has two corners -- but you don't need two different plans, just one rule repeated.",
+  "unbalanced_block": "Every 'if wall ahead' needs an 'end if' below it. If you used 'else' too, it goes between them: if, then what to do, else, then what to do, end if.",
+  "infinite_loop": "Your program looped forever. That usually means it got stuck against a wall: if you never turn, you'll push at the same wall for ever.",
+  "no_condition_used": "Two corners, one rule: 'if wall ahead, turn'. Add an if card and let it handle both of them.",
+  "missing_turn": "You're checking for walls -- now add a turn card inside the if, or you'll just keep pressing against them."
+}

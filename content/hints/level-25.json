@@ -1,0 +1,7 @@
+{
+  "empty_program": "The final road! Corners to turn, things to collect, and a flag at the end. Everything you've learned, all at once.",
+  "unbalanced_block": "Each opener card -- repeat, if, while -- needs its own matching end card. Start at the top and check each one has a partner below it.",
+  "infinite_loop": "Your program went round and round and never stopped. A 'while not at goal' only ends when you actually reach the goal -- check yours can get there.",
+  "hardcoded_no_loop": "This road has corners and collectibles. A while loop with a wall check inside handles the whole thing.",
+  "never_picked_up": "You made the journey but came back empty-handed -- the flag won't open until everything is collected. Add a 'pick up' card to your loop."
+}

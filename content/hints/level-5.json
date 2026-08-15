@@ -1,8 +1,8 @@
 {
-  "empty_program": "Your workspace is empty! This staircase pattern repeats three times - try a 'repeat 3' block with a move and a turn inside.",
-  "unbalanced_block": "It looks like you opened a repeat block but forgot the 'end repeat' card that closes it. Every repeat needs its own end repeat right after the cards you want repeated.",
-  "infinite_loop": "Your program is looping and never stops! Double-check any while blocks - the loop needs a way to eventually finish.",
-  "hardcoded_no_loop": "This staircase has the same pattern over and over: move, turn, move, turn. Instead of placing each step by hand, try putting that pattern inside a 'repeat' block.",
-  "off_by_one_repeat": "So close! Count how many steps down the staircase your program actually takes - you're just one step short (or one too many). Check your repeat count.",
-  "overshot_goal": "You've gone further than the staircase actually goes! Check your repeat count - it might be one size too big for this one."
+  "empty_program": "Your workspace is empty! Every step here is the same one, so this is a perfect place for a 'repeat' card.",
+  "unbalanced_block": "Every 'repeat' card needs an 'end repeat' card below it, with the steps you want repeated in between. Find the repeat that's still waiting for its partner.",
+  "infinite_loop": "Your program went round and round and never stopped. A 'while not at goal' only ends when you actually reach the goal -- check yours can get there.",
+  "hardcoded_no_loop": "That works, but there's a tidier way! When you do the same step over and over, one 'repeat' card can do it for you.",
+  "off_by_one_repeat": "So close -- you're one step out. Count the squares between you and the flag, then check your repeat number matches.",
+  "overshot_goal": "You went past the flag! Count the squares to the flag and compare that with how many times your repeat runs."
 }
