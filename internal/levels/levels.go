@@ -6,6 +6,7 @@ package levels
 import (
 	"encoding/json"
 	"fmt"
+	"log"
 	"os"
 	"path/filepath"
 	"sort"
@@ -46,6 +47,15 @@ func (l Level) StartExecDir() (executor.Dir, error) {
 // LoadAll reads every content/levels/*.json file, sorted by filename (level-1.json
 // before level-2.json, ...) so callers get a stable, predictable level order without
 // needing a separate index file to maintain.
+//
+// AUDIT P0-4/P1-3: a single unreadable or malformed file used to fail the entire
+// directory, so one truncated .json on a yanked USB drive lost all eight levels and (via
+// api.New -> log.Fatalf) killed the app outright. Bad files are now skipped with a loud
+// log line and the good ones still load -- seven playable levels beats a dead app.
+//
+// Zero usable levels is still an error, deliberately: that case is genuinely
+// unrecoverable (the game has nothing to show), and it previously surfaced as a dashboard
+// stuck on "Loading..." forever with nothing explaining why.
 func LoadAll(dir string) ([]Level, error) {
 	entries, err := os.ReadDir(dir)
 	if err != nil {
@@ -61,19 +71,33 @@ func LoadAll(dir string) ([]Level, error) {
 	sort.Strings(names)
 
 	levels := make([]Level, 0, len(names))
+	skipped := 0
 	for _, name := range names {
 		data, err := os.ReadFile(filepath.Join(dir, name))
 		if err != nil {
-			return nil, fmt.Errorf("levels: reading %s: %w", name, err)
+			log.Printf("levels: skipping %s (unreadable): %v", name, err)
+			skipped++
+			continue
 		}
 		var lvl Level
 		if err := json.Unmarshal(data, &lvl); err != nil {
-			return nil, fmt.Errorf("levels: parsing %s: %w", name, err)
+			log.Printf("levels: skipping %s (malformed JSON): %v", name, err)
+			skipped++
+			continue
 		}
 		if _, err := lvl.StartExecDir(); err != nil {
-			return nil, err
+			log.Printf("levels: skipping %s: %v", name, err)
+			skipped++
+			continue
 		}
 		levels = append(levels, lvl)
+	}
+
+	if len(levels) == 0 {
+		return nil, fmt.Errorf("levels: no usable level files in %s (%d found, %d unusable) -- check the drive's content/levels directory", dir, len(names), skipped)
+	}
+	if skipped > 0 {
+		log.Printf("levels: loaded %d level(s), skipped %d unusable file(s)", len(levels), skipped)
 	}
 	return levels, nil
 }
