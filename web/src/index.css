@@ -58,3 +58,40 @@ body {
   transform-box: fill-box;
   transform-origin: center;
 }
+
+/* pet/Pet.tsx -- all four moods, no external assets. */
+@keyframes quest-pet-bob {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-6px); }
+}
+.quest-pet-idle {
+  animation: quest-pet-bob 2.4s ease-in-out infinite;
+}
+
+@keyframes quest-pet-bounce {
+  0%, 100% { transform: translateY(0) scale(1); }
+  30% { transform: translateY(-16px) scale(1.05); }
+  50% { transform: translateY(0) scale(0.97); }
+  70% { transform: translateY(-6px) scale(1.02); }
+}
+.quest-pet-happy {
+  animation: quest-pet-bounce 0.9s ease-in-out;
+}
+
+@keyframes quest-pet-tilt {
+  0%, 100% { transform: rotate(0deg); }
+  25% { transform: rotate(-8deg); }
+  75% { transform: rotate(8deg); }
+}
+.quest-pet-confused {
+  animation: quest-pet-tilt 1.6s ease-in-out infinite;
+}
+
+@keyframes quest-pet-wobble {
+  0%, 100% { transform: translateX(0) translateY(0); }
+  50% { transform: translateX(-2px) translateY(3px); }
+}
+.quest-pet-hungry {
+  animation: quest-pet-wobble 1.8s ease-in-out infinite;
+  opacity: 0.85;
+}
