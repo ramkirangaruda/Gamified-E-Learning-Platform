@@ -8,6 +8,8 @@ node_modules/
 dist/
 /app/
 /print/cards/
+/print/composited/
+/print/*.pdf
 
 # Runtime data — never commit a child's save file or drive contents
 data/*.db
@@ -22,3 +24,7 @@ bin/linux/
 .vscode/
 .DS_Store
 Thumbs.db
+
+# Python (scripts/)
+__pycache__/
+*.pyc
