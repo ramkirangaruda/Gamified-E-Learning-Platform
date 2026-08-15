@@ -723,3 +723,66 @@ func TestDemoScript_RepeatedMistakeTellsTheModelAboutTheHistory(t *testing.T) {
 		}
 	}
 }
+
+// AUDIT P1-5. §13 step 4's visible payoff is Pip acknowledging the child has hit this
+// mistake before. Phase 3 regression against the real 0.6B model showed it never surfaces
+// that from the prompt instruction alone (5/5 generations at buckets 1-4 omitted it), so
+// the acknowledgement is prepended deterministically. This asserts the child-visible hint
+// text, not the prompt -- what lands on camera.
+func TestDemoScript_RepeatHintVisiblyAcknowledgesTheHistory(t *testing.T) {
+	dbPath := filepath.Join(t.TempDir(), "pet.db")
+	st, err := store.Open(dbPath)
+	if err != nil {
+		t.Fatalf("store.Open: %v", err)
+	}
+	defer st.Close()
+
+	srv, err := New(st, "../../content/levels", "../../content/hints",
+		fakeEngine{tier: tutor.TierInfo{Tier: "low", Model: "fake-model.gguf"}}, 0)
+	if err != nil {
+		t.Fatalf("api.New: %v", err)
+	}
+	ts := httptest.NewServer(srv.Mux())
+	defer ts.Close()
+
+	offByOne := `{"ast":{"version":1,"source":"blocks","program":[
+		{"op":"repeat","times":4,"body":[{"op":"move","steps":1}]},
+		{"op":"repeat","times":3,"body":[{"op":"move","steps":1}]},
+		{"op":"repeat","times":3,"body":[{"op":"move","steps":1}]}
+	]},"client_problems":[]}`
+
+	hintAfterAnotherMistake := func() string {
+		resp, err := http.Post(ts.URL+"/api/program?level_id=level-2", "application/json", strings.NewReader(offByOne))
+		if err != nil {
+			t.Fatalf("POST /api/program: %v", err)
+		}
+		resp.Body.Close()
+		hr, err := http.Post(ts.URL+"/api/hint", "application/json",
+			strings.NewReader(`{"level_id":"level-2","error_signature":"off_by_one_repeat"}`))
+		if err != nil {
+			t.Fatalf("POST /api/hint: %v", err)
+		}
+		defer hr.Body.Close()
+		var out struct {
+			Hint string `json:"hint"`
+		}
+		json.NewDecoder(hr.Body).Decode(&out)
+		return out.Hint
+	}
+
+	first := hintAfterAnotherMistake()
+	if strings.Contains(first, hints.HistoryPrefix(1)) {
+		t.Fatalf("a first-time mistake was announced as a repeat: %q", first)
+	}
+	if !strings.Contains(first, "fake rephrased hint") {
+		t.Fatalf("first hint lost the rephrased body: %q", first)
+	}
+
+	second := hintAfterAnotherMistake()
+	if !strings.HasPrefix(second, hints.HistoryPrefix(1)) {
+		t.Fatalf("repeat mistake is not visibly acknowledged to the child.\n got: %q\nwant prefix: %q", second, hints.HistoryPrefix(1))
+	}
+	if !strings.Contains(second, "fake rephrased hint") {
+		t.Fatalf("the acknowledgement replaced the hint instead of prefixing it: %q", second)
+	}
+}

@@ -23,9 +23,27 @@ var (
 	)
 )
 
-// HasFirstPersonAuthorDrift reports whether text narrates the program's mistake as the
-// speaker's own rather than the child's. Callers should treat true as a rejection: the
-// text must not be shown to a child as-is.
+// thirdPersonChildRe catches the other direction of the same failure: the model talking
+// *about* the child to an adult instead of *to* the child.
+//
+// AUDIT P1-6, observed in Phase 3 regression against the real 0.6B: a hint came back
+// "...You're just one step short -- try changing a repeat block. Keep the child learning,
+// and you're just right." BuildHintPrompt necessarily contains the phrase "This child has
+// made this mistake N time(s) before", and the small model sometimes echoes that framing
+// straight into its answer. Addressed to an eight-year-old that reads as the game talking
+// over their head about them.
+var thirdPersonChildRe = regexp.MustCompile(`(?i)\b(the|this) (child|kid|student|learner)\b`)
+
+// HasFirstPersonAuthorDrift reports whether text addresses the wrong person: narrating
+// the mistake as the speaker's own ("I forgot to close my repeat block"), or talking
+// about the child in the third person ("keep the child learning") instead of to them.
+// Callers treat true as a rejection -- handleHint retries once, then falls back to the
+// verified bank text, so a rejected completion is never what a child sees.
+//
+// Name kept as-is deliberately: it is referenced from api.go, generate.go and two test
+// files, and renaming working code mid-audit buys nothing.
 func HasFirstPersonAuthorDrift(text string) bool {
-	return firstPersonMistakeRe.MatchString(text) || myCodeArtifactRe.MatchString(text)
+	return firstPersonMistakeRe.MatchString(text) ||
+		myCodeArtifactRe.MatchString(text) ||
+		thirdPersonChildRe.MatchString(text)
 }
