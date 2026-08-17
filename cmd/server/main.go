@@ -38,9 +38,14 @@ func main() {
 	openUI := flag.Bool("open", true, "open the game in the default browser once the server is listening; -open=false for a headless hub or when running as a service")
 	flag.Parse()
 
-	exeDir, err := paths.ExeDir()
+	// The DRIVE ROOT, not the binary's own directory: on a real key (brief §7) the
+	// launcher lives in bin/win or bin/linux and content/, app/, models/, profiles.json
+	// and data/ all sit at the root beside bin/. Resolving them against the binary looked
+	// correct for months because the dev/dist directory keeps the launcher at the root,
+	// where the two are the same folder.
+	driveRoot, err := paths.DriveRoot()
 	if err != nil {
-		log.Fatalf("resolving executable directory: %v", err)
+		log.Fatalf("resolving drive root: %v", err)
 	}
 
 	dataDir, err := store.DataDir()
@@ -66,14 +71,14 @@ func main() {
 	// deferred functions), a bad content/levels directory exited the process with
 	// llama-server already spawned and never killed -- an orphan holding the model in RAM.
 	// Failing before there is anything to leak removes that path entirely.
-	levelsDir := filepath.Join(exeDir, "content", "levels")
-	hintsDir := filepath.Join(exeDir, "content", "hints")
+	levelsDir := filepath.Join(driveRoot, "content", "levels")
+	hintsDir := filepath.Join(driveRoot, "content", "hints")
 	srv, err := api.New(st, levelsDir, hintsDir, nil, *hintTimeout)
 	if err != nil {
 		log.Fatalf("starting api server: %v", err)
 	}
 
-	engine := startTutorEngine(exeDir)
+	engine := startTutorEngine(driveRoot)
 	if engine != nil {
 		srv.SetEngine(engine)
 		defer engine.Close()
@@ -116,7 +121,7 @@ func main() {
 	// app/ is the built React/Blockly bundle (brief's drive layout, app/) — empty until
 	// the frontend is built and placed there. http.Dir on a not-yet-existing directory
 	// is fine; it just 404s every request until then.
-	appDir := filepath.Join(exeDir, "app")
+	appDir := filepath.Join(driveRoot, "app")
 	mux.Handle("/", http.FileServer(http.Dir(appDir)))
 
 	httpServer := &http.Server{Addr: *addr, Handler: mux}
@@ -189,8 +194,8 @@ func shutdownEverything(engine tutor.Engine, st *store.Store) {
 // a dev machine, llama-server binary missing on an unusual platform, etc.); every
 // failure just logs and leaves engine nil, and internal/api's handlers already treat a
 // nil engine as "fall back to the verified hint text, no rephrasing."
-func startTutorEngine(exeDir string) tutor.Engine {
-	profilesPath := filepath.Join(exeDir, "profiles.json")
+func startTutorEngine(driveRoot string) tutor.Engine {
+	profilesPath := filepath.Join(driveRoot, "profiles.json")
 	profiles, err := tutor.LoadProfiles(profilesPath)
 	if err != nil {
 		log.Printf("tutor: %v (hints will use verified text without rephrasing)", err)
@@ -206,8 +211,8 @@ func startTutorEngine(exeDir string) tutor.Engine {
 	tierName, tierCfg := profiles.SelectTier(availableMB)
 	log.Printf("tutor: %d MB available -> %s tier (%s)", availableMB, tierName, tierCfg.Model)
 
-	binPath := filepath.Join(exeDir, "bin", llamaServerSubdir(), llamaServerBinaryName())
-	modelPath := filepath.Join(exeDir, tierCfg.Model)
+	binPath := filepath.Join(driveRoot, "bin", llamaServerSubdir(), llamaServerBinaryName())
+	modelPath := filepath.Join(driveRoot, tierCfg.Model)
 
 	ctx, cancel := context.WithTimeout(context.Background(), 90*time.Second)
 	defer cancel()

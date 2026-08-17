@@ -10,9 +10,10 @@ import (
 	"path/filepath"
 )
 
-// ExeDir returns the directory containing the running binary. On the Tessera key this is
-// the drive root's bin/win or bin/linux — everything else (data/, app/, models/) is
-// resolved relative to it, never to an absolute path or the current working directory.
+// ExeDir returns the directory containing the running binary.
+//
+// This is NOT where content/, app/, models/ and data/ live on a real key — see
+// DriveRoot. On the drive the binary sits in bin/win or bin/linux, one level down.
 func ExeDir() (string, error) {
 	exe, err := os.Executable()
 	if err != nil {
@@ -22,4 +23,59 @@ func ExeDir() (string, error) {
 		exe = resolved
 	}
 	return filepath.Dir(exe), nil
+}
+
+// DriveRoot returns the root of the Tessera key: the directory holding content/, app/,
+// models/, profiles.json and data/.
+//
+// This exists because resolving those relative to the binary is wrong on the layout the
+// project actually ships. Brief §7 puts the launcher at bin/win/launcher.exe and
+// bin/linux/launcher, with content/ and the rest at the root beside bin/ -- so joining
+// "content" onto the executable's own directory looks for bin/win/content, which does not
+// exist. Every dev-machine test passed anyway because the staging directory keeps the
+// binary at the root, where exe dir and drive root happen to be the same folder. The
+// first assembly of a real §7 drive failed immediately, and pi-setup.sh's
+// `exec ./bin/linux/launcher` would have failed the same way on the Pi.
+//
+// Walking up rather than assuming a fixed "one level down" keeps both layouts working:
+// the shipped drive (binary in bin/<os>/) and the flat dev/dist directory, plus
+// `go run ./cmd/server` from anywhere.
+func DriveRoot() (string, error) {
+	exeDir, err := ExeDir()
+	if err != nil {
+		return "", err
+	}
+	return findDriveRoot(exeDir), nil
+}
+
+// findDriveRoot is the searchable half, split out so the layout rules can be tested
+// against real directory trees without needing to relocate a compiled binary.
+func findDriveRoot(startDir string) string {
+	dir := startDir
+	// bin/win is one level down; the bound is deliberately small so that a launcher run
+	// from a machine with no drive layout at all cannot wander up to the filesystem root
+	// and adopt some unrelated directory that happens to contain a "content" folder.
+	for i := 0; i < 3; i++ {
+		if looksLikeDriveRoot(dir) {
+			return dir
+		}
+		parent := filepath.Dir(dir)
+		if parent == dir {
+			break
+		}
+		dir = parent
+	}
+	// Nothing recognisable. Return where we started: the caller then fails with a path
+	// that names the binary's own directory, which is the most useful thing to print
+	// when someone has run the launcher outside a drive layout.
+	return startDir
+}
+
+// looksLikeDriveRoot tests for content/, the one directory the game genuinely cannot run
+// without. app/ is deliberately not required: a drive whose frontend has not been built
+// yet still has to boot far enough to say so, rather than silently resolving its data
+// directory somewhere else.
+func looksLikeDriveRoot(dir string) bool {
+	fi, err := os.Stat(filepath.Join(dir, "content"))
+	return err == nil && fi.IsDir()
 }
