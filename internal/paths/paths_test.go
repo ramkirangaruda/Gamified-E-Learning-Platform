@@ -73,6 +73,54 @@ func TestFindDriveRoot(t *testing.T) {
 	})
 }
 
+// hub/tests/test_integration.py's exact failure mode: `go run ./cmd/server` compiles to
+// an unrelated temp directory, so DriveRoot must fall back to the working directory
+// rather than trust the exe-dir walk alone -- see DriveRoot's own comment for how this
+// was actually confirmed (running the hub-mode integration test with a Go toolchain
+// present, the first time anyone had) rather than just reasoned about.
+func TestDriveRoot_FallsBackToWorkingDirectoryForGoRun(t *testing.T) {
+	repoRoot := t.TempDir()
+	mkdirs(t, repoRoot, "content/levels", "app")
+
+	// Stand-in for go run's build cache dir: deep, and unrelated to repoRoot -- walking
+	// up from it must never reach repoRoot, only cwd can.
+	fakeGoBuildExeDir := filepath.Join(t.TempDir(), "go-build12345", "b001", "exe")
+	if err := os.MkdirAll(fakeGoBuildExeDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	if got := findDriveRoot(fakeGoBuildExeDir); got == repoRoot {
+		t.Fatalf("test setup invalid: exe-dir walk must not itself find repoRoot, got %q", got)
+	}
+
+	oldWd, err := os.Getwd()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() {
+		if err := os.Chdir(oldWd); err != nil {
+			t.Fatal(err)
+		}
+	}()
+	if err := os.Chdir(repoRoot); err != nil {
+		t.Fatal(err)
+	}
+
+	// DriveRoot itself resolves ExeDir() from os.Executable() (the test binary's own
+	// path, not fakeGoBuildExeDir), so exercise the fallback logic directly the same way
+	// DriveRoot does, rather than trying to fake os.Executable().
+	if found := findDriveRoot(fakeGoBuildExeDir); looksLikeDriveRoot(found) {
+		t.Fatalf("exe-dir walk unexpectedly found a drive root at %q", found)
+	}
+	wd, err := os.Getwd()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := findDriveRoot(wd); got != repoRoot {
+		t.Errorf("cwd fallback: got %q, want %q", got, repoRoot)
+	}
+}
+
 func mkdirs(t *testing.T, root string, rel ...string) {
 	t.Helper()
 	for _, r := range rel {

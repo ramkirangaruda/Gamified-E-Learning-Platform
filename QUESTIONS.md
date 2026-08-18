@@ -497,4 +497,13 @@ Everything below this line is the original log, oldest first.
    `hub/hub.py`'s default mode with no `--image` flag) but only smoke-tested against
    synthetic in-memory photos, not a live webcam feed, since this dev environment has no
    camera attached to test against. Worth a real run before the demo, not just the code
-   review.
+   review. **Still open** -- neither of the two machines that have reviewed this branch so
+   far has a camera attached either.
+
+**Items 1 and 2 above: resolved, 2026-08-18, on a machine with both a Go toolchain and
+the real `print/composited/*.png` cards** -- see `DECISIONS.md`'s "Verified `hub-mode`
+after merge" entry for the full account. Short version: all 14 real cards detect
+correctly, and `test_integration.py` now passes for real against a live server -- but
+getting there required a fix to a *pre-existing* bug in `internal/paths.DriveRoot()`
+(its `go run` fallback claim was never actually true) that had nothing to do with
+`hub-mode` itself. That fix is in the same commit.
