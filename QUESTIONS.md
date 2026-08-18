@@ -472,3 +472,29 @@ Everything below this line is the original log, oldest first.
    (some had been open since 13 August) along with my throwaway test instances. Chrome's
    session restore should bring the tabs back. My mistake -- I only needed to kill the
    PIDs the harness itself started, which the measurement script already tracked.
+
+## Hub Mode camera pipeline (2026-08-18, `hub-mode` branch)
+
+1. **`hub/tests/test_integration.py` (acceptance #2: posts to `/api/program` and solves a
+   real level) has never actually been run.** The machine this branch was written on has
+   no Go toolchain, so the test is written to run for real -- it starts `go run
+   ./cmd/server`, waits for it to come up, posts a 5x-move-forward program, and asserts
+   `level-1` solves -- but `pytest.skip`s rather than faking a passing result. Please run
+   `python -m pytest hub/tests/test_integration.py -v` (needs `go` on `PATH` and
+   `pip install -r hub/requirements.txt`) before treating acceptance #2 as actually
+   verified, and let me know if it doesn't pass as written.
+2. **`hub/tests/test_detect_composited.py` doesn't test against the real, printed-and-
+   laminated cards** -- it regenerates its own composited cards from placeholder glyph
+   art (see `DECISIONS.md`), since `print/cards/`/`print/composited/` are gitignored and
+   weren't present on this branch. The ArUco marker generation/decoding is real and
+   identical to the print pipeline's; only the cosmetic glyph differs, and that region is
+   never read by detection. If you'd rather this ran against your actual
+   `print/composited/*.png` (e.g. copy them onto this machine, or hand me the real
+   `print/cards/*.png` gallery export), it's a small change to point the fixture at real
+   files instead of generating placeholders -- say so.
+3. **A physical camera was never pointed at real printed cards** -- acceptance #5 ("runs
+   on a plain laptop webcam") is implemented (`hub/detect.py: capture_frame()`,
+   `hub/hub.py`'s default mode with no `--image` flag) but only smoke-tested against
+   synthetic in-memory photos, not a live webcam feed, since this dev environment has no
+   camera attached to test against. Worth a real run before the demo, not just the code
+   review.
