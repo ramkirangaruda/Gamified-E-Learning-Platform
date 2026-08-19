@@ -318,6 +318,51 @@ func TestStars_NeverRegressAndAttemptsCountReadsBeforeIncrement(t *testing.T) {
 	}
 }
 
+// handoff/05-pet-evolution-art.md: evolution_stage was fully plumbed end to end
+// (schema, struct, SaveState/getPet, the frontend prop chain) but nothing ever advanced
+// it past the schema default of 0. AdvanceEvolutionStage is the writer it never had.
+func TestAdvanceEvolutionStage_NeverRegresses(t *testing.T) {
+	dbPath := filepath.Join(t.TempDir(), "pet.db")
+	s, err := Open(dbPath)
+	if err != nil {
+		t.Fatalf("Open: %v", err)
+	}
+	defer s.Close()
+
+	state, err := s.GetState()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if state.Pet.EvolutionStage != 0 {
+		t.Fatalf("fresh pet evolution stage = %d, want 0", state.Pet.EvolutionStage)
+	}
+
+	if err := s.AdvanceEvolutionStage(2); err != nil {
+		t.Fatalf("AdvanceEvolutionStage: %v", err)
+	}
+	state, err = s.GetState()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if state.Pet.EvolutionStage != 2 {
+		t.Fatalf("evolution stage after advancing to 2 = %d, want 2", state.Pet.EvolutionStage)
+	}
+
+	// A later call with a LOWER stage (e.g. a stale computation racing behind a newer
+	// one) must not move the pet backwards -- §10, same rule stars and stats already
+	// hold to.
+	if err := s.AdvanceEvolutionStage(1); err != nil {
+		t.Fatalf("AdvanceEvolutionStage (lower): %v", err)
+	}
+	state, err = s.GetState()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if state.Pet.EvolutionStage != 2 {
+		t.Fatalf("evolution stage after a lower call = %d, want still 2 (must never regress)", state.Pet.EvolutionStage)
+	}
+}
+
 // Hunger is session-scoped (brief §10), and StartSession is what makes that true --
 // before it existed, hunger was cumulative for the life of the key (AUDIT.md P2).
 func TestStartSessionResetsHungerButNotProgress(t *testing.T) {

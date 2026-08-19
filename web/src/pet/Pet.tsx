@@ -84,10 +84,28 @@ export default function Pet({
           {/* --- Body ---------------------------------------------------------- */}
           <ellipse className="pet-body" cx={0} cy={6} rx={40} ry={38} />
           <ellipse className="pet-belly" cx={0} cy={16} rx={24} ry={21} />
-          {/* Evolution marker: a dashed ring at stage 1+, a small crown at 2+. Cheap
-              stand-ins until real stage art exists (§13 step 2 is unbuilt -- QUESTIONS.md). */}
-          <ellipse className="pet-stage-ring" cx={0} cy={6} rx={46} ry={44} />
-          <path className="pet-stage-crown" d="M -14 -34 L -9 -46 L 0 -38 L 9 -46 L 14 -34 Z" />
+
+          {/* --- Evolution stage art (§13 step 2, handoff/05-pet-evolution-art.md) ----
+              Additive across stages, same rule §10 uses for progress -- nothing already
+              earned is ever taken away, each stage only adds one more thing on top of the
+              last:
+                stage 1 ("Pip grew!"): body/belly/limbs recolor warm orange, a hat appears
+                  -- this is §13 step 2's own example ("level 4, orange, wearing a hat").
+                stage 2 ("Pip grew again!"): the hat gains a gold star badge.
+                stage 3 ("Pip is fully grown!"): a soft gold aura ring appears behind the
+                  body -- the one piece that used to be shown at every stage 1+ as a cheap
+                  stand-in, which made stage 2 and stage 3 render identically. Reserving it
+                  for stage 3 alone is what actually fixes that. */}
+          <ellipse className="pet-stage-aura" cx={0} cy={6} rx={46} ry={44} />
+
+          <g className="pet-hat">
+            <path className="pet-hat-brim" d="M -13 -30 Q 0 -35 13 -30 L 11 -27 Q 0 -31 -11 -27 Z" />
+            <path className="pet-hat-cone" d="M -11 -29 L 11 -29 L 0 -58 Z" />
+            <circle className="pet-hat-pompom" cx={0} cy={-58} r={5} />
+            <g className="pet-hat-badge">
+              <path d="M 16 -42 l 2.4 5.4 l 5.4 2.4 l -5.4 2.4 l -2.4 5.4 l -2.4 -5.4 l -5.4 -2.4 l 5.4 -2.4 Z" />
+            </g>
+          </g>
 
           {/* --- Eyes ----------------------------------------------------------
               Both eyes share a wrapper so the blink is ONE animation rather than two.
