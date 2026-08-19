@@ -139,6 +139,27 @@ export function fetchSuggestion(): Promise<Suggestion> {
   return fetch("/api/suggestion").then((r) => json<Suggestion>(r));
 }
 
+export interface ClassroomResult {
+  ok: boolean;
+  error?: string;
+}
+
+// Classroom Hub (handoff item). Both always return 200 with ok:false on any failure --
+// an unreachable hub, sync not configured, an unknown name -- rather than throwing, since
+// all of those are ordinary, expected outcomes here, not exceptional ones. See
+// internal/api/classroom.go's handleSyncToClassroom/handleRestoreFromClassroom.
+export function syncToClassroom(): Promise<ClassroomResult> {
+  return fetch("/api/sync-to-classroom", { method: "POST" }).then((r) => json<ClassroomResult>(r));
+}
+
+export function restoreFromClassroom(displayName: string): Promise<ClassroomResult> {
+  return fetch("/api/restore-from-classroom", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ display_name: displayName }),
+  }).then((r) => json<ClassroomResult>(r));
+}
+
 export function fetchState(): Promise<GameState> {
   return fetch("/api/state").then((r) => json<GameState>(r));
 }

@@ -346,6 +346,58 @@ func (s *Store) SaveState(state *State) error {
 	return nil
 }
 
+// RestoreFromSnapshot seeds this drive's save file from a classroom-hub snapshot -- the
+// lost-USB recovery path: a brand-new drive types the child's name once, and their
+// progress comes back from the one machine in the room that had a record of it (see
+// internal/classroom). Never-regress (§10), same as every other write in this file:
+// every field is merged as max(local, snapshot), not a blind overwrite, so restoring
+// onto a drive that already has some local progress (a partial recovery, or restoring
+// twice) can only ever raise it, never lose anything already there.
+//
+// Composed entirely from this file's own existing writers (RecordLevelAttempt,
+// RecordStars, AdvanceEvolutionStage, SaveState) rather than new SQL -- restoring is the
+// same data those already know how to persist correctly, just arriving from a different
+// source than a solved level or a spent treat.
+func (s *Store) RestoreFromSnapshot(displayName string, points, totalXP, highestLevel int, solvedLevels []string, starsByLevel map[string]int, evolutionStage int, ts int64) error {
+	state, err := s.GetState() // ensures the learner/pet rows exist on a truly fresh drive
+	if err != nil {
+		return fmt.Errorf("store: restoring from snapshot: %w", err)
+	}
+
+	// A name typed on THIS drive already (however that happened) wins -- restore fills
+	// in a blank, it doesn't relabel a drive that already has an identity.
+	if displayName != "" && state.Learner.DisplayName == "" {
+		state.Learner.DisplayName = displayName
+	}
+	if points > state.Learner.Points {
+		state.Learner.Points = points
+	}
+	if totalXP > state.Learner.TotalXP {
+		state.Learner.TotalXP = totalXP
+	}
+	if highestLevel > state.Learner.HighestLevel {
+		state.Learner.HighestLevel = highestLevel
+	}
+	if err := s.SaveState(state); err != nil {
+		return fmt.Errorf("store: restoring learner fields: %w", err)
+	}
+
+	for _, levelID := range solvedLevels {
+		if err := s.RecordLevelAttempt(levelID, true, ts); err != nil {
+			return fmt.Errorf("store: restoring solved level %s: %w", levelID, err)
+		}
+	}
+	for levelID, stars := range starsByLevel {
+		if err := s.RecordStars(levelID, stars); err != nil {
+			return fmt.Errorf("store: restoring stars for %s: %w", levelID, err)
+		}
+	}
+	if err := s.AdvanceEvolutionStage(evolutionStage); err != nil {
+		return fmt.Errorf("store: restoring evolution stage: %w", err)
+	}
+	return nil
+}
+
 func (s *Store) getLearner() (*Learner, error) {
 	row := s.db.QueryRow(`SELECT id, display_name, created_at, total_xp, points, highest_level FROM learner LIMIT 1`)
 	var l Learner
@@ -652,10 +704,19 @@ func (s *Store) GetAllLevelProgress() (map[string]LevelProgressRow, error) {
 
 // AdvanceEvolutionStage upserts the pet's evolution_stage, clamped to never regress
 // (§10) -- handoff/05-pet-evolution-art.md. Same single-row assumption as SaveState and
-// getPet (LIMIT 1 / no WHERE): the drive is the account, there is exactly one pet row,
-// created before any level can be solved (the frontend always fetches /api/state, which
-// lazily creates it, before a child can reach a level at all).
+// getPet (LIMIT 1 / no WHERE): the drive is the account, there is exactly one pet row.
+//
+// Ensures that row exists first (GetState lazily creates it) rather than trusting every
+// caller to have already called GetState -- a bare UPDATE with no WHERE clause silently
+// affects zero rows on a pet table that doesn't exist yet, which only ever worked
+// before because the frontend always fetches /api/state (creating the row) before a
+// level can be solved. Found by RestoreFromSnapshot's own test calling this directly,
+// without that ordering guarantee -- exactly the kind of caller this needed to be safe
+// against, not just the one that happened to exist first.
 func (s *Store) AdvanceEvolutionStage(stage int) error {
+	if _, err := s.GetState(); err != nil {
+		return fmt.Errorf("store: advancing evolution stage: %w", err)
+	}
 	_, err := s.db.Exec(`UPDATE pet SET evolution_stage = MAX(evolution_stage, ?)`, stage)
 	if err != nil {
 		return fmt.Errorf("store: advancing evolution stage: %w", err)

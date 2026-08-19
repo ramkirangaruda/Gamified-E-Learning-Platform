@@ -19,6 +19,7 @@ import (
 	"time"
 
 	"github.com/ramkirangaruda/Gamified-E-Learning-Platform/internal/api"
+	"github.com/ramkirangaruda/Gamified-E-Learning-Platform/internal/classroom"
 	"github.com/ramkirangaruda/Gamified-E-Learning-Platform/internal/paths"
 	"github.com/ramkirangaruda/Gamified-E-Learning-Platform/internal/store"
 	"github.com/ramkirangaruda/Gamified-E-Learning-Platform/internal/sysmem"
@@ -36,6 +37,9 @@ func main() {
 	hintTimeout := flag.Duration("hint-timeout", api.DefaultHintTimeout, "hard timeout on a single hint generation before falling back to the verified hint text verbatim")
 	lite := flag.Bool("lite", false, "disable all decorative animation (auto-enabled on the low RAM tier; the UI toggle can still override per session)")
 	openUI := flag.Bool("open", true, "open the game in the default browser once the server is listening; -open=false for a headless hub or when running as a service")
+	classroomHub := flag.Bool("classroom-hub", false, "run as the classroom's aggregator: the one machine in the room that keeps a roster of every student who has synced. Set on the Pi, never on a student's own laptop.")
+	classroomAddr := flag.String("classroom-addr", "", "address of the classroom hub to sync progress to, e.g. http://192.168.1.50:8080 (empty by default -- classroom sync is opt-in, ordinary offline play is unaffected)")
+	classroomSecret := flag.String("classroom-secret", "", "shared secret signing classroom sync/restore requests -- set the SAME value on the hub and every student machine in a room, or leave empty to accept any sync (fine for a low-stakes classroom LAN, not recommended if the network isn't trusted)")
 	flag.Parse()
 
 	// The DRIVE ROOT, not the binary's own directory: on a real key (brief §7) the
@@ -76,6 +80,25 @@ func main() {
 	srv, err := api.New(st, levelsDir, hintsDir, nil, *hintTimeout)
 	if err != nil {
 		log.Fatalf("starting api server: %v", err)
+	}
+
+	// Classroom Hub (handoff item). At most one of these two is ever set on a real
+	// machine -- the Pi runs -classroom-hub, a student's laptop runs -classroom-addr
+	// pointed at the Pi -- but nothing stops both being set on a dev machine for
+	// testing, and neither path assumes the other is absent.
+	if *classroomHub {
+		classroomDBPath := filepath.Join(dataDir, "classroom.db")
+		cstore, err := classroom.Open(classroomDBPath)
+		if err != nil {
+			log.Fatalf("opening classroom hub database: %v", err)
+		}
+		defer cstore.Close()
+		srv.SetClassroomHub(cstore, *classroomSecret)
+		log.Printf("classroom hub: on (roster at %s, dashboard at /classroom)", classroomDBPath)
+	}
+	if *classroomAddr != "" {
+		srv.SetClassroomAddr(*classroomAddr, *classroomSecret)
+		log.Printf("classroom sync: configured, hub at %s", *classroomAddr)
 	}
 
 	engine := startTutorEngine(driveRoot)
