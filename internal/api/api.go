@@ -75,6 +75,7 @@ func New(st *store.Store, levelsDir, hintsDir string, engine tutor.Engine, hintT
 	}
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /api/levels", s.handleGetLevels)
+	mux.HandleFunc("GET /api/suggestion", s.handleSuggestion)
 	mux.HandleFunc("POST /api/program", s.handleProgram)
 	mux.HandleFunc("POST /api/sandbox", s.handleSandbox)
 	mux.HandleFunc("POST /api/hint", s.handleHint)
@@ -230,6 +231,30 @@ func (s *Server) handleGetLevels(w http.ResponseWriter, r *http.Request) {
 		ordered = append(ordered, s.levels[id])
 	}
 	writeJSON(w, http.StatusOK, ordered)
+}
+
+type suggestionResponse struct {
+	LevelID  string `json:"level_id"`
+	Category string `json:"category"`
+	Message  string `json:"message"`
+}
+
+// handleSuggestion is "Pip suggests" (dynamic level suggestion, handoff item):
+// RecommendNextLevel over data the store already has, phrased with the same fixed,
+// human-written Pip-voice text the hint bank uses -- see suggestion.go for why this is
+// deliberately not model-generated.
+func (s *Server) handleSuggestion(w http.ResponseWriter, r *http.Request) {
+	ordered := make([]levels.Level, 0, len(s.levelOrder))
+	for _, id := range s.levelOrder {
+		ordered = append(ordered, s.levels[id])
+	}
+	progress, err := s.store.GetAllLevelProgress()
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	levelID, category := RecommendNextLevel(ordered, progress)
+	writeJSON(w, http.StatusOK, suggestionResponse{LevelID: levelID, Category: category, Message: suggestionText[category]})
 }
 
 // sandboxGrid is a fixed, open, wall-free grid for the "just fiddle around" surface --

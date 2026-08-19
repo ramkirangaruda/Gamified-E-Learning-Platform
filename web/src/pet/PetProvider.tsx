@@ -9,7 +9,7 @@ import {
   type Transient,
 } from "./mood";
 import { applyPurchase, type Treat } from "./treats";
-import { fetchLevels, fetchState, saveState, type GameState, type LevelDef } from "../api";
+import { fetchLevels, fetchState, fetchSuggestion, saveState, type GameState, type LevelDef, type Suggestion } from "../api";
 import type { ExecResult } from "../executorTypes";
 
 // The pet's single source of truth, mounted once by App above everything else.
@@ -29,6 +29,9 @@ interface PetContextValue {
   state: GameState | null;
   levels: LevelDef[];
   error: string | null;
+  /** "Pip suggests" -- null until the first fetch resolves. Refreshed after every
+   *  commitState, so a solve/loss immediately reflects in the next suggestion. */
+  suggestion: Suggestion | null;
 
   mood: PetMood;
   speech: string | null;
@@ -66,6 +69,7 @@ export function PetProvider({ children }: { children: ReactNode }) {
   const [state, setState] = useState<GameState | null>(null);
   const [levels, setLevels] = useState<LevelDef[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [suggestion, setSuggestion] = useState<Suggestion | null>(null);
   const [activeLevelId, setActiveLevelId] = useState<string | null>(null);
 
   const [transient, setTransient] = useState<Transient | null>(null);
@@ -80,6 +84,12 @@ export function PetProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     fetchLevels().then(setLevels).catch(() => setError("levels"));
     fetchState().then(setState).catch(() => setError("state"));
+    // Best-effort, deliberately no setError: a missing suggestion just means the callout
+    // doesn't render (HomePage already guards on suggestion !== null) -- it's a nice-to-
+    // have on top of the trail, not something that should surface as a page-level error.
+    fetchSuggestion()
+      .then(setSuggestion)
+      .catch(() => {});
   }, []);
 
   // --- Interaction tracking (feeds `sleepy`) -------------------------------
@@ -157,6 +167,11 @@ export function PetProvider({ children }: { children: ReactNode }) {
       // on every navigation -- the old code only saw new solves after a page reload.
       const saved = await saveState(next);
       setState(saved);
+      // A solve (or a fresh set of stars) can change what Pip should suggest next --
+      // best-effort, same as the initial fetch above.
+      fetchSuggestion()
+        .then(setSuggestion)
+        .catch(() => {});
     } catch {
       // A failed save must not take the UI down with it -- the child keeps playing and
       // the next successful write carries the same totals (they are absolute, not deltas).
@@ -213,6 +228,7 @@ export function PetProvider({ children }: { children: ReactNode }) {
     state,
     levels,
     error,
+    suggestion,
     mood,
     speech,
     feedTick,
