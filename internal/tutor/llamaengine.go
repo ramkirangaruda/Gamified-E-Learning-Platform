@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"os"
 	"os/exec"
@@ -67,6 +68,18 @@ func StartLlamaEngine(ctx context.Context, opts StartOptions) (*LlamaEngine, err
 	configureChildLifetime(cmd)
 	if err := cmd.Start(); err != nil {
 		return nil, fmt.Errorf("tutor: starting llama-server: %w", err)
+	}
+	// Post-Start half of the same guarantee (handoff/06-windows-orphan.md): a no-op on
+	// Linux (Pdeathsig above already did the whole job) and on Windows before this fix
+	// existed, it's a Job Object, which needs the process handle Start() just produced.
+	// Best-effort, like the rest of this function's error handling below -- a failure
+	// here narrows the safety net but must not stop the tutor from starting.
+	if err := attachChildLifetime(cmd); err != nil {
+		if opts.LogWriter != nil {
+			fmt.Fprintf(opts.LogWriter, "tutor: attachChildLifetime failed (continuing without it): %v\n", err)
+		} else {
+			log.Printf("tutor: attachChildLifetime failed (continuing without it): %v", err)
+		}
 	}
 
 	e := &LlamaEngine{
