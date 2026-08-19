@@ -562,6 +562,62 @@ func (s *Store) GetSolvedLevelIDs() ([]string, error) {
 	return ids, rows.Err()
 }
 
+// GetLevelAttemptsCount reads level_progress.attempts_count as it stands *before* the
+// current attempt is recorded -- handoff/04-stars.md's replacement for PlayPage's
+// client-side, page-reload-resetting firstTry tracking. Returns 0 for a level with no
+// row yet (never attempted), which is exactly "this would be the first try" -- the same
+// meaning RecordLevelAttempt's own INSERT..ON CONFLICT gives a fresh row.
+func (s *Store) GetLevelAttemptsCount(levelID string) (int, error) {
+	var n int
+	err := s.db.QueryRow(`SELECT attempts_count FROM level_progress WHERE level_id = ?`, levelID).Scan(&n)
+	if err == sql.ErrNoRows {
+		return 0, nil
+	}
+	if err != nil {
+		return 0, fmt.Errorf("store: reading attempts count: %w", err)
+	}
+	return n, nil
+}
+
+// RecordStars upserts a level's star count, clamped to never regress (§10: progress
+// never moves backwards) -- a worse re-solve must not erase a better earlier one. The
+// row is expected to already exist (RecordLevelAttempt creates it on the same request,
+// always called first), but the upsert form costs nothing and means this never depends
+// on call order to avoid crashing.
+func (s *Store) RecordStars(levelID string, stars int) error {
+	_, err := s.db.Exec(
+		`INSERT INTO level_progress (level_id, stars, attempts_count) VALUES (?, ?, 0)
+		 ON CONFLICT(level_id) DO UPDATE SET stars = MAX(level_progress.stars, excluded.stars)`,
+		levelID, stars,
+	)
+	if err != nil {
+		return fmt.Errorf("store: recording stars: %w", err)
+	}
+	s.refreshBackup()
+	return nil
+}
+
+// GetStarsByLevel returns every level_id that has a nonzero star count. Mirrors
+// GetSolvedLevelIDs's shape deliberately (derived fresh on every call, never nil) so
+// stateResponse can expose it the same way.
+func (s *Store) GetStarsByLevel() (map[string]int, error) {
+	rows, err := s.db.Query(`SELECT level_id, stars FROM level_progress WHERE stars > 0`)
+	if err != nil {
+		return nil, fmt.Errorf("store: reading stars: %w", err)
+	}
+	defer rows.Close()
+	stars := map[string]int{}
+	for rows.Next() {
+		var id string
+		var n int
+		if err := rows.Scan(&id, &n); err != nil {
+			return nil, fmt.Errorf("store: scanning stars: %w", err)
+		}
+		stars[id] = n
+	}
+	return stars, rows.Err()
+}
+
 // TierHintRecord is one tier's most recent generated hint -- see tier_hint_history's
 // comment for why this needs to persist on the drive rather than live in memory.
 type TierHintRecord struct {

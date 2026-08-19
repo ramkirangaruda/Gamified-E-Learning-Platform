@@ -212,29 +212,11 @@ func TestLevelsAreSolvable(t *testing.T) {
 	}
 }
 
-// countCards counts the *physical cards* a program needs, which is what parBlocks is
-// compared against (PlayPage passes workspace.getAllBlocks().length). Openers need their
-// closing card counted too -- "end repeat", "end if", "end while" are real cards on the
-// desk, not punctuation.
-func countCards(nodes []ast.Node) int {
-	total := 0
-	for _, n := range nodes {
-		switch v := n.(type) {
-		case ast.RepeatNode:
-			total += 2 + countCards(v.Body) // repeat N + end repeat
-		case ast.WhileNode:
-			total += 2 + countCards(v.Body) // while + end while
-		case ast.IfNode:
-			total += 2 + countCards(v.Then) // if + end if
-			if v.Else != nil {
-				total += 1 + countCards(v.Else) // else card
-			}
-		default:
-			total++
-		}
-	}
-	return total
-}
+// countCards used to be a private copy of this exact logic; it now lives in
+// packages/ast as ast.CountCards (handoff/04-stars.md) so internal/api's stars
+// calculation can use the identical, already-calibrated definition rather than a second
+// implementation that could silently drift from what parBlocks was authored against.
+var countCards = ast.CountCards
 
 // The build queue's explicit content rule: "for repeat levels the naive unlooped solution
 // must exceed par so the bonus rewards the intended learning". If par were set loosely, a
