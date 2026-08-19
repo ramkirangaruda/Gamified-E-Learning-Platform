@@ -61,12 +61,13 @@ func (c *countingEngine) Complete(_ context.Context, req tutor.CompletionRequest
 func (c *countingEngine) TierInfo() tutor.TierInfo { return c.tier }
 func (c *countingEngine) Close() error             { return nil }
 
-// content/hints/level-{1..25}.json define 122 total
+// content/hints/level-{1..25}.json define 126 total
 // (level_id, error_signature) entries -- see content/hints/README.md's coverage table.
 // This test intentionally hardcodes that count rather than computing it dynamically, so
 // a bank edit that silently changes the total is caught here as a test failure, not
-// missed entirely.
-const totalBankHintEntries = 122
+// missed entirely. Was 122 before wrong_order got a detector (handoff item, closed
+// 2026-08-19): +1 entry each for level-1..level-4, the "move" concept group.
+const totalBankHintEntries = 126
 
 func TestPrewarmHints_PopulatesCacheExactlyOncePerBankEntry(t *testing.T) {
 	dbPath := filepath.Join(t.TempDir(), "pet.db")

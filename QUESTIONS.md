@@ -20,9 +20,11 @@ Full reasoning in `DECISIONS.md`. Five things worth your judgement:
    per-level star count, so a solved level shows 1 star until that lands. Under-reporting
    is the safe direction under §10 — showing 1 now and 3 later is fine, 3 now and 1 later
    would be a visible regression.
-4. **`wrong_order` is the last §11 signature without a detector.** It needs a canonical
-   per-level solution to diff against, which nothing tracks. `never_picked_up` is now
-   covered, so this is the only remaining gap in the taxonomy.
+4. **`wrong_order` — resolved 2026-08-19.** `levels.Solutions` (promoted from a private
+   `levels_test.go` map) is the canonical per-level solution this needed. Scoped to
+   `move` levels specifically (right multiset of moves/turns, wrong order) rather than
+   every group — see `DECISIONS.md` for the full reasoning. `never_picked_up` was already
+   covered, so this was the last gap in the §11 taxonomy; it's now closed.
 5. **Five raster files remain in the bundle**, all belonging to vendored Blockly
    (`sprites.png` and friends); one is actually requested at runtime. Every illustration
    this project authors is inline SVG. Swapping a third-party library's internal sprite

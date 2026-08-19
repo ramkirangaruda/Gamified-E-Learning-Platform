@@ -1,5 +1,6 @@
 {
   "empty_program": "Empty workspace! This path zigzags, so you'll need to swap between moving and turning. Start with one 'move forward'.",
   "unbalanced_block": "Every block card you open needs its matching end card underneath it. Look down your stack for one that never got closed.",
-  "infinite_loop": "Your program went round and round and never stopped. A 'while not at goal' only ends when you actually reach the goal -- check yours can get there."
+  "infinite_loop": "Your program went round and round and never stopped. A 'while not at goal' only ends when you actually reach the goal -- check yours can get there.",
+  "wrong_order": "You've got every card this path needs! Check where each turn happens -- a zigzag changes direction at a very specific spot each time."
 }

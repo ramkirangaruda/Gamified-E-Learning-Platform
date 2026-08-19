@@ -15,7 +15,7 @@ const hintsDir = "../../content/hints"
 // one but not the other), this is where that gets caught. Expressed per concept group
 // rather than per level so adding a level to an existing group needs no edit here.
 var groupSignatures = map[string][]string{
-	"move":          {"empty_program", "unbalanced_block", "infinite_loop"},
+	"move":          {"empty_program", "unbalanced_block", "infinite_loop", "wrong_order"},
 	"repeat":        {"empty_program", "unbalanced_block", "infinite_loop", "hardcoded_no_loop", "off_by_one_repeat", "overshot_goal"},
 	"nested_repeat": {"empty_program", "unbalanced_block", "infinite_loop", "hardcoded_no_loop", "off_by_one_repeat", "overshot_goal"},
 	"if_wall_ahead": {"empty_program", "unbalanced_block", "infinite_loop", "no_condition_used", "missing_turn"},
@@ -77,7 +77,10 @@ func TestBankLookupFallsBackOnMiss(t *testing.T) {
 	if err != nil {
 		t.Fatalf("LoadBank: %v", err)
 	}
-	if got := bank.Lookup("wrong_order"); got != GenericFallback {
+	// off_by_one_repeat is a "repeat"-group signature; level-1 teaches "move" and (as of
+	// handoff item, closed 2026-08-19) now has a real wrong_order entry, so that
+	// signature no longer demonstrates an unhandled miss the way it used to.
+	if got := bank.Lookup("off_by_one_repeat"); got != GenericFallback {
 		t.Errorf("Lookup(unhandled signature) = %q, want GenericFallback", got)
 	}
 	if got := bank.Lookup(""); got != GenericFallback {
