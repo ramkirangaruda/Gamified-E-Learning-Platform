@@ -1,9 +1,20 @@
 import Icon from "../icons/Icon";
 import Pet from "./Pet";
+import { mascotStateToLegacyMood } from "../mascot/state";
 import SpeechBubble from "./SpeechBubble";
 import TreatShop from "./TreatShop";
 import { StarRow } from "../ui/Chunky";
 import { usePet } from "./PetProvider";
+
+// The Rive mascot (mascot/MascotCanvas.tsx) is built and working -- self-hosted offline,
+// full 14-state event wiring, world decorations -- but visually parked here pending a
+// design review: the raw Rive canvas render didn't read as polished/kiddish enough yet
+// (see DECISIONS.md). This file goes back to rendering the original hand-drawn Pet.tsx
+// SVG as the primary mascot, translating the wider MascotState vocabulary down to it via
+// mascotStateToLegacyMood so every event (hover, correct/incorrect, streaks, clicks, ...)
+// still visibly reacts through the old character. Nothing about the mascot/ event system,
+// Rive plumbing, or tests was removed -- swapping MascotCanvas back in here is a one-line
+// change once the visual is approved.
 
 // The fixed companion bar. Mounted once by App, above the page switch, so it never
 // unmounts -- see PetProvider for why that matters.
@@ -59,7 +70,7 @@ function HungerBar({ hunger }: { hunger: number }) {
 }
 
 export default function PetBar() {
-  const { state, mood, speech, feedTick, activeLevel, levels, shopOpen, setShopOpen } = usePet();
+  const { state, mood, speech, feedTick, activeLevel, levels, shopOpen, setShopOpen, mascotClicked } = usePet();
 
   const points = state?.learner.points ?? 0;
   const hunger = state?.pet.hunger ?? 50;
@@ -80,12 +91,25 @@ export default function PetBar() {
               "shop" label -- they click the animal. */}
           <button
             type="button"
-            onClick={() => setShopOpen(true)}
+            onClick={() => {
+              // A tap on Pip is both "open the shop" (existing behavior) and a direct
+              // mascot click -- the brief's "make it feel like a pet" click interaction.
+              // The two don't conflict: the reaction plays immediately, the shop opens
+              // over it a beat later.
+              mascotClicked();
+              setShopOpen(true);
+            }}
             aria-label={`${petName} — open treats`}
             title="Give Pip a treat"
             className="relative -my-2 shrink-0 rounded-chunk transition-transform duration-100 hover:-translate-y-0.5 active:translate-y-[2px]"
           >
-            <Pet mood={mood} name={petName} evolutionStage={state?.pet.evolution_stage ?? 0} size={84} feedTick={feedTick} />
+            <Pet
+              mood={mascotStateToLegacyMood(mood)}
+              name={petName}
+              evolutionStage={state?.pet.evolution_stage ?? 0}
+              size={84}
+              feedTick={feedTick}
+            />
             {hunger < 25 && (
               <span className="absolute -right-1 top-1 flex h-5 w-5 items-center justify-center rounded-full border-2 border-white bg-quest-coral font-display text-[11px] font-bold text-white">
                 !

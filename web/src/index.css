@@ -464,10 +464,14 @@
   animation: quest-pet-antenna-idle 11.3s steps(1, end) infinite;
 }
 
-/* BackgroundScene.tsx's cloud-drift and sun-pulse keyframes lived here. Both are gone,
-   along with their classes: they were four infinite animations running behind every
-   screen. The pet holds this project's only idle-animation exception (see the IDLE LIFE
-   block at the bottom of this file), and that exception is for the pet alone. */
+/* BackgroundScene.tsx's original cloud-drift and sun-pulse keyframes lived here and were
+   removed (see the git history / DECISIONS.md) when the pet became this project's only
+   idle-animation exception. The Hub Mode mascot brief explicitly asks for that back --
+   "the world should feel alive" -- so a deliberately small piece of it is reinstated below
+   (cloud drift only, not sun-pulse: weather reads as alive, a pulsing sun doesn't), under
+   the exact same budget discipline the pet already proved out: stepped, transform-only,
+   Calm-Mode-gated, and counted in idleAnimation.test.ts's ceiling rather than snuck in
+   unaccounted for. See MASCOT IDLE LIFE and WORLD AMBIENT MOTION below. */
 
 /* ---------------------------------------------------------------------------
  * Event-triggered polish. Every rule below animates ONLY transform/opacity, runs
@@ -518,4 +522,144 @@
 .quest-count-bump {
   animation: quest-count-bump 0.35s ease-out;
   display: inline-block;
+}
+
+/* ========================================================================
+ * MASCOT IDLE LIFE (mascot/MascotCanvas.tsx)
+ *
+ * The Rive canvas itself only knows one idle loop ("Idle", see mascot/riveMapping.ts's
+ * header comment on what the .riv file actually contains). Everything else that makes the
+ * mascot read as alive while nothing is happening -- a breathing bob, an occasional look
+ * around -- is layered here as HTML-wrapper CSS, exactly the same lever the pet already
+ * proved out (see the pet's own IDLE LIFE block above for the full measurement writeup):
+ * a canvas can't selectively animate "just its eyes", but the DIV wrapping it can bob and
+ * tilt as a whole for essentially zero cost, composited, never touching layout.
+ *
+ * Two elements, two separate transforms, deliberately not combined onto one: `.mascot-tilt`
+ * wraps the canvas specifically so the breathe (on `.mascot-shell`) and the look-around
+ * tilt (on `.mascot-tilt`) can each own `transform` without one silently overriding the
+ * other -- animating the same CSS property twice on the same element does not compose.
+ * ======================================================================== */
+@keyframes mascot-breathe {
+  0%, 100% { transform: scale(1, 1); }
+  50% { transform: scale(1.03, 0.975); }
+}
+@keyframes mascot-tilt {
+  /* Stepped and mostly still -- an occasional glance, not a constant sway. */
+  0%, 85% { transform: rotate(0deg); }
+  89% { transform: rotate(-4deg); }
+  93% { transform: rotate(3deg); }
+  100% { transform: rotate(0deg); }
+}
+.mascot-shell[data-mascot-state="idle"] {
+  animation: mascot-breathe 6.5s steps(24, end) infinite;
+  transform-origin: center bottom;
+  will-change: transform;
+}
+.mascot-shell[data-mascot-state="idle"] .mascot-tilt {
+  animation: mascot-tilt 13.7s steps(12, end) infinite;
+  transform-origin: center bottom;
+}
+/* Asleep is completely still, same reasoning as the pet's own sleepy state: the dominant
+   CPU cost is whether anything animates at all, not what. */
+
+/* ---------------------------------------------------------------------------
+ * Mascot reaction effects (mascot/riveMapping.ts's `cssEffect`). One-shot, layered on
+ * `.mascot-shell` outside the canvas -- the canvas plays its Rive trigger at the same
+ * time, this is the extra punch on top. Every one of these runs once (no infinite
+ * iteration) and is applied/removed by MascotCanvas.tsx in response to a state change,
+ * never while idle -- same rule as the pet's own event-triggered polish above.
+ * ------------------------------------------------------------------------- */
+@keyframes mascot-fx-glow-soft {
+  0% { filter: drop-shadow(0 0 0 transparent); }
+  40% { filter: drop-shadow(0 0 10px var(--mascot-glow, #ffd166)); }
+  100% { filter: drop-shadow(0 0 0 transparent); }
+}
+@keyframes mascot-fx-bounce-once {
+  0% { transform: translateY(0); }
+  35% { transform: translateY(-10px); }
+  60% { transform: translateY(0); }
+  80% { transform: translateY(-3px); }
+  100% { transform: translateY(0); }
+}
+@keyframes mascot-fx-sparkle-burst {
+  0% { filter: drop-shadow(0 0 0 transparent) brightness(1); transform: scale(1); }
+  30% { filter: drop-shadow(0 0 14px #ffd166) brightness(1.15); transform: scale(1.08); }
+  100% { filter: drop-shadow(0 0 0 transparent) brightness(1); transform: scale(1); }
+}
+@keyframes mascot-fx-nod {
+  0%, 100% { transform: rotate(0deg); }
+  30% { transform: rotate(8deg); }
+  60% { transform: rotate(-5deg); }
+}
+@keyframes mascot-fx-shrink-slight {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(0.94); }
+}
+.mascot-fx-glow-soft { animation: mascot-fx-glow-soft 0.9s ease-out; }
+.mascot-fx-bounce-once { animation: mascot-fx-bounce-once 0.9s ease-out; }
+.mascot-fx-sparkle-burst { animation: mascot-fx-sparkle-burst 0.9s ease-out; }
+.mascot-fx-nod { animation: mascot-fx-nod 0.9s ease-out; }
+.mascot-fx-shrink-slight { animation: mascot-fx-shrink-slight 0.9s ease-out; }
+
+/* ========================================================================
+ * WORLD AMBIENT MOTION (BackgroundScene.tsx, trail/Trail.tsx)
+ *
+ * A small, named set of ambient-scenery loops: cloud drift, the trail's "pointing" pulse,
+ * and (added for the playground redesign) a turning sun-ray ring, a swaying kite, a
+ * spinning pinwheel, and bobbing balloons. None of these have a mood/state data
+ * attribute to gate on in CSS -- they're either always-on decoration or, for
+ * quest-node-pointed, toggled by React with a plain class -- so every one of them is
+ * named explicitly in idleAnimation.test.ts's allowlist rather than matched by a
+ * data-mood/data-mascot-state pattern. All carry `quest-decorative` (on themselves or
+ * their positioning parent), so tokens.css's `[data-lite="on"] .quest-decorative`
+ * kill-switch turns every one of them off in Calm Mode for free.
+ *
+ * Structural rule for every entry below, learned the hard way once already this session
+ * (see BackgroundScene.tsx's own comment): the element carrying the CSS `animation` must
+ * NEVER also carry an SVG `transform="translate(...)"` attribute -- CSS transform
+ * replaces it outright rather than composing with it. Positioning always lives on an
+ * outer, un-animated wrapper `<g>`.
+ * ======================================================================== */
+@keyframes quest-cloud-drift {
+  0%, 100% { transform: translateX(0); }
+  50% { transform: translateX(14px); }
+}
+.quest-cloud {
+  animation: quest-cloud-drift 22s steps(18, end) infinite;
+}
+@keyframes quest-node-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.55; }
+}
+.quest-node-pointed {
+  animation: quest-node-pulse 2.2s steps(10, end) infinite;
+}
+@keyframes quest-sun-rays-spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+.quest-sun-rays {
+  animation: quest-sun-rays-spin 70s steps(72, end) infinite;
+}
+@keyframes quest-kite-sway {
+  0%, 100% { transform: rotate(-7deg); }
+  50% { transform: rotate(7deg); }
+}
+.quest-kite-inner {
+  animation: quest-kite-sway 4.6s steps(12, end) infinite;
+}
+@keyframes quest-pinwheel-spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+.quest-pinwheel-blades {
+  animation: quest-pinwheel-spin 2.6s steps(16, end) infinite;
+}
+@keyframes quest-balloon-bob {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-12px); }
+}
+.quest-balloon-inner {
+  animation: quest-balloon-bob 5s steps(16, end) infinite;
 }
