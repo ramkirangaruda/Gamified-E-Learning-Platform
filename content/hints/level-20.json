@@ -1,0 +1,6 @@
+{
+  "empty_program": "Nothing yet! This road is longer than the last one -- but with 'while not at goal' the length doesn't matter.",
+  "unbalanced_block": "Every 'while not at goal' needs an 'end while' below it, wrapping the steps you want to keep doing. Check yours has one.",
+  "infinite_loop": "Your program went round and round and never stopped. A 'while not at goal' only ends when you actually reach the goal -- check yours can get there.",
+  "hardcoded_no_loop": "Notice the road got longer but the while program wouldn't change at all. That's the whole point of while."
+}

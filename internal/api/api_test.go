@@ -61,12 +61,12 @@ func (c *countingEngine) Complete(_ context.Context, req tutor.CompletionRequest
 func (c *countingEngine) TierInfo() tutor.TierInfo { return c.tier }
 func (c *countingEngine) Close() error             { return nil }
 
-// content/hints/level-{1..8}.json currently define 3+6+5+3+6+5+4+4 = 36 total
+// content/hints/level-{1..25}.json define 122 total
 // (level_id, error_signature) entries -- see content/hints/README.md's coverage table.
 // This test intentionally hardcodes that count rather than computing it dynamically, so
 // a bank edit that silently changes the total is caught here as a test failure, not
 // missed entirely.
-const totalBankHintEntries = 36
+const totalBankHintEntries = 122
 
 func TestPrewarmHints_PopulatesCacheExactlyOncePerBankEntry(t *testing.T) {
 	dbPath := filepath.Join(t.TempDir(), "pet.db")
@@ -155,9 +155,15 @@ func TestIntegration_HintTimesOutToVerifiedText(t *testing.T) {
 	if err := json.NewDecoder(resp.Body).Decode(&got); err != nil {
 		t.Fatalf("decoding response: %v", err)
 	}
-	const verifiedText = "Your workspace is empty! Drag a 'move forward' card from the Movement toolbox onto the canvas to get started."
-	if got.Hint != verifiedText {
-		t.Fatalf("hint = %q, want verified text verbatim after timeout", got.Hint)
+	// Read the expected text from the bank rather than duplicating the prose here:
+	// the property under test is "the verified text was served verbatim", not the
+	// wording, and a copy-edit to a hint should not break a timeout test.
+	bank, err := hints.LoadBank("../../content/hints", "level-1")
+	if err != nil {
+		t.Fatalf("LoadBank: %v", err)
+	}
+	if want := bank.Lookup("empty_program"); got.Hint != want {
+		t.Fatalf("hint = %q, want verified text verbatim after timeout (%q)", got.Hint, want)
 	}
 	if elapsed > time.Second {
 		t.Fatalf("request took %s, want it to respect the 50ms hint timeout rather than wait out the 2s slow engine", elapsed)
@@ -399,7 +405,7 @@ func TestIntegration_HintFallsBackToVerifiedTextAfterTwoRejections(t *testing.T)
 	}
 	ts := newTestServerWithEngine(t, engine)
 
-	body := `{"level_id":"level-2","error_signature":"unbalanced_block"}`
+	body := `{"level_id":"level-8","error_signature":"unbalanced_block"}`
 	resp, err := http.Post(ts.URL+"/api/hint", "application/json", strings.NewReader(body))
 	if err != nil {
 		t.Fatalf("POST /api/hint: %v", err)
@@ -415,9 +421,12 @@ func TestIntegration_HintFallsBackToVerifiedTextAfterTwoRejections(t *testing.T)
 	if engine.calls != 2 {
 		t.Fatalf("engine.calls = %d, want 2 (both rejected, no third attempt)", engine.calls)
 	}
-	const verifiedText = "It looks like you opened a repeat block but forgot the 'end repeat' card that closes it. Every repeat needs its own end repeat right after the cards you want repeated."
-	if got.Hint != verifiedText {
-		t.Fatalf("hint = %q, want verified bank text verbatim %q", got.Hint, verifiedText)
+	bank, err := hints.LoadBank("../../content/hints", "level-8")
+	if err != nil {
+		t.Fatalf("LoadBank: %v", err)
+	}
+	if want := bank.Lookup("unbalanced_block"); got.Hint != want {
+		t.Fatalf("hint = %q, want verified bank text verbatim %q", got.Hint, want)
 	}
 }
 

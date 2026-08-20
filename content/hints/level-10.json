@@ -1,0 +1,8 @@
+{
+  "empty_program": "Empty! Here's the new idea: a repeat card can go *inside* another repeat card. Try it on this straight road.",
+  "unbalanced_block": "Every 'repeat' card needs an 'end repeat' card below it, with the steps you want repeated in between. Find the repeat that's still waiting for its partner.",
+  "infinite_loop": "Your program went round and round and never stopped. A 'while not at goal' only ends when you actually reach the goal -- check yours can get there.",
+  "hardcoded_no_loop": "Every step here is the same. Start with one repeat -- then see if a second repeat around it saves even more cards.",
+  "off_by_one_repeat": "One step out! When repeats sit inside each other, the steps multiply: the inside count times the outside count.",
+  "overshot_goal": "Too far! Remember nested repeats multiply -- inside count times outside count. Work out what yours comes to."
+}

@@ -1,0 +1,6 @@
+{
+  "empty_program": "Empty! New idea: 'while not at goal' keeps going until you arrive, so you don't have to count the squares at all.",
+  "unbalanced_block": "Every 'while not at goal' needs an 'end while' below it, wrapping the steps you want to keep doing. Check yours has one.",
+  "infinite_loop": "Your program went round and round and never stopped. A 'while not at goal' only ends when you actually reach the goal -- check yours can get there.",
+  "hardcoded_no_loop": "That works, but you had to count every square. 'While not at goal' keeps stepping until you get there -- no counting."
+}

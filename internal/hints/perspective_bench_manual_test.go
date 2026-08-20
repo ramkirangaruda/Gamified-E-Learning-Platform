@@ -11,6 +11,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ramkirangaruda/Gamified-E-Learning-Platform/internal/levels"
 	"github.com/ramkirangaruda/Gamified-E-Learning-Platform/internal/tutor"
 )
 
@@ -53,7 +54,14 @@ func TestManual_PerspectiveDriftRejectionRate(t *testing.T) {
 	defer e.Close()
 
 	hintTexts := map[string]string{"generic_fallback": GenericFallback}
-	for _, levelID := range []string{"level-1", "level-2", "level-3", "level-4", "level-5", "level-6", "level-7", "level-8"} {
+	// Every level in the curriculum, discovered rather than hardcoded, so the benchmark
+	// automatically covers new levels instead of silently testing a stale subset.
+	lvls, lerr := levels.LoadAll(filepath.Join("..", "..", "content", "levels"))
+	if lerr != nil {
+		t.Fatalf("LoadAll: %v", lerr)
+	}
+	for _, lvl := range lvls {
+		levelID := lvl.ID
 		bank, err := LoadBank(filepath.Join("..", "..", "content", "hints"), levelID)
 		if err != nil {
 			t.Fatalf("LoadBank(%s): %v", levelID, err)

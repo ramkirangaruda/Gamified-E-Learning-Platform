@@ -1,7 +1,5 @@
 {
-  "empty_program": "Your workspace is empty! Start by dragging a few 'move forward' cards onto the canvas.",
-  "unbalanced_block": "Looks like you opened an 'if wall ahead' block but forgot the 'end if' card. Every if needs its own end if right after the cards inside it - and if you used 'else', that goes in between the two.",
-  "infinite_loop": "Your program is stuck looping! If you used a while block, make sure its condition can eventually become true.",
-  "no_condition_used": "This level has a turn in the road - your program needs to sense the wall and react to it. Try adding an 'if wall ahead' block to check before you keep going straight.",
-  "missing_turn": "You're checking for the wall - nice! But once you find it, you still need to actually turn. Add a 'turn right' (or 'turn left') card inside your if block."
+  "empty_program": "Empty workspace! This path zigzags, so you'll need to swap between moving and turning. Start with one 'move forward'.",
+  "unbalanced_block": "Every block card you open needs its matching end card underneath it. Look down your stack for one that never got closed.",
+  "infinite_loop": "Your program went round and round and never stopped. A 'while not at goal' only ends when you actually reach the goal -- check yours can get there."
 }

@@ -1,4 +1,4 @@
-// Section mascots for the dashboard (web/src/Dashboard.tsx) -- all-SVG, no external
+// Concept-group mascots (see trail/concepts.ts) -- all-SVG, no external
 // assets, same discipline as pet/Pet.tsx. One friendly animal per learning section so a
 // child can navigate by character the way the sesamestreet.org/games reference does
 // (filter/browse by character), not just by a topic label. Gradient fills (defined once,

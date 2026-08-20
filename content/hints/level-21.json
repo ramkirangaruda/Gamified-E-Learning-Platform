@@ -1,0 +1,6 @@
+{
+  "empty_program": "Empty workspace! This road bends. Try a while loop, with a wall check inside it to handle the corner.",
+  "unbalanced_block": "Every 'while not at goal' needs an 'end while' below it, wrapping the steps you want to keep doing. Check yours has one.",
+  "infinite_loop": "Your program looped forever. That usually means it got stuck against a wall: if you never turn, you'll push at the same wall for ever.",
+  "hardcoded_no_loop": "You can let the program work this out instead of counting: keep going while you're not at the goal."
+}

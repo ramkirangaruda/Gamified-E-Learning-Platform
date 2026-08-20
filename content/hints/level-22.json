@@ -1,0 +1,6 @@
+{
+  "empty_program": "Nothing here yet! Long road, several corners -- and still just one small while loop with a wall check inside.",
+  "unbalanced_block": "Every 'while not at goal' needs an 'end while' below it, wrapping the steps you want to keep doing. Check yours has one.",
+  "infinite_loop": "Your program looped forever. That usually means it got stuck against a wall: if you never turn, you'll push at the same wall for ever.",
+  "hardcoded_no_loop": "That's a lot of counting for a road this long. A while loop keeps going until you arrive, however far that is."
+}

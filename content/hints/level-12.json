@@ -1,0 +1,8 @@
+{
+  "empty_program": "Empty workspace! Find the small pattern that repeats along this staircase, then wrap a repeat around a repeat.",
+  "unbalanced_block": "Every 'repeat' card needs an 'end repeat' card below it, with the steps you want repeated in between. Find the repeat that's still waiting for its partner.",
+  "infinite_loop": "Your program went round and round and never stopped. A 'while not at goal' only ends when you actually reach the goal -- check yours can get there.",
+  "hardcoded_no_loop": "That's a lot of cards! There's a short pattern here that repeats -- put it in a repeat, then repeat that.",
+  "off_by_one_repeat": "One step out! Count how many times the little pattern happens, then split that between your two repeats.",
+  "overshot_goal": "Too far -- your two repeat numbers multiply to more patterns than the staircase actually has."
+}

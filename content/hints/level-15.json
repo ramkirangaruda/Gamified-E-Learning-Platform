@@ -1,0 +1,7 @@
+{
+  "empty_program": "Nothing yet! Same idea as before -- check for a wall, then step -- just on a longer road.",
+  "unbalanced_block": "Every 'if wall ahead' needs an 'end if' below it. If you used 'else' too, it goes between them: if, then what to do, else, then what to do, end if.",
+  "infinite_loop": "Your program looped forever. That usually means it got stuck against a wall: if you never turn, you'll push at the same wall for ever.",
+  "no_condition_used": "Rather than counting squares to the corner, let the program find it: 'if wall ahead' asks the question for you.",
+  "missing_turn": "You're asking the right question! Now put a turn card inside the if so something happens when the answer is yes."
+}

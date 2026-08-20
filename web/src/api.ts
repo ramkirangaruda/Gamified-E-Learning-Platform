@@ -4,8 +4,14 @@ import type { ExecResult, Grid, Pos } from "./executorTypes";
 export interface LevelDef {
   id: string;
   name: string;
+  /** Concept group key: move | repeat | nested_repeat | if_wall_ahead | while | composition */
   teaches: string;
+  /** easy | medium | hard. `hard` below is derived from this server-side. */
+  difficulty: string;
+  /** Kept because pet/reward.ts's §10 hard-points bonus reads it. */
   hard: boolean;
+  /** One-line "what this level teaches", shown on the trail and the grid. */
+  concept: string;
   parBlocks: number;
   startPos: Pos;
   startDir: "up" | "right" | "down" | "left";

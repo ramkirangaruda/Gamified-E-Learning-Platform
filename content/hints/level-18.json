@@ -1,0 +1,7 @@
+{
+  "empty_program": "Empty! This is a big loop of a road, but it's still the same small rule: look, then step.",
+  "unbalanced_block": "Every 'if wall ahead' needs an 'end if' below it. If you used 'else' too, it goes between them: if, then what to do, else, then what to do, end if.",
+  "infinite_loop": "Your program looped forever. That usually means it got stuck against a wall: if you never turn, you'll push at the same wall for ever.",
+  "no_condition_used": "Don't try to remember every corner on this one. One 'if wall ahead' rule handles all of them.",
+  "missing_turn": "The check is there, but nothing happens when it's true. Add a turn card inside the if."
+}

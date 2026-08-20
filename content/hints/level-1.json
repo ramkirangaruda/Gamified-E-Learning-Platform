@@ -1,5 +1,5 @@
 {
-  "empty_program": "Your workspace is empty! Drag a 'move forward' card from the Movement toolbox onto the canvas to get started.",
-  "unbalanced_block": "Looks like you started a block (like repeat or if) but never added its matching end card. Every open card needs a closing partner - like end repeat or end if - right after everything you want inside it.",
-  "infinite_loop": "Your program got stuck looping forever! If you used a while block, check that its condition can actually become true - like reaching the goal - so the loop knows when to stop."
+  "empty_program": "Your workspace is empty! Drag a 'move forward' card in to take your first step, then add more until you reach the flag.",
+  "unbalanced_block": "Every block card you open needs its matching end card underneath it. Look down your stack for one that never got closed.",
+  "infinite_loop": "Your program went round and round and never stopped. A 'while not at goal' only ends when you actually reach the goal -- check yours can get there."
 }
