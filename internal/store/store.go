@@ -370,13 +370,73 @@ func (s *Store) getPet() (*Pet, error) {
 	return &p, nil
 }
 
+// DefaultHunger is brief §7's schema default for the column: what a pet row is created
+// with on a brand-new drive.
+const DefaultHunger = 50
+
+// SessionStartHunger is what StartSession resets hunger to, and it is deliberately below
+// the UI's "hungry" threshold (web/src/pet/mood.ts, 25).
+//
+// This is the number that makes the whole hunger mechanic mean anything, so the reasoning
+// is worth stating plainly. §10 forbids decay: hunger only ever RISES during play, from
+// attempts and from treats. If a session also *started* full (or at the neutral 50), then
+// hunger could never fall below the threshold on any path — the pet could never look
+// hungry, feeding could never fix anything, and the treat shop would be decoration. That
+// was the actual behaviour before this constant existed, and it was only visible by
+// playing it, not by reading it.
+//
+// Starting each session peckish gives the loop somewhere to go: the first few attempts
+// visibly fill the bar (which is exactly §10's "attempts feed the pet, whether or not
+// they were right"), and a treat bought with points earned earlier fills it immediately.
+// The one moment hunger goes down is the session boundary the brief itself defines. It is
+// still not decay: nothing drains while the app is running, nothing drains between runs,
+// and no timer anywhere depletes it.
+//
+// The specific value was set by playing it, not by picking a round number. At 20 a single
+// easy solve (+5: 3 for the attempt, 2 for solving) lands exactly on the threshold and the
+// pet stops looking hungry after one level, which makes both the mood and the shop
+// vestigial. At 10 it takes roughly five attempts to fill naturally, or one 5-point berry
+// straight away -- so the child has a real choice to make with the points they earned last
+// session, which is the entire point of having a shop.
+const SessionStartHunger = 10
+
+// StartSession stamps a new session on the pet row and resets hunger. Called once by
+// cmd/server at boot, which is what "session" means here: one run of the launcher.
+//
+// This closes the §10 divergence AUDIT.md recorded as P2 ("hunger is cumulative for the
+// life of the key; brief §10 says session-scoped") and makes session_started_at, which
+// was written once at creation and then never read or updated, actually mean something.
+//
+// It is explicitly NOT a regression of the pet: evolution stage, points, total_xp, solved
+// levels and stars are all untouched. Hunger is a per-session meter, not progress.
+func (s *Store) StartSession() error {
+	// The pet row is created lazily by GetState, not by Open, so on a brand-new drive
+	// this runs before there is anything to update -- the UPDATE below matches zero rows
+	// and the very first session silently starts at the schema default (50) instead of
+	// SessionStartHunger. Found by watching a fresh drive come up in the wrong mood.
+	pet, err := s.getPet()
+	if err != nil {
+		return err
+	}
+	if pet == nil {
+		if _, err := s.createDefaultPet(); err != nil {
+			return err
+		}
+	}
+
+	if _, err := s.db.Exec(`UPDATE pet SET hunger=?, session_started_at=?`, SessionStartHunger, time.Now().Unix()); err != nil {
+		return fmt.Errorf("store: starting session: %w", err)
+	}
+	return nil
+}
+
 func (s *Store) createDefaultPet() (*Pet, error) {
 	p := &Pet{
 		ID:               newID(),
 		Species:          "pip",
 		Name:             "Pip",
 		EvolutionStage:   0,
-		Hunger:           50,
+		Hunger:           DefaultHunger,
 		SessionStartedAt: time.Now().Unix(),
 	}
 	_, err := s.db.Exec(

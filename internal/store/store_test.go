@@ -247,3 +247,130 @@ func TestLevelProgressTracksSolvedIndependentOfOrder(t *testing.T) {
 		t.Fatalf("solved = %v, want exactly 2 entries (level-1, level-7)", solved)
 	}
 }
+
+// Hunger is session-scoped (brief §10), and StartSession is what makes that true --
+// before it existed, hunger was cumulative for the life of the key (AUDIT.md P2).
+func TestStartSessionResetsHungerButNotProgress(t *testing.T) {
+	dbPath := filepath.Join(t.TempDir(), "pet.db")
+	s, err := Open(dbPath)
+	if err != nil {
+		t.Fatalf("Open: %v", err)
+	}
+	defer s.Close()
+
+	state, err := s.GetState()
+	if err != nil {
+		t.Fatalf("GetState: %v", err)
+	}
+
+	// A good long play session: fed up, evolved, plenty of points banked.
+	state.Pet.Hunger = 97
+	state.Pet.EvolutionStage = 2
+	state.Learner.Points = 140
+	state.Learner.TotalXP = 260
+	state.Learner.HighestLevel = 11
+	if err := s.SaveState(state); err != nil {
+		t.Fatalf("SaveState: %v", err)
+	}
+
+	before, err := s.GetState()
+	if err != nil {
+		t.Fatalf("GetState: %v", err)
+	}
+
+	if err := s.StartSession(); err != nil {
+		t.Fatalf("StartSession: %v", err)
+	}
+
+	after, err := s.GetState()
+	if err != nil {
+		t.Fatalf("GetState: %v", err)
+	}
+
+	if after.Pet.Hunger != SessionStartHunger {
+		t.Errorf("hunger after new session = %d, want %d", after.Pet.Hunger, SessionStartHunger)
+	}
+	// The session must start below the UI's hungry threshold (web/src/pet/mood.ts uses
+	// 25). Above it, hunger could never fall below the line on any path -- §10 forbids
+	// decay -- so the pet could never look hungry and feeding could never fix anything.
+	if SessionStartHunger >= 25 {
+		t.Errorf("SessionStartHunger = %d; must be below the UI hungry threshold (25) or the mood is unreachable", SessionStartHunger)
+	}
+	// Everything §10 calls progress has to survive untouched -- a new session must reset
+	// the meter, never the child's standing.
+	if after.Pet.EvolutionStage != 2 {
+		t.Errorf("evolution stage = %d, want 2 (the pet never regresses)", after.Pet.EvolutionStage)
+	}
+	if after.Learner.Points != 140 {
+		t.Errorf("points = %d, want 140", after.Learner.Points)
+	}
+	if after.Learner.TotalXP != 260 {
+		t.Errorf("total_xp = %d, want 260", after.Learner.TotalXP)
+	}
+	if after.Learner.HighestLevel != 11 {
+		t.Errorf("highest_level = %d, want 11", after.Learner.HighestLevel)
+	}
+	if after.Pet.SessionStartedAt < before.Pet.SessionStartedAt {
+		t.Errorf("session_started_at went backwards: %d -> %d", before.Pet.SessionStartedAt, after.Pet.SessionStartedAt)
+	}
+}
+
+// Nothing depletes on its own (brief §10: no decay, no timers that drain anything).
+// Opening the store repeatedly within one session must not nibble at hunger.
+func TestHungerDoesNotDecayWithoutAFeedOrAttempt(t *testing.T) {
+	dbPath := filepath.Join(t.TempDir(), "pet.db")
+	s, err := Open(dbPath)
+	if err != nil {
+		t.Fatalf("Open: %v", err)
+	}
+	defer s.Close()
+
+	state, err := s.GetState()
+	if err != nil {
+		t.Fatalf("GetState: %v", err)
+	}
+	state.Pet.Hunger = 88
+	if err := s.SaveState(state); err != nil {
+		t.Fatalf("SaveState: %v", err)
+	}
+
+	for i := 0; i < 5; i++ {
+		got, err := s.GetState()
+		if err != nil {
+			t.Fatalf("GetState: %v", err)
+		}
+		if got.Pet.Hunger != 88 {
+			t.Fatalf("read %d: hunger = %d, want 88 (nothing may decay)", i, got.Pet.Hunger)
+		}
+	}
+}
+
+// On a brand-new drive the pet row does not exist until GetState creates it lazily, so
+// StartSession has to make the row before it can reset it. Without that, the very first
+// session on a new key started at the schema default instead of SessionStartHunger --
+// which meant the pet was never hungry, the hungry mood never appeared, and the treat
+// shop had nothing to fix on the one run where a new child is most likely to explore it.
+func TestStartSessionOnAFreshDriveStillSetsSessionHunger(t *testing.T) {
+	dbPath := filepath.Join(t.TempDir(), "pet.db")
+	s, err := Open(dbPath)
+	if err != nil {
+		t.Fatalf("Open: %v", err)
+	}
+	defer s.Close()
+
+	// Deliberately no GetState() first -- this is boot order on a new drive.
+	if err := s.StartSession(); err != nil {
+		t.Fatalf("StartSession: %v", err)
+	}
+
+	state, err := s.GetState()
+	if err != nil {
+		t.Fatalf("GetState: %v", err)
+	}
+	if state.Pet.Hunger != SessionStartHunger {
+		t.Errorf("fresh-drive hunger = %d, want %d", state.Pet.Hunger, SessionStartHunger)
+	}
+	if state.Pet.SessionStartedAt == 0 {
+		t.Error("session_started_at was never stamped")
+	}
+}
