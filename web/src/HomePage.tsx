@@ -40,7 +40,7 @@ export default function HomePage({ onSelectLevel, onOpenSandbox, lite, onToggleL
 
   return (
     <div className="relative min-h-[calc(100vh-var(--pet-bar-h))] w-full overflow-x-hidden">
-      <BackgroundScene />
+      <BackgroundScene solvedCount={solvedCount} />
 
       <header className="relative mx-auto mb-6 max-w-5xl px-6 pt-6">
         <div className="rounded-chunk-lg border-[var(--outline-chunk)] border-white bg-white/75 px-6 py-4 shadow-chunk backdrop-blur-sm">

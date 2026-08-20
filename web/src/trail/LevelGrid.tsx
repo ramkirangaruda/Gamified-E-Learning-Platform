@@ -1,6 +1,8 @@
 import { useState } from "react";
 import AnimalMascot from "../animals/AnimalMascot";
 import Icon from "../icons/Icon";
+import { useMascotEvents } from "../mascot/events";
+import { findCurrentLevelIndex } from "../mascot/progress";
 import { ChunkyButton, StarRow } from "../ui/Chunky";
 import { CONCEPT_GROUPS, groupFor } from "./concepts";
 import type { LevelDef } from "../api";
@@ -26,9 +28,9 @@ const DIFFICULTY_LABEL: Record<string, string> = {
 
 export default function LevelGrid({ levels, solvedIds, starsByLevel, onSelectLevel }: LevelGridProps) {
   const [filter, setFilter] = useState<string | null>(null);
+  const { levelHovered, levelSelected, levelLocked } = useMascotEvents();
   const solvedSet = new Set(solvedIds);
-  const currentIndex = levels.findIndex((l) => !solvedSet.has(l.id));
-  const current = currentIndex === -1 ? levels.length - 1 : currentIndex;
+  const current = findCurrentLevelIndex(levels, solvedIds);
 
   const shown = filter ? levels.filter((l) => l.teaches === filter) : levels;
 
@@ -59,9 +61,18 @@ export default function LevelGrid({ levels, solvedIds, starsByLevel, onSelectLev
             <button
               key={level.id}
               type="button"
-              disabled={locked}
+              // aria-disabled, not the native `disabled` attribute -- see Trail.tsx's
+              // matching comment: a disabled button fires no mouse events at all, which
+              // would make the locked-hover reaction below impossible to trigger.
+              aria-disabled={locked}
               aria-label={locked ? `${level.name}, not yet` : level.name}
-              onClick={() => !locked && onSelectLevel(level.id)}
+              onMouseEnter={() => (locked ? levelLocked(level) : levelHovered(level))}
+              onFocus={() => (locked ? levelLocked(level) : levelHovered(level))}
+              onClick={() => {
+                if (locked) return;
+                levelSelected(level);
+                onSelectLevel(level.id);
+              }}
               className={`flex min-h-tap-lg flex-col gap-1 rounded-chunk-lg border-[var(--outline-chunk)] p-4 text-left shadow-chunk transition-transform
                 ${
                   locked
