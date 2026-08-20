@@ -4,23 +4,25 @@ import { characterById } from "./characters";
 import { usePet } from "./PetProvider";
 import { ChunkyButton } from "../ui/Chunky";
 
-// A one-time welcome overlay, shown the first time the dashboard ever opens on this
-// drive -- not every visit, which would just be an obstacle a child clicks past without
-// reading. Gated by localStorage (survives a reload, unlike lite.ts's sessionStorage
-// override, since "have you ever seen this" is a different question than "what did you
-// pick this session") rather than anything server-side: this is pure onboarding copy,
-// not game state, so it doesn't belong in pet.db.
+// A welcome overlay shown every time the app is freshly opened -- explicit product
+// direction (a child re-launching the game later should see it again, not just once
+// ever). Gated by sessionStorage, not localStorage: sessionStorage clears when the
+// tab/browser closes, which is what "opened the app" actually means for a
+// locally-launched binary, while still NOT re-showing on every internal navigation back
+// to the home screen within the same sitting (HomePage remounts on every visit; the
+// flag survives that because it lives in the browser session, not this component's own
+// state).
 //
 // No backdrop blur, on purpose -- the same feedback that reshaped ChemLabPage's panels
 // applies here too: a blurred background reads as visibility interference, not polish.
 // A plain dark tint behind the card is enough to focus attention without hiding the
 // meadow scene the child is about to land on.
 
-const STORAGE_KEY = "tessera-quest:welcomed";
+const STORAGE_KEY = "tessera-quest:welcomed-this-session";
 
 function alreadyWelcomed(): boolean {
   try {
-    return localStorage.getItem(STORAGE_KEY) === "1";
+    return sessionStorage.getItem(STORAGE_KEY) === "1";
   } catch {
     return false; // private mode / storage disabled -- show it every time rather than break
   }
@@ -28,7 +30,7 @@ function alreadyWelcomed(): boolean {
 
 function markWelcomed() {
   try {
-    localStorage.setItem(STORAGE_KEY, "1");
+    sessionStorage.setItem(STORAGE_KEY, "1");
   } catch {
     /* ignore -- the overlay just reappears next load, not a crash */
   }
