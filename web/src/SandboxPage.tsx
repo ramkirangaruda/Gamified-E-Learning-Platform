@@ -26,7 +26,7 @@ export default function SandboxPage({ onBackToDashboard }: SandboxPageProps) {
   const [runError, setRunError] = useState<string | null>(null);
 
   const onWorkspaceReady = useCallback((ws: Blockly.WorkspaceSvg | null) => setWorkspace(ws), []);
-  const onBlockActivity = useCallback(() => react("curious"), [react]);
+  const onBlockActivity = useCallback(() => react("playful"), [react]);
 
   async function handleRun() {
     if (!workspace) return;
@@ -37,7 +37,7 @@ export default function SandboxPage({ onBackToDashboard }: SandboxPageProps) {
       const { program } = compileWorkspaceToAst(workspace);
       const sandboxResult = await runSandbox(program);
       setResult(sandboxResult);
-      react(sandboxResult.events.length > 0 ? "happy" : "curious");
+      react(sandboxResult.events.length > 0 ? "happy" : "playful");
     } catch (e) {
       setRunError(friendlyError("run", e));
     } finally {
