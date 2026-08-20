@@ -18,12 +18,13 @@ type View = "trail" | "grid";
 
 interface HomePageProps {
   onSelectLevel: (levelId: string) => void;
+  onOpenSandbox: () => void;
   /** Owned by App, which is what resolves it from the server/session -- see App.tsx. */
   lite: boolean;
   onToggleLite: () => void;
 }
 
-export default function HomePage({ onSelectLevel, lite, onToggleLite }: HomePageProps) {
+export default function HomePage({ onSelectLevel, onOpenSandbox, lite, onToggleLite }: HomePageProps) {
   const { state, levels, error } = usePet();
   const [view, setView] = useState<View>("trail");
 
@@ -55,6 +56,9 @@ export default function HomePage({ onSelectLevel, lite, onToggleLite }: HomePage
           </ChunkyButton>
           <ChunkyButton tone={view === "grid" ? "gold" : "neutral"} onClick={() => setView("grid")}>
             All levels
+          </ChunkyButton>
+          <ChunkyButton tone="neutral" title="Fiddle with cards, no goal, just see what happens" onClick={onOpenSandbox}>
+            Sandbox
           </ChunkyButton>
           <ChunkyButton
             tone="neutral"

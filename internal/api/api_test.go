@@ -3,6 +3,7 @@ package api
 import (
 	"context"
 	"encoding/json"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"path/filepath"
@@ -461,6 +462,70 @@ func TestIntegration_EvolutionStageStaysZeroBelowFirstThreshold(t *testing.T) {
 	}
 	if got.Pet.EvolutionStage != 0 {
 		t.Fatalf("evolution_stage after solving 1 level = %d, want 0 (threshold is 5)", got.Pet.EvolutionStage)
+	}
+}
+
+// handleSandbox is the free-play surface: runs any valid program against a fixed open
+// grid and returns the trace, with none of handleProgram's side effects.
+func TestIntegration_SandboxRunsAndDoesNotTouchProgress(t *testing.T) {
+	ts := newTestServer(t)
+
+	programJSON := `{"ast":{"version":1,"source":"blocks","program":[
+		{"op":"move","steps":1},{"op":"turn","dir":"right"},{"op":"move","steps":1}
+	]}}`
+	resp, err := http.Post(ts.URL+"/api/sandbox", "application/json", strings.NewReader(programJSON))
+	if err != nil {
+		t.Fatalf("POST /api/sandbox: %v", err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+		t.Fatalf("status = %d, want 200: %s", resp.StatusCode, body)
+	}
+
+	var result struct {
+		Events   []map[string]any `json:"events"`
+		Grid     map[string]any   `json:"grid"`
+		StartPos []int            `json:"start_pos"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		t.Fatalf("decoding response: %v", err)
+	}
+	if len(result.Events) != 3 {
+		t.Fatalf("events = %v, want 3 (move, turn, move)", result.Events)
+	}
+	if result.Grid["width"] != float64(10) || result.Grid["height"] != float64(10) {
+		t.Fatalf("grid = %v, want a 10x10 open grid", result.Grid)
+	}
+
+	// No attempt, no level progress, no stars must be recorded anywhere -- the sandbox
+	// isn't tied to a level_id at all, so check the global state stays untouched.
+	stateResp, err := http.Get(ts.URL + "/api/state")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer stateResp.Body.Close()
+	var state struct {
+		SolvedLevels []string       `json:"solved_levels"`
+		StarsByLevel map[string]int `json:"stars_by_level"`
+	}
+	if err := json.NewDecoder(stateResp.Body).Decode(&state); err != nil {
+		t.Fatal(err)
+	}
+	if len(state.SolvedLevels) != 0 || len(state.StarsByLevel) != 0 {
+		t.Fatalf("sandbox run left progress behind: solved=%v stars=%v", state.SolvedLevels, state.StarsByLevel)
+	}
+}
+
+func TestIntegration_SandboxInvalidASTIs400NotCrash(t *testing.T) {
+	ts := newTestServer(t)
+	resp, err := http.Post(ts.URL+"/api/sandbox", "application/json", strings.NewReader(`{"ast":{"version":1,"source":"blocks","program":[{"op":"not_a_real_op"}]}}`))
+	if err != nil {
+		t.Fatalf("POST /api/sandbox: %v", err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusBadRequest {
+		t.Fatalf("status = %d, want 400", resp.StatusCode)
 	}
 }
 

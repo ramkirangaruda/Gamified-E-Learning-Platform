@@ -1,5 +1,5 @@
 import type { AstProgram } from "./blocks/compileAst";
-import type { ExecResult, Grid, Pos } from "./executorTypes";
+import type { Dir, ExecResult, Grid, Pos } from "./executorTypes";
 
 export interface LevelDef {
   id: string;
@@ -104,6 +104,25 @@ export function runProgram(levelId: string, program: AstProgram, clientProblems:
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ ast: program, client_problems: clientProblems }),
   }).then((r) => json<ExecResult>(r));
+}
+
+// Sandbox response is /api/program's shape plus the grid/start info the client needs to
+// feed GridRenderer -- the sandbox has no level, so nothing else already has this grid.
+export interface SandboxResult extends ExecResult {
+  grid: Grid;
+  start_pos: Pos;
+  start_dir: Dir;
+}
+
+// The free-play surface (handoff: sandbox mode). Deliberately NOT scored, not tied to a
+// level_id, and touches none of the economy/progress state on the server -- see
+// internal/api's handleSandbox.
+export function runSandbox(program: AstProgram): Promise<SandboxResult> {
+  return fetch("/api/sandbox", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ ast: program }),
+  }).then((r) => json<SandboxResult>(r));
 }
 
 export function fetchState(): Promise<GameState> {

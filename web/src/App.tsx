@@ -7,6 +7,7 @@ import PetBar from "./pet/PetBar";
 import { PetProvider } from "./pet/PetProvider";
 import StyleGuide from "./StyleGuide";
 import PlayPage from "./PlayPage";
+import SandboxPage from "./SandboxPage";
 
 // ?compare=1 is a demo asset (brief §8/queue item 6), not a dev flag someone stumbles
 // into by accident -- still gated behind an explicit query param since it's not part of
@@ -21,6 +22,7 @@ function App() {
   const isCompareView = params.get("compare") === "1";
   const isStyleGuide = params.get("styleguide") === "1";
   const [selectedLevelId, setSelectedLevelId] = useState<string | null>(null);
+  const [sandboxOpen, setSandboxOpen] = useState(false);
   // App owns lite state because App is what resolves it. HomePage used to keep its own
   // copy seeded from the DOM attribute, which raced: a component initializer runs before
   // any effect has applied the server's decision, so the toggle rendered "off" on a
@@ -67,10 +69,17 @@ function App() {
     <PetProvider>
       <PetBar />
       <main className="pt-[var(--pet-bar-h)]">
-        {selectedLevelId ? (
+        {sandboxOpen ? (
+          <SandboxPage onBackToDashboard={() => setSandboxOpen(false)} />
+        ) : selectedLevelId ? (
           <PlayPage initialLevelId={selectedLevelId} onBackToDashboard={() => setSelectedLevelId(null)} />
         ) : (
-          <HomePage onSelectLevel={setSelectedLevelId} lite={lite} onToggleLite={toggleLite} />
+          <HomePage
+            onSelectLevel={setSelectedLevelId}
+            onOpenSandbox={() => setSandboxOpen(true)}
+            lite={lite}
+            onToggleLite={toggleLite}
+          />
         )}
       </main>
     </PetProvider>

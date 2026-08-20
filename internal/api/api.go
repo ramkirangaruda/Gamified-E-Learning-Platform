@@ -76,6 +76,7 @@ func New(st *store.Store, levelsDir, hintsDir string, engine tutor.Engine, hintT
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /api/levels", s.handleGetLevels)
 	mux.HandleFunc("POST /api/program", s.handleProgram)
+	mux.HandleFunc("POST /api/sandbox", s.handleSandbox)
 	mux.HandleFunc("POST /api/hint", s.handleHint)
 	mux.HandleFunc("GET /api/tier", s.handleTierInfo)
 	mux.HandleFunc("GET /api/compare", s.handleCompare)
@@ -229,6 +230,67 @@ func (s *Server) handleGetLevels(w http.ResponseWriter, r *http.Request) {
 		ordered = append(ordered, s.levels[id])
 	}
 	writeJSON(w, http.StatusOK, ordered)
+}
+
+// sandboxGrid is a fixed, open, wall-free grid for the "just fiddle around" surface --
+// large enough that a child dragging cards has real room to move without hitting the
+// edge on every second card. There is no real goal here (the sandbox never reports
+// solved/failed to the child, see handleSandbox), so Goal is placed in the far corner
+// purely because Grid requires a value, not because it means anything.
+var sandboxGrid = executor.Grid{
+	Width: 10, Height: 10,
+	Walls: make([][]bool, 10),
+	Goal:  executor.Pos{X: 9, Y: 9},
+}
+
+func init() {
+	for y := range sandboxGrid.Walls {
+		sandboxGrid.Walls[y] = make([]bool, sandboxGrid.Width)
+	}
+}
+
+type sandboxRequest struct {
+	AST json.RawMessage `json:"ast"`
+}
+
+type sandboxResponse struct {
+	Events    []executor.Event `json:"events"`
+	Outcome   string           `json:"outcome"`
+	TicksUsed int              `json:"ticks_used"`
+	Grid      executor.Grid    `json:"grid"`
+	StartPos  executor.Pos     `json:"start_pos"`
+	StartDir  string           `json:"start_dir"`
+}
+
+// handleSandbox is the free-play surface: validate and run whatever's on the workspace
+// against sandboxGrid, and return the trace for GridRenderer to animate. Deliberately
+// has NONE of handleProgram's side effects -- no RecordAttempt, no level_progress, no
+// stars, no evolution stage, no hint classification. This is "what does this code do",
+// not an attempt at a level, and treating it as one would let a child inflate their
+// economy for free by running the same trivial program in the sandbox on a loop.
+func (s *Server) handleSandbox(w http.ResponseWriter, r *http.Request) {
+	body, err := io.ReadAll(r.Body)
+	if err != nil {
+		writeError(w, http.StatusBadRequest, "reading request body: "+err.Error())
+		return
+	}
+	var req sandboxRequest
+	if err := json.Unmarshal(body, &req); err != nil || len(req.AST) == 0 {
+		writeError(w, http.StatusBadRequest, `expected body shape {"ast": <AST envelope>}`)
+		return
+	}
+
+	program, err := ast.Validate(req.AST)
+	if err != nil {
+		writeError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+
+	result := executor.Run(sandboxGrid, executor.Pos{X: 0, Y: 0}, executor.DirRight, program.Program)
+	writeJSON(w, http.StatusOK, sandboxResponse{
+		Events: result.Events, Outcome: result.Outcome, TicksUsed: result.TicksUsed,
+		Grid: sandboxGrid, StartPos: executor.Pos{X: 0, Y: 0}, StartDir: "right",
+	})
 }
 
 // programRequestWrapper is POST /api/program's request shape: {"ast": <AST envelope>,
