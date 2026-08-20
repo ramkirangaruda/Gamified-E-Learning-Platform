@@ -346,3 +346,45 @@ One line per non-obvious choice, and why. Newest at the bottom.
   against that implementation. Renaming them to a character that was never benchmarked
   would quietly destroy the evidence. Only comments describing *current* behaviour were
   updated.
+
+
+## The Pi's classroom-hub role: no model, and therefore no internet (2026-08-20)
+
+- **`-classroom-hub` no longer starts `llama-server`.** `startTutorEngine` was called
+  unconditionally, so the classroom aggregator loaded a language model and pre-warmed
+  every bank hint -- on the 4 GB Pi this mode exists for, essentially the entire RAM
+  budget, spent on something the machine never does. The hub aggregates; every student
+  machine rephrases locally against its own drive, which is the whole offline premise.
+  A nil engine was already a first-class supported state (`api.Server` documents it as
+  nil-able, `handleHint` returns the verified human-written text without one), so this
+  needed no downstream change, and `TierHUD` already renders "Tutor offline" for an empty
+  tier -- checked rather than assumed.
+- **The decision is `resolveTutor`, a pure function, and `flag.Visit` decides "explicit".**
+  Split out of `main()` so the one non-obvious branch in an otherwise untestable startup
+  sequence could be pinned (`cmd/server/tutorflag_test.go`, 7 cases). `flag.Visit` reports
+  only flags actually typed on the command line, so `-classroom-hub -tutor=true` still
+  forces the engine on for a dev box being hub and player at once -- a case `main.go`
+  already tolerates where the two classroom flags are read, and one that comparing
+  `*tutorOn` against its default could not distinguish.
+- **Verified by running it, not only by unit test.** `-classroom-hub -open=false` comes up
+  logging `tutor: off`, and `/classroom`, `/api/levels`, `/api/state` and `/api/tier` all
+  answer (tier reports empty, which is the nil-engine path the HUD already handles).
+- **`scripts/pi-setup.sh --classroom-hub` removes the only internet dependency in Pi
+  bring-up.** Because a hub needs neither a model nor `llama-server`, the mode skips step
+  3 -- building llama.cpp from source -- which the script's own header, and
+  `scripts/README.md`, both identify as the one step requiring connectivity. A classroom
+  hub can therefore be brought up start to finish on a Pi that has never been online,
+  which applies this project's offline premise to its own setup rather than only to the
+  game. The mode also passes `-open=false` (a hub is a headless appliance, possibly with
+  no display attached at all) and prints the teacher dashboard URL plus the exact
+  `-classroom-addr` command for student machines. Player mode is unchanged.
+- **NOT verified on hardware, and this matters.** The arch guard correctly refuses to run
+  on x86_64, so only argument parsing, `--help` and `bash -n` were exercised. The hub
+  bring-up path has never been executed on a real Pi, and there is no Pi peripheral set on
+  hand to do it with as of this date. Treat "the script is correct" as an untested claim.
+- **Documentation caught up with reality.** The classroom Hub was a shipped feature with
+  no `README.md` coverage at all; it now has a section. `README.md`'s test counts were
+  badly stale ("88 Go tests across 10 packages, 58 TypeScript") and are now measured: 138
+  Go test funcs across 11 packages, 134 TypeScript. `scripts/README.md`'s standing warning
+  that `pi-setup.sh` needs internet now carries its one explicit exception, since that
+  paragraph is load-bearing for event planning.
