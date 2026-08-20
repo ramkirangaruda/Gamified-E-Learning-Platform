@@ -64,7 +64,7 @@ function App() {
   // down. Putting the bar inside either page -- even identically in both -- would remount
   // it on every navigation and reset all three.
   return (
-    <PetProvider>
+    <PetProvider lite={lite}>
       <PetBar />
       <main className="pt-[var(--pet-bar-h)]">
         {selectedLevelId ? (
