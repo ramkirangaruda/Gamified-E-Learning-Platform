@@ -498,3 +498,20 @@ Everything below this line is the original log, oldest first.
    synthetic in-memory photos, not a live webcam feed, since this dev environment has no
    camera attached to test against. Worth a real run before the demo, not just the code
    review.
+
+## README and demo script (`readme-and-demo-script` task, 2026-08-18)
+
+1. **No `LICENSE` file exists at the repo root.** Brief for this task said to flag
+   rather than pick one myself. Worth deciding before the repo is judged publicly —
+   even a permissive default (MIT/Apache-2.0) is better than an implicit
+   all-rights-reserved default most people don't intend for a public hackathon repo.
+2. **This pass could not run `go build`/`go run` or fetch Go modules** — the sandbox it
+   was written in has no route to the Go module proxy (`proxy.golang.org` and
+   `modernc.org` both returned 403/Forbidden, apparently a network allowlist
+   restriction of that environment, not a repo problem). `DEMO.md` is built from the
+   code, the test suites, and already-logged live runs in `DECISIONS.md`/`AUDIT.md`,
+   plus a real `npm test`/`npm run build` (58/58 TS tests passing, clean build into
+   `app/`) — but nobody re-ran the Go server or the camera pipeline live while writing
+   it. Flagging so whoever rehearses next knows `DEMO.md` still needs a real walkthrough
+   on a machine with the Go toolchain before it's treated as demo-ready, especially step
+   3 (camera) and step 4 (hint latency).
