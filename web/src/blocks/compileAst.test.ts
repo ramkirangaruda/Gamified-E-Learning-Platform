@@ -111,14 +111,14 @@ describe("compileWorkspaceToAst", () => {
     chain(ws, ["card_repeat_3", "card_move_forward"]);
     expect(() => compileWorkspaceToAst(ws)).not.toThrow();
     const { problems } = compileWorkspaceToAst(ws);
-    expect(problems.some((p) => p.message.includes("repeat never closed"))).toBe(true);
+    expect(problems.some((p) => p.code === "unclosed_block")).toBe(true);
   });
 
   it("reports an orphan closer without throwing and keeps compiling the rest", () => {
     const top = chain(ws, ["card_end_while", "card_move_forward"]);
     void top;
     const { program, problems } = compileWorkspaceToAst(ws);
-    expect(problems.some((p) => p.message.includes("no matching opener"))).toBe(true);
+    expect(problems.some((p) => p.code === "orphan_closer")).toBe(true);
     expect(program.program).toEqual([{ op: "move", steps: 1 }]);
   });
 

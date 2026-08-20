@@ -4,8 +4,6 @@
 package hints
 
 import (
-	"strings"
-
 	"github.com/ramkirangaruda/Gamified-E-Learning-Platform/internal/executor"
 	"github.com/ramkirangaruda/Gamified-E-Learning-Platform/internal/levels"
 	"github.com/ramkirangaruda/Gamified-E-Learning-Platform/packages/ast"
@@ -32,6 +30,16 @@ const (
 	// logged in DECISIONS.md.
 )
 
+// clientProblemCode mirrors web/src/blocks/compileAst.ts's ProblemCode -- a closed set,
+// not free text. The two packages aren't compiled together so there's no way to share
+// this as a single Go/TS type; keep them in sync by hand if either changes.
+type clientProblemCode = string
+
+const (
+	clientProblemUnclosedBlock clientProblemCode = "unclosed_block"
+	clientProblemOrphanCloser  clientProblemCode = "orphan_closer"
+)
+
 type ClassifyInput struct {
 	Level level
 	// Program is what actually got executed -- possibly a truncated/partial AST if the
@@ -39,11 +47,23 @@ type ClassifyInput struct {
 	// behavior of compiling as much as it validly can.
 	Program []ast.Node
 	Result  executor.Result
-	// ClientProblems are compileAst.ts's problem messages, if the caller (the "blocks"
-	// input surface) detected any before ever calling the executor. This is the only
-	// reliable signal for unbalanced_block: by the time a truncated AST reaches here,
-	// the missing tail is already silently gone, so this package can't rediscover it
-	// from Program alone -- the client has to say so.
+	// ClientProblems are compileAst.ts's problem *codes* (not prose messages -- see
+	// clientProblemCode), if the caller (the "blocks" input surface) detected any
+	// before ever calling the executor. This is the only signal for unbalanced_block:
+	// by the time a truncated AST reaches here, the missing tail is already silently
+	// gone, so this package can't rediscover it from Program alone.
+	//
+	// This is a deliberate, accepted trust boundary, not an oversight: the client
+	// asserts this one signature. That's acceptable here specifically because (a) it's
+	// architecturally unavoidable without a much bigger protocol change (see
+	// DECISIONS.md), and (b) the blast radius of a wrong assertion is bounded to
+	// "shows the wrong pre-written hint text" -- ClientProblems selects a key into a
+	// fixed, human-verified hint bank (hints.Bank), never hint content itself, and
+	// gates nothing else (no score, no save data, no unlock). A single-player,
+	// single-device, offline kids' game has no adversarial party positioned to exploit
+	// this, and a mischievous kid faking it via devtools gains nothing but a mismatched
+	// hint. Matching is on exact codes, not substring-matched prose, specifically so a
+	// copy-edit to compileAst.ts's message text can never silently break this again.
 	ClientProblems []string
 }
 
@@ -64,8 +84,8 @@ func LevelFor(l levels.Level) level {
 // failure -- callers must treat "" as "fall back to the generic encouraging line"
 // (brief §11's absolute rule), never as a reason to let the model guess.
 func Classify(in ClassifyInput) string {
-	for _, msg := range in.ClientProblems {
-		if strings.Contains(msg, "never closed") || strings.Contains(msg, "no matching opener") {
+	for _, code := range in.ClientProblems {
+		if code == clientProblemUnclosedBlock || code == clientProblemOrphanCloser {
 			return SigUnbalancedBlock
 		}
 	}

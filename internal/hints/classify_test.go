@@ -24,7 +24,7 @@ func TestClassify_ClientProblemsWinsAsUnbalanced(t *testing.T) {
 	got := Classify(ClassifyInput{
 		Level:          repeatLevel,
 		Result:         executor.Result{Outcome: "failed"},
-		ClientProblems: []string{"card_end_while with no matching opener"},
+		ClientProblems: []string{"orphan_closer"},
 	})
 	if got != SigUnbalancedBlock {
 		t.Fatalf("got %q, want %q", got, SigUnbalancedBlock)

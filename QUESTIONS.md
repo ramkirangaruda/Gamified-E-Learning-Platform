@@ -1,5 +1,39 @@
 # QUESTIONS.md
 
+## Verification/hardening queue (2026-08-15) — in progress
+
+Not M4 — this is the pre-M4 verification and hardening queue (llama.cpp-on-ARM has to
+be proven before the cross-platform drive milestone is worth building). Standing
+decisions carried forward: repo stays public, don't revisit; standing permission to push
+to master for the rest of this project.
+
+**Item 6 done first (resolving limbo before touching the hint pipeline further):**
+both of the M3 handoff's "worth your eyes" items 1 and 2 are now resolved, not just
+flagged. Full reasoning in `DECISIONS.md`'s 2026-08-15 entries:
+- `unbalanced_block` stays client-asserted (server-side verification isn't feasible
+  without a bigger protocol change — the evidence is gone by the time a truncated AST
+  reaches the server), but hardened from fragile prose-substring-matching to a closed
+  `ProblemCode` enum shared conceptually between `compileAst.ts` and `classify.go`, so a
+  future copy-edit to hint/problem wording can't silently break classification again.
+- `/api/program`'s legacy raw-AST body shape is dropped outright, not kept forever.
+  `web/src/api.ts` was already the only real caller and has always sent the wrapper
+  shape; the endpoint now 400s on the old shape, locked in by a new test
+  (`TestIntegration_LegacyRawASTShapeIsRejected`).
+
+**Item 3 done:** model footprint audit. Actual `models/` total is 1.9GB (two files:
+484MB + ~1.47GB), matching the ~2GB expected for these two quants almost exactly — not
+the ~6GB previously reported. No extra quantizations or unused variants exist anywhere
+in the repo to delete. I can't reconcile the earlier 6GB figure against anything on disk
+or logged in `DECISIONS.md` from when the GGUFs were originally fetched; flagging the
+discrepancy rather than guessing at an explanation. Treating ~1.9GB as the correct
+drive-payload figure for models going forward.
+
+Remaining items (1, 2, 4, 5) still in progress — see `DECISIONS.md` for entries as they
+land, and the top of this file will get a fresh queue-complete summary when all 6 are
+done, matching how the M2 and M3 queues were closed out.
+
+---
+
 ## Handoff summary (2026-08-15) — M3 queue complete, all 6 items
 
 Worked the queue in order, committed after each item, pushed after each commit. All
