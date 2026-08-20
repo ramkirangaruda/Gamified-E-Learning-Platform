@@ -10,8 +10,10 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"path/filepath"
 	"time"
 
+	"github.com/ramkirangaruda/Gamified-E-Learning-Platform/internal/chemistry"
 	"github.com/ramkirangaruda/Gamified-E-Learning-Platform/internal/classroom"
 	"github.com/ramkirangaruda/Gamified-E-Learning-Platform/internal/executor"
 	"github.com/ramkirangaruda/Gamified-E-Learning-Platform/internal/hints"
@@ -39,6 +41,8 @@ type Server struct {
 	store       *store.Store
 	levels      map[string]levels.Level
 	levelOrder  []string
+	chemistry   map[string]chemistry.Sample
+	chemOrder   []string
 	hintsDir    string
 	engine      tutor.Engine // nil-able: tests and any hint-free path work without one
 	hintCache   *hints.Cache
@@ -73,12 +77,28 @@ func New(st *store.Store, levelsDir, hintsDir string, engine tutor.Engine, hintT
 		order = append(order, lvl.ID)
 	}
 
+	// content/chemistry sits alongside content/levels -- derived from levelsDir rather
+	// than taking a third directory argument, so this stays a drop-in addition and every
+	// existing api.New call site (cmd/server, a dozen-plus tests) needs no change.
+	chemDir := filepath.Join(filepath.Dir(levelsDir), "chemistry")
+	loadedChem, err := chemistry.LoadAll(chemDir)
+	if err != nil {
+		return nil, fmt.Errorf("api: loading chemistry samples: %w", err)
+	}
+	chemByID := make(map[string]chemistry.Sample, len(loadedChem))
+	chemOrder := make([]string, 0, len(loadedChem))
+	for _, sample := range loadedChem {
+		chemByID[sample.ID] = sample
+		chemOrder = append(chemOrder, sample.ID)
+	}
+
 	if hintTimeout <= 0 {
 		hintTimeout = DefaultHintTimeout
 	}
 
 	s := &Server{
 		store: st, levels: byID, levelOrder: order,
+		chemistry: chemByID, chemOrder: chemOrder,
 		hintsDir: hintsDir, engine: engine, hintCache: hints.NewCache(),
 		hintTimeout: hintTimeout,
 	}
@@ -92,6 +112,8 @@ func New(st *store.Store, levelsDir, hintsDir string, engine tutor.Engine, hintT
 	mux.HandleFunc("GET /api/compare", s.handleCompare)
 	mux.HandleFunc("GET /api/state", s.handleGetState)
 	mux.HandleFunc("POST /api/state", s.handlePostState)
+	mux.HandleFunc("GET /api/chemistry/samples", s.handleChemistrySamples)
+	mux.HandleFunc("POST /api/chemistry/guess", s.handleChemistryGuess)
 
 	// Classroom Hub routes. Registered unconditionally (like every other route above),
 	// gated inside each handler by whether SetClassroomHub/SetClassroomAddr was ever
@@ -269,6 +291,58 @@ func (s *Server) handleGetLevels(w http.ResponseWriter, r *http.Request) {
 		ordered = append(ordered, s.levels[id])
 	}
 	writeJSON(w, http.StatusOK, ordered)
+}
+
+// chemistrySampleResponse is the client-facing shape of a chemistry.Sample -- everything
+// except AnswerID. The correct choice is never sent to the browser; handleChemistryGuess
+// is the only thing that ever learns it, the same "server is authoritative" rule
+// /api/program already applies to whether a coding level is solved.
+type chemistrySampleResponse struct {
+	ID          string             `json:"id"`
+	Name        string             `json:"name"`
+	Formula     string             `json:"formula"`
+	Description string             `json:"description"`
+	Tags        []string           `json:"tags"`
+	Clues       []chemistry.Clue   `json:"clues"`
+	Choices     []chemistry.Choice `json:"choices"`
+}
+
+func (s *Server) handleChemistrySamples(w http.ResponseWriter, r *http.Request) {
+	ordered := make([]chemistrySampleResponse, 0, len(s.chemOrder))
+	for _, id := range s.chemOrder {
+		sample := s.chemistry[id]
+		ordered = append(ordered, chemistrySampleResponse{
+			ID: sample.ID, Name: sample.Name, Formula: sample.Formula,
+			Description: sample.Description, Tags: sample.Tags,
+			Clues: sample.Clues, Choices: sample.Choices,
+		})
+	}
+	writeJSON(w, http.StatusOK, ordered)
+}
+
+type chemistryGuessRequest struct {
+	SampleID string `json:"sample_id"`
+	ChoiceID string `json:"choice_id"`
+}
+
+type chemistryGuessResponse struct {
+	Correct bool             `json:"correct"`
+	Answer  chemistry.Choice `json:"answer"`
+}
+
+func (s *Server) handleChemistryGuess(w http.ResponseWriter, r *http.Request) {
+	var req chemistryGuessRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeError(w, http.StatusBadRequest, "decoding request body: "+err.Error())
+		return
+	}
+	sample, ok := s.chemistry[req.SampleID]
+	if !ok {
+		writeError(w, http.StatusNotFound, "unknown sample_id: "+req.SampleID)
+		return
+	}
+	correct, answer := sample.CheckGuess(req.ChoiceID)
+	writeJSON(w, http.StatusOK, chemistryGuessResponse{Correct: correct, Answer: answer})
 }
 
 type suggestionResponse struct {

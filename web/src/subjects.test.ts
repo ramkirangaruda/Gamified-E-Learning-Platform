@@ -8,13 +8,14 @@ import { HOME, activeSubjectId, type Route } from "./routes";
 // both would be a lie told to a child rather than a crash someone would notice.
 
 describe("the subject registry", () => {
-  it("has exactly one available subject today, and it is the default", () => {
-    // Not a style preference: HomePage/ProgressPage hand `levels` (which is the CODING
-    // level list, the only one the API serves) to whichever subject says it is available.
-    // A second subject flipped to available=true without its own level source would
-    // silently show Coding's 25 levels under, say, Chemistry.
+  it("has Coding and Chemistry available today, and Coding is the default", () => {
+    // Chem Lab (ChemLabPage.tsx) is real, playable content -- but it isn't level-based,
+    // so it deliberately does NOT appear in this list's levelsForSubject expectations
+    // below: available and "has levels" are two different questions now, which is why
+    // HomePage/ProgressPage derive a separate hasLevels flag rather than reusing
+    // `available` for both (see their own comments for the bug that distinction fixed).
     const available = SUBJECTS.filter((s) => s.available);
-    expect(available.map((s) => s.id)).toEqual([DEFAULT_SUBJECT_ID]);
+    expect(available.map((s) => s.id).sort()).toEqual(["chem", DEFAULT_SUBJECT_ID].sort());
   });
 
   it("gives every subject a distinct id and badge letter", () => {
@@ -27,10 +28,12 @@ describe("the subject registry", () => {
   it("hands levels only to a subject that actually has content", () => {
     const levels = [{ id: "level-1" }, { id: "level-2" }];
     expect(levelsForSubject(DEFAULT_SUBJECT_ID, levels)).toHaveLength(2);
-    for (const s of SUBJECTS.filter((s) => !s.available)) {
-      // An empty list is what makes the card render "coming soon" rather than a 0%
-      // progress bar -- an empty meter reads as "you have done none of this", which is
-      // untrue of a subject that does not exist yet.
+    // Every OTHER subject gets none -- including Chemistry, which is available but plays
+    // through ChemLabPage's own /api/chemistry/samples, never through this level list.
+    for (const s of SUBJECTS.filter((s) => s.id !== DEFAULT_SUBJECT_ID)) {
+      // An empty list is what makes the card render "coming soon" (unavailable) or
+      // "ready to play" (available, not level-tracked) rather than a 0% progress bar --
+      // an empty meter reads as "you have done none of this", untrue either way.
       expect(levelsForSubject(s.id, levels), s.id).toEqual([]);
     }
   });

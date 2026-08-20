@@ -3,7 +3,7 @@ import Icon from "./icons/Icon";
 import Pet from "./pet/Pet";
 import { characterById } from "./pet/characters";
 import { usePet } from "./pet/PetProvider";
-import { SUBJECTS, type Subject } from "./subjects";
+import { levelsForSubject, SUBJECTS, type Subject } from "./subjects";
 import type { Route } from "./routes";
 import { StarRow } from "./ui/Chunky";
 import { toneClasses } from "./ui/tone";
@@ -40,13 +40,22 @@ function SubjectCard({ card, onOpen }: { card: CardData; onOpen: () => void }) {
   const { subject, solved, total } = card;
   const t = toneClasses(subject.tone);
   const done = total > 0 && solved === total;
+  // A subject can be available without using the shared level-progress model at all (Chem
+  // Lab's rounds aren't "levels") -- showing "0 of 0 done" there would be exactly the
+  // untrue-empty-meter problem subjects.ts warns about, just from the opposite direction.
+  // Three real states, not two: locked, available-but-not-level-tracked, and level-tracked.
+  const hasLevels = subject.available && total > 0;
 
   return (
     <button
       type="button"
       onClick={onOpen}
       aria-label={
-        subject.available ? `${subject.title}: ${solved} of ${total} levels done` : `${subject.title}, coming soon`
+        hasLevels
+          ? `${subject.title}: ${solved} of ${total} levels done`
+          : subject.available
+            ? `${subject.title}, ready to play`
+            : `${subject.title}, coming soon`
       }
       className={`flex flex-col gap-2 rounded-chunk-lg border-(length:--outline-chunk-thick) p-4 text-left shadow-chunk transition-transform duration-100
         hover:-translate-y-1 active:translate-y-[3px] active:shadow-chunk-sm
@@ -72,7 +81,7 @@ function SubjectCard({ card, onOpen }: { card: CardData; onOpen: () => void }) {
       </span>
       <p className={`text-sm ${subject.available ? "text-quest-ink-soft" : "text-quest-ink/40"}`}>{subject.desc}</p>
 
-      {subject.available ? (
+      {hasLevels ? (
         <>
           {/* Three stars, in the same vocabulary every level already uses, so the card
               reads in units a child has already learned: one per third of the subject. */}
@@ -94,6 +103,10 @@ function SubjectCard({ card, onOpen }: { card: CardData; onOpen: () => void }) {
             {solved} of {total} done{done ? " — all finished!" : ""}
           </span>
         </>
+      ) : subject.available ? (
+        <span className={`mt-auto inline-flex w-fit items-center rounded-chunk-sm border-2 ${t.border} ${t.soft} px-2.5 py-1 font-display text-[11px] font-bold ${t.ink}`}>
+          Ready to play
+        </span>
       ) : (
         // No bar, no stars, no "0 of 0" -- an empty meter reads as "you have done none of
         // this", which would be untrue of a subject that does not exist yet.
@@ -116,9 +129,12 @@ export default function HomePage({ onNavigate }: HomePageProps) {
   const solvedCount = solvedIds.length;
 
   const cards: CardData[] = SUBJECTS.map((subject) => {
-    // Only Coding has levels today; every other subject is deliberately empty, which is
-    // exactly what makes its card render "coming soon" instead of an empty meter.
-    const subjectLevels = subject.available ? levels : [];
+    // Only Coding has levels today; every other subject is deliberately empty. Reading
+    // this from levelsForSubject (subject.id === "coding"), not subject.available, is
+    // what keeps an available-but-not-level-tracked subject like Chem Lab from
+    // inheriting Coding's own level list -- that bug is exactly why this file has both
+    // concepts as separate fields on Subject, not one flag standing in for both.
+    const subjectLevels = levelsForSubject(subject.id, levels);
     return {
       subject,
       total: subjectLevels.length,

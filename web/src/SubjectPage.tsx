@@ -1,5 +1,6 @@
 import { useState } from "react";
 import BackgroundScene from "./BackgroundScene";
+import ChemLabPage from "./ChemLabPage";
 import Icon from "./icons/Icon";
 import Pet from "./pet/Pet";
 import { usePet } from "./pet/PetProvider";
@@ -96,6 +97,16 @@ export default function SubjectPage({ subjectId, onNavigate }: SubjectPageProps)
         </div>
       </div>
     );
+  }
+
+  // ---- Chemistry: a real subject, but not a level trail -------------------
+  // Chem Lab's content (mystery samples, lab tests, a 4-choice guess) doesn't fit the
+  // Trail/LevelGrid model at all -- there's no AST, no executor, no per-level unlock
+  // order. ChemLabPage owns its own header (round/star counter) rather than reusing
+  // `header` above, which is built from usePet().levels -- the Coding level list -- and
+  // would otherwise show a nonsensical "X of Y done" badge for a subject with no levels.
+  if (subjectId === "chem") {
+    return <ChemLabPage subjectLetter={subject.letter} subjectTitle={subject.title} />;
   }
 
   // ---- The real thing ----------------------------------------------------
