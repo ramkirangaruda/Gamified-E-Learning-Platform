@@ -1,0 +1,20 @@
+{
+  "id": "level-5",
+  "name": "Staircase",
+  "teaches": "repeat",
+  "hard": false,
+  "parBlocks": 6,
+  "startPos": [0, 0],
+  "startDir": "right",
+  "grid": {
+    "width": 4,
+    "height": 4,
+    "walls": [
+      [false, false, true, true],
+      [true, false, false, true],
+      [true, true, false, false],
+      [true, true, true, false]
+    ],
+    "goal": [3, 3]
+  }
+}

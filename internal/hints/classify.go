@@ -124,6 +124,15 @@ func Classify(in ClassifyInput) string {
 		if !usesOp(in.Program, "turn") {
 			return SigMissingTurn
 		}
+
+	case "while":
+		// Mirrors the "repeat" branch's own repeat-or-while tolerance above: a while-
+		// teaching level accepting a repeat-based solve too (and vice versa) is
+		// intentional, not a gap -- both are legitimate loop constructs, and a level
+		// only fails this check if the child used neither.
+		if !usesOp(in.Program, "while") && !usesOp(in.Program, "repeat") {
+			return SigHardcodedNoLoop
+		}
 	}
 
 	return ""

@@ -61,12 +61,12 @@ func (c *countingEngine) Complete(_ context.Context, req tutor.CompletionRequest
 func (c *countingEngine) TierInfo() tutor.TierInfo { return c.tier }
 func (c *countingEngine) Close() error             { return nil }
 
-// content/hints/{level-1,level-2,level-3}.json currently define 3 + 6 + 5 = 14 total
+// content/hints/level-{1..8}.json currently define 3+6+5+3+6+5+4+4 = 36 total
 // (level_id, error_signature) entries -- see content/hints/README.md's coverage table.
 // This test intentionally hardcodes that count rather than computing it dynamically, so
 // a bank edit that silently changes the total is caught here as a test failure, not
 // missed entirely.
-const totalBankHintEntries = 14
+const totalBankHintEntries = 36
 
 func TestPrewarmHints_PopulatesCacheExactlyOncePerBankEntry(t *testing.T) {
 	dbPath := filepath.Join(t.TempDir(), "pet.db")
@@ -247,6 +247,64 @@ func TestIntegration_SolveLevel1OverHTTP(t *testing.T) {
 	}
 }
 
+// solved_levels (from level_progress, wired up for the dashboard's per-level "already
+// beaten" check) must reflect a real solve through the real /api/program -> /api/state
+// path, and must not falsely mark an untouched level as solved just because a later
+// level was solved first -- the exact bug a single highest_level integer had once
+// levels became reachable out of order via the dashboard.
+func TestIntegration_SolvedLevelsTracksRealSolvesOutOfOrder(t *testing.T) {
+	ts := newTestServer(t)
+
+	getSolvedLevels := func() []string {
+		resp, err := http.Get(ts.URL + "/api/state")
+		if err != nil {
+			t.Fatalf("GET /api/state: %v", err)
+		}
+		defer resp.Body.Close()
+		var got struct {
+			SolvedLevels []string `json:"solved_levels"`
+		}
+		if err := json.NewDecoder(resp.Body).Decode(&got); err != nil {
+			t.Fatalf("decoding response: %v", err)
+		}
+		return got.SolvedLevels
+	}
+
+	if got := getSolvedLevels(); len(got) != 0 {
+		t.Fatalf("solved_levels before any attempt = %v, want empty", got)
+	}
+
+	// Solve level-3 (a "later" level by filename order) without ever touching level-1
+	// or level-2 -- exactly what the dashboard's free section navigation allows.
+	level3Solution := `{"ast":{"version":1,"source":"blocks","program":[
+		{"op":"move","steps":1},{"op":"move","steps":1},{"op":"move","steps":1},
+		{"op":"if","cond":{"check":"wall_ahead"},"then":[{"op":"turn","dir":"right"}]},
+		{"op":"move","steps":1},{"op":"move","steps":1},{"op":"move","steps":1}
+	]},"client_problems":[]}`
+	resp, err := http.Post(ts.URL+"/api/program?level_id=level-3", "application/json", strings.NewReader(level3Solution))
+	if err != nil {
+		t.Fatalf("POST /api/program: %v", err)
+	}
+	resp.Body.Close()
+
+	got := getSolvedLevels()
+	if len(got) != 1 || got[0] != "level-3" {
+		t.Fatalf("solved_levels after solving only level-3 = %v, want exactly [level-3] -- level-1/level-2 must not appear solved", got)
+	}
+
+	// A failed attempt on level-1 must not mark it solved either.
+	resp, err = http.Post(ts.URL+"/api/program?level_id=level-1", "application/json", strings.NewReader(`{"ast":{"version":1,"source":"blocks","program":[{"op":"wait","ticks":1}]}}`))
+	if err != nil {
+		t.Fatalf("POST /api/program: %v", err)
+	}
+	resp.Body.Close()
+
+	got = getSolvedLevels()
+	if len(got) != 1 || got[0] != "level-3" {
+		t.Fatalf("solved_levels after a failed level-1 attempt = %v, want still exactly [level-3]", got)
+	}
+}
+
 func TestIntegration_UnknownLevelIs404(t *testing.T) {
 	ts := newTestServer(t)
 
@@ -375,10 +433,10 @@ func TestIntegration_LevelsListMatchesContent(t *testing.T) {
 	if err := json.NewDecoder(resp.Body).Decode(&got); err != nil {
 		t.Fatalf("decoding response: %v", err)
 	}
-	if len(got) != 3 {
-		t.Fatalf("got %d levels, want 3", len(got))
+	if len(got) != 8 {
+		t.Fatalf("got %d levels, want 8", len(got))
 	}
-	if got[0].ID != "level-1" || got[2].ID != "level-3" {
+	if got[0].ID != "level-1" || got[7].ID != "level-8" {
 		t.Fatalf("levels not in expected order: %+v", got)
 	}
 }

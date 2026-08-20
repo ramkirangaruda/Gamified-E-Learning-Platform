@@ -34,6 +34,11 @@ export interface GameState {
   learner: Learner;
   pet: PetState;
   inventory: unknown[];
+  // Derived from level_progress -- every level_id ever solved, regardless of order.
+  // The correct, order-independent replacement for a "highest_level index" check now
+  // that levels are reachable via independent dashboard sections rather than one
+  // strictly linear sequence -- see internal/api's stateResponse and DECISIONS.md.
+  solved_levels: string[];
 }
 
 export interface TierInfo {

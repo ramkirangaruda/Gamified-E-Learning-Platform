@@ -26,9 +26,15 @@ import type { ExecResult } from "./executorTypes";
 // executor via /api/program, GridRenderer, Pet, /api/hint) was built and tested
 // independently -- this component is where they actually meet.
 
-export default function PlayPage() {
+interface PlayPageProps {
+  /** Which level to open on -- set by Dashboard when a child picks a section/level. */
+  initialLevelId?: string;
+  onBackToDashboard: () => void;
+}
+
+export default function PlayPage({ initialLevelId, onBackToDashboard }: PlayPageProps) {
   const [levels, setLevels] = useState<LevelDef[]>([]);
-  const [levelId, setLevelId] = useState<string | null>(null);
+  const [levelId, setLevelId] = useState<string | null>(initialLevelId ?? null);
   const [workspace, setWorkspace] = useState<Blockly.WorkspaceSvg | null>(null);
   const [result, setResult] = useState<ExecResult | null>(null);
   const [running, setRunning] = useState(false);
@@ -50,14 +56,18 @@ export default function PlayPage() {
   }, []);
 
   useEffect(() => {
-    if (!levelId && levels.length > 0) setLevelId(levels[0].id);
-  }, [levels, levelId]);
+    if (!levelId && levels.length > 0) setLevelId(initialLevelId ?? levels[0].id);
+  }, [levels, levelId, initialLevelId]);
 
   const onWorkspaceReady = useCallback((ws: Blockly.WorkspaceSvg | null) => {
     setWorkspace(ws);
   }, []);
 
   const level = levels.find((l) => l.id === levelId) ?? null;
+  // Only this level's own section, not all 8 -- the dashboard is where a child switches
+  // sections; within a section there are just 1-2 levels, which reads as a level picker
+  // rather than the wall-of-tabs 8 levels in one row would be.
+  const sectionLevels = level ? levels.filter((l) => l.teaches === level.teaches) : [];
 
   async function handleRun() {
     if (!workspace || !level) return;
@@ -77,11 +87,12 @@ export default function PlayPage() {
       setAttemptCounts((prev) => ({ ...prev, [level.id]: attemptsSoFar + 1 }));
 
       const levelIndex = levels.findIndex((l) => l.id === level.id);
-      // Only a *new* highest_level milestone counts as "just solved" for reward
-      // purposes -- otherwise re-running an already-beaten level's saved program keeps
-      // granting the full solve bonus forever, since nothing else caps it (unlike
-      // hunger, which clampHunger bounds at 100).
-      const alreadySolved = !!state && levelIndex + 1 <= state.learner.highest_level;
+      // Real per-level solved tracking (level_progress, via state.solved_levels), not a
+      // highest-index comparison -- otherwise re-running an already-beaten level's saved
+      // program keeps granting the full solve bonus forever (nothing else caps it,
+      // unlike hunger which clampHunger bounds at 100), AND a highest-index check breaks
+      // entirely once the dashboard lets levels be solved out of strict linear order.
+      const alreadySolved = !!state && state.solved_levels.includes(level.id);
 
       const reward = computeAttemptReward({
         outcome: execResult.outcome,
@@ -99,7 +110,11 @@ export default function PlayPage() {
             ...state.learner,
             points: state.learner.points + reward.points,
             total_xp: state.learner.total_xp + reward.points,
-            // Pet never regresses (brief §10) -- only raise highest_level, never lower it.
+            // Pet never regresses (brief §10) -- only raise highest_level, never lower
+            // it. No longer shown in the UI (state.solved_levels.length replaced it as
+            // the displayed "progress" stat once levels became reachable out of order
+            // via the dashboard -- see DECISIONS.md), kept updated anyway since it's
+            // still a persisted learner field and cheap to keep correct.
             highest_level:
               execResult.outcome === "solved"
                 ? Math.max(state.learner.highest_level, levelIndex + 1)
@@ -156,7 +171,13 @@ export default function PlayPage() {
 
       <div className="flex w-[440px] flex-col gap-5 overflow-y-auto p-5">
         <div className="flex items-center justify-between">
-          <h1 className="font-display text-2xl font-bold text-quest-ink">Tessera Quest</h1>
+          <button
+            type="button"
+            onClick={onBackToDashboard}
+            className="rounded-full bg-white/70 px-3 py-1.5 font-display text-sm font-bold text-quest-ink shadow-sm hover:-translate-y-0.5 transition-transform"
+          >
+            ← Dashboard
+          </button>
           <TierHUD tier={tierInfo} lastLatencyMs={hintLatencyMs} />
         </div>
 
@@ -165,7 +186,7 @@ export default function PlayPage() {
             Pick a level
           </div>
           <div className="flex gap-3">
-            {levels.map((l, i) => {
+            {sectionLevels.map((l, i) => {
               const active = l.id === levelId;
               const color = LEVEL_COLOR[i % LEVEL_COLOR.length];
               return (
@@ -220,7 +241,7 @@ export default function PlayPage() {
           <div className="flex justify-between rounded-2xl bg-white/70 px-4 py-2 font-display text-sm font-bold text-quest-ink shadow-sm">
             <span>⭐ {state.learner.points} pts</span>
             <span>🍎 {state.pet.hunger}</span>
-            <span>🏆 Level {state.learner.highest_level}</span>
+            <span>🏆 {state.solved_levels.length} solved</span>
           </div>
         )}
       </div>

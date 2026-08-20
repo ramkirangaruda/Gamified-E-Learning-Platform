@@ -188,3 +188,62 @@ func TestTierHintHistoryUpsertsPerTier(t *testing.T) {
 		t.Errorf("high tier hint = %q, want %q", byTier["high"].HintText, "second")
 	}
 }
+
+func TestLevelProgressTracksSolvedIndependentOfOrder(t *testing.T) {
+	dbPath := filepath.Join(t.TempDir(), "pet.db")
+	s, err := Open(dbPath)
+	if err != nil {
+		t.Fatalf("Open: %v", err)
+	}
+	defer s.Close()
+
+	solved, err := s.GetSolvedLevelIDs()
+	if err != nil {
+		t.Fatalf("GetSolvedLevelIDs (empty): %v", err)
+	}
+	if len(solved) != 0 {
+		t.Fatalf("solved on empty table = %v, want empty", solved)
+	}
+
+	// Solving level-7 (a later level, reachable directly via the dashboard without
+	// touching levels 1-6 first) must not make any earlier level look solved -- the
+	// whole reason level_progress replaced a single highest-index check.
+	if err := s.RecordLevelAttempt("level-7", true, 100); err != nil {
+		t.Fatalf("RecordLevelAttempt: %v", err)
+	}
+	solved, err = s.GetSolvedLevelIDs()
+	if err != nil {
+		t.Fatalf("GetSolvedLevelIDs: %v", err)
+	}
+	if len(solved) != 1 || solved[0] != "level-7" {
+		t.Fatalf("solved = %v, want exactly [level-7]", solved)
+	}
+
+	// A failed attempt on a different level must not mark it solved.
+	if err := s.RecordLevelAttempt("level-1", false, 101); err != nil {
+		t.Fatalf("RecordLevelAttempt (failed): %v", err)
+	}
+	solved, err = s.GetSolvedLevelIDs()
+	if err != nil {
+		t.Fatalf("GetSolvedLevelIDs: %v", err)
+	}
+	if len(solved) != 1 {
+		t.Fatalf("solved after a failed attempt on level-1 = %v, want still just [level-7]", solved)
+	}
+
+	// Now level-1 actually gets solved, and a later re-run of level-7 (already solved)
+	// must not disturb its original first_solved_at or double-count it in the result.
+	if err := s.RecordLevelAttempt("level-1", true, 102); err != nil {
+		t.Fatalf("RecordLevelAttempt: %v", err)
+	}
+	if err := s.RecordLevelAttempt("level-7", true, 999); err != nil {
+		t.Fatalf("RecordLevelAttempt (re-solve): %v", err)
+	}
+	solved, err = s.GetSolvedLevelIDs()
+	if err != nil {
+		t.Fatalf("GetSolvedLevelIDs: %v", err)
+	}
+	if len(solved) != 2 {
+		t.Fatalf("solved = %v, want exactly 2 entries (level-1, level-7)", solved)
+	}
+}

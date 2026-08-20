@@ -1,0 +1,22 @@
+{
+  "id": "level-6",
+  "name": "Maze Dash",
+  "teaches": "if_wall_ahead",
+  "hard": true,
+  "parBlocks": 15,
+  "startPos": [0, 0],
+  "startDir": "right",
+  "grid": {
+    "width": 6,
+    "height": 6,
+    "walls": [
+      [false, false, false, false, true, true],
+      [true, true, true, false, true, true],
+      [true, true, true, false, true, true],
+      [false, false, false, false, true, true],
+      [true, true, true, true, true, true],
+      [true, true, true, true, true, true]
+    ],
+    "goal": [0, 3]
+  }
+}

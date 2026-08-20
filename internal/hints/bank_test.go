@@ -15,6 +15,11 @@ var expectedSignatures = map[string][]string{
 	"level-1": {"empty_program", "unbalanced_block", "infinite_loop"},
 	"level-2": {"empty_program", "unbalanced_block", "infinite_loop", "hardcoded_no_loop", "off_by_one_repeat", "overshot_goal"},
 	"level-3": {"empty_program", "unbalanced_block", "infinite_loop", "no_condition_used", "missing_turn"},
+	"level-4": {"empty_program", "unbalanced_block", "infinite_loop"},
+	"level-5": {"empty_program", "unbalanced_block", "infinite_loop", "hardcoded_no_loop", "off_by_one_repeat", "overshot_goal"},
+	"level-6": {"empty_program", "unbalanced_block", "infinite_loop", "no_condition_used", "missing_turn"},
+	"level-7": {"empty_program", "unbalanced_block", "infinite_loop", "hardcoded_no_loop"},
+	"level-8": {"empty_program", "unbalanced_block", "infinite_loop", "hardcoded_no_loop"},
 }
 
 func TestHintBanksCoverExpectedSignatures(t *testing.T) {

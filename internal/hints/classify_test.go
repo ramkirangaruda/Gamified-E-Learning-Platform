@@ -19,6 +19,7 @@ func ifWallAhead(then []ast.Node) ast.Node {
 var repeatLevel = level{Teaches: "repeat", StartPos: executor.Pos{X: 0, Y: 0}, Goal: executor.Pos{X: 11, Y: 0}}
 var ifLevel = level{Teaches: "if_wall_ahead", StartPos: executor.Pos{X: 0, Y: 0}, Goal: executor.Pos{X: 3, Y: 3}}
 var moveLevel = level{Teaches: "move", StartPos: executor.Pos{X: 0, Y: 0}, Goal: executor.Pos{X: 5, Y: 0}}
+var whileLevel = level{Teaches: "while", StartPos: executor.Pos{X: 0, Y: 0}, Goal: executor.Pos{X: 6, Y: 0}}
 
 func TestClassify_ClientProblemsWinsAsUnbalanced(t *testing.T) {
 	got := Classify(ClassifyInput{
@@ -96,6 +97,29 @@ func TestClassify_MissingTurn(t *testing.T) {
 	got := Classify(ClassifyInput{Level: ifLevel, Program: program, Result: executor.Result{Outcome: "failed"}})
 	if got != SigMissingTurn {
 		t.Fatalf("got %q, want %q", got, SigMissingTurn)
+	}
+}
+
+func TestClassify_WhileLevelHardcodedNoLoop(t *testing.T) {
+	// teaches=while, program is 6 individual move cards -- no while or repeat node
+	// anywhere, so this should flag the same way a repeat-teaching level does.
+	program := make([]ast.Node, 6)
+	for i := range program {
+		program[i] = move(1)
+	}
+	got := Classify(ClassifyInput{Level: whileLevel, Program: program, Result: executor.Result{Outcome: "failed"}})
+	if got != SigHardcodedNoLoop {
+		t.Fatalf("got %q, want %q", got, SigHardcodedNoLoop)
+	}
+}
+
+func TestClassify_WhileLevelAcceptsRepeatToo(t *testing.T) {
+	// A repeat-based solve on a while-teaching level is a legitimate loop, not a
+	// "no loop used" failure -- mirrors the repeat branch's own while tolerance.
+	program := []ast.Node{repeatN(3, move(1))}
+	got := Classify(ClassifyInput{Level: whileLevel, Program: program, Result: executor.Result{Outcome: "failed"}})
+	if got == SigHardcodedNoLoop {
+		t.Fatalf("got %q, want anything but hardcoded_no_loop -- a repeat block is still a loop", got)
 	}
 }
 

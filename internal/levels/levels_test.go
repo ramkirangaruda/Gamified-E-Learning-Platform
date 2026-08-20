@@ -32,6 +32,46 @@ var solutions = map[string]string{
 		{"op":"move","steps":1},
 		{"op":"move","steps":1}
 	]}`,
+	"level-4": `{"version":1,"source":"cards","program":[
+		{"op":"move","steps":1},
+		{"op":"move","steps":1},
+		{"op":"turn","dir":"right"},
+		{"op":"move","steps":1},
+		{"op":"move","steps":1},
+		{"op":"move","steps":1}
+	]}`,
+	"level-5": `{"version":1,"source":"cards","program":[
+		{"op":"repeat","times":3,"body":[
+			{"op":"move","steps":1},
+			{"op":"turn","dir":"right"},
+			{"op":"move","steps":1},
+			{"op":"turn","dir":"left"}
+		]}
+	]}`,
+	"level-6": `{"version":1,"source":"cards","program":[
+		{"op":"move","steps":1},
+		{"op":"move","steps":1},
+		{"op":"move","steps":1},
+		{"op":"if","cond":{"check":"wall_ahead"},"then":[{"op":"turn","dir":"right"}]},
+		{"op":"move","steps":1},
+		{"op":"move","steps":1},
+		{"op":"move","steps":1},
+		{"op":"if","cond":{"check":"wall_ahead"},"then":[{"op":"turn","dir":"right"}]},
+		{"op":"move","steps":1},
+		{"op":"move","steps":1},
+		{"op":"move","steps":1}
+	]}`,
+	"level-7": `{"version":1,"source":"cards","program":[
+		{"op":"while","cond":{"check":"not","of":{"check":"on_goal"}},"body":[
+			{"op":"move","steps":1}
+		]}
+	]}`,
+	"level-8": `{"version":1,"source":"cards","program":[
+		{"op":"while","cond":{"check":"not","of":{"check":"on_goal"}},"body":[
+			{"op":"if","cond":{"check":"wall_ahead"},"then":[{"op":"turn","dir":"right"}]},
+			{"op":"move","steps":1}
+		]}
+	]}`,
 }
 
 func TestLevelsLoad(t *testing.T) {
@@ -39,8 +79,8 @@ func TestLevelsLoad(t *testing.T) {
 	if err != nil {
 		t.Fatalf("LoadAll: %v", err)
 	}
-	if len(lvls) != 3 {
-		t.Fatalf("expected 3 levels, got %d", len(lvls))
+	if len(lvls) != 8 {
+		t.Fatalf("expected 8 levels, got %d", len(lvls))
 	}
 	for _, lvl := range lvls {
 		if lvl.ParBlocks <= 0 {
