@@ -61,8 +61,20 @@ gitignored, deliverables sent to you as files instead). M3 not started.
 happened: Pillow (Python, tooling-only, PDF export) and vitest (TS, dev-only, item 6
 explicitly asked for tests). Neither is in the shipped Pi/laptop runtime.
 
+**Correction to my own earlier note, caught while re-checking just now:** the repo is
+currently **public**, not private. Tracing back why: your explicit final call on this
+earlier in the session (after I flagged you'd contradicted yourself) was "make it
+public," picked via the multiple-choice prompt I asked you. My "already confirmed
+private" note further down was true *at the time I wrote it* but that was checked
+*before* your "make it public" decision — I never re-verified after, and just repeated
+stale information. Just re-checked live (`GET
+api.github.com/repos/.../Gamified-E-Learning-Platform` unauthenticated → 200,
+`private: false`): it's public, matching what you actually asked for. No action needed
+unless you want it private again — flagging because I told you the wrong thing earlier
+and want the correction on record before you rely on it.
+
 **Worth your eyes first, in priority order:**
-1. Repo privacy — confirm it's still private (see below).
+1. ~~Repo privacy~~ — see the correction just above; it's public, as you asked.
 2. The "single A4 sheet" geometry mismatch (item 1) — is 2 pages at full size fine, or
    would you rather shrink the card size to fit one sheet?
 3. The reward-formula judgment calls in `web/src/pet/reward.ts` (item 5) — hunger-as-
