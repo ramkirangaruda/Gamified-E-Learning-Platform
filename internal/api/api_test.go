@@ -26,6 +26,24 @@ func (f fakeEngine) Complete(_ context.Context, req tutor.CompletionRequest) (tu
 func (f fakeEngine) TierInfo() tutor.TierInfo { return f.tier }
 func (f fakeEngine) Close() error             { return nil }
 
+// driftingEngine simulates the exact real-weights failure mode (internal/hints's
+// HasFirstPersonAuthorDrift) so handleHint's retry-then-fallback wiring can be tested
+// without spawning a real model. responses is consumed one call at a time; calling past
+// the end panics (a test bug -- handleHint should never call more than twice).
+type driftingEngine struct {
+	tier      tutor.TierInfo
+	responses []string
+	calls     int
+}
+
+func (f *driftingEngine) Complete(_ context.Context, req tutor.CompletionRequest) (tutor.CompletionResult, error) {
+	text := f.responses[f.calls]
+	f.calls++
+	return tutor.CompletionResult{Text: text, LatencyMs: 1}, nil
+}
+func (f *driftingEngine) TierInfo() tutor.TierInfo { return f.tier }
+func (f *driftingEngine) Close() error             { return nil }
+
 // Integration test for the AST -> executor -> trace path, exercised the same way the
 // frontend actually calls it: real HTTP, real level content from content/levels/, a
 // real (temp-file) SQLite store. Blockly workspace -> AST compilation is covered
@@ -34,6 +52,11 @@ func (f fakeEngine) Close() error             { return nil }
 // coming out -- which is the cross-language seam neither side's unit tests alone cover.
 func newTestServer(t *testing.T) *httptest.Server {
 	t.Helper()
+	return newTestServerWithEngine(t, fakeEngine{tier: tutor.TierInfo{Tier: "low", Model: "fake-model.gguf", AvailableMB: 4000}})
+}
+
+func newTestServerWithEngine(t *testing.T, engine tutor.Engine) *httptest.Server {
+	t.Helper()
 	dbPath := filepath.Join(t.TempDir(), "pet.db")
 	st, err := store.Open(dbPath)
 	if err != nil {
@@ -41,7 +64,7 @@ func newTestServer(t *testing.T) *httptest.Server {
 	}
 	t.Cleanup(func() { st.Close() })
 
-	srv, err := New(st, "../../content/levels", "../../content/hints", fakeEngine{tier: tutor.TierInfo{Tier: "low", Model: "fake-model.gguf", AvailableMB: 4000}})
+	srv, err := New(st, "../../content/levels", "../../content/hints", engine)
 	if err != nil {
 		t.Fatalf("api.New: %v", err)
 	}
@@ -131,6 +154,74 @@ func TestIntegration_LegacyRawASTShapeIsRejected(t *testing.T) {
 
 	if resp.StatusCode != http.StatusBadRequest {
 		t.Fatalf("status = %d, want 400 (legacy raw-AST body shape must be rejected, not silently accepted)", resp.StatusCode)
+	}
+}
+
+// Perspective-drift layer 3, end to end through the real HTTP handler (not just
+// internal/hints.HasFirstPersonAuthorDrift in isolation): a rejected first completion
+// must be retried once, and a second-attempt success must be what the child sees.
+func TestIntegration_HintRetriesOnceAfterPerspectiveDrift(t *testing.T) {
+	engine := &driftingEngine{
+		tier: tutor.TierInfo{Tier: "low", Model: "fake-model.gguf"},
+		responses: []string{
+			"I forgot to close my repeat block with an end repeat card.",
+			"You forgot to close your repeat block! Add an end repeat card.",
+		},
+	}
+	ts := newTestServerWithEngine(t, engine)
+
+	body := `{"level_id":"level-2","error_signature":"unbalanced_block"}`
+	resp, err := http.Post(ts.URL+"/api/hint", "application/json", strings.NewReader(body))
+	if err != nil {
+		t.Fatalf("POST /api/hint: %v", err)
+	}
+	defer resp.Body.Close()
+
+	var got struct {
+		Hint string `json:"hint"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&got); err != nil {
+		t.Fatalf("decoding response: %v", err)
+	}
+	if engine.calls != 2 {
+		t.Fatalf("engine.calls = %d, want 2 (one rejected, one retry)", engine.calls)
+	}
+	if got.Hint != engine.responses[1] {
+		t.Fatalf("hint = %q, want the accepted retry text %q", got.Hint, engine.responses[1])
+	}
+}
+
+// If both attempts drift, the verified hint text must be shown verbatim -- never a
+// second rejected completion, and never nothing.
+func TestIntegration_HintFallsBackToVerifiedTextAfterTwoRejections(t *testing.T) {
+	engine := &driftingEngine{
+		tier: tutor.TierInfo{Tier: "low", Model: "fake-model.gguf"},
+		responses: []string{
+			"I forgot to close my repeat block with an end repeat card.",
+			"I opened a repeat block but never closed it, my mistake.",
+		},
+	}
+	ts := newTestServerWithEngine(t, engine)
+
+	body := `{"level_id":"level-2","error_signature":"unbalanced_block"}`
+	resp, err := http.Post(ts.URL+"/api/hint", "application/json", strings.NewReader(body))
+	if err != nil {
+		t.Fatalf("POST /api/hint: %v", err)
+	}
+	defer resp.Body.Close()
+
+	var got struct {
+		Hint string `json:"hint"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&got); err != nil {
+		t.Fatalf("decoding response: %v", err)
+	}
+	if engine.calls != 2 {
+		t.Fatalf("engine.calls = %d, want 2 (both rejected, no third attempt)", engine.calls)
+	}
+	const verifiedText = "It looks like you opened a repeat block but forgot the 'end repeat' card that closes it. Every repeat needs its own end repeat right after the cards you want repeated."
+	if got.Hint != verifiedText {
+		t.Fatalf("hint = %q, want verified bank text verbatim %q", got.Hint, verifiedText)
 	}
 }
 
