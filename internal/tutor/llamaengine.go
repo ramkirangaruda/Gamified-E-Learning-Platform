@@ -62,6 +62,9 @@ func StartLlamaEngine(ctx context.Context, opts StartOptions) (*LlamaEngine, err
 		cmd.Stdout = opts.LogWriter
 		cmd.Stderr = opts.LogWriter
 	}
+	// AUDIT P0-1: bind the child's lifetime to ours where the OS supports it, so a hard
+	// kill of the launcher cannot leave llama-server resident holding the model.
+	configureChildLifetime(cmd)
 	if err := cmd.Start(); err != nil {
 		return nil, fmt.Errorf("tutor: starting llama-server: %w", err)
 	}
@@ -168,9 +171,24 @@ func (e *LlamaEngine) Complete(ctx context.Context, req CompletionRequest) (Comp
 
 func (e *LlamaEngine) TierInfo() TierInfo { return e.tier }
 
+// Close kills llama-server and reaps it. AUDIT P0-1: the Wait matters -- Kill alone
+// leaves a zombie on Linux, and more importantly returning before the process is actually
+// gone means a caller that restarts the engine can race a still-live child holding the
+// port. Wait is bounded so a wedged child can never hang shutdown.
 func (e *LlamaEngine) Close() error {
 	if e.cmd == nil || e.cmd.Process == nil {
 		return nil
 	}
-	return e.cmd.Process.Kill()
+	killErr := e.cmd.Process.Kill()
+
+	done := make(chan struct{})
+	go func() {
+		_, _ = e.cmd.Process.Wait()
+		close(done)
+	}()
+	select {
+	case <-done:
+	case <-time.After(5 * time.Second):
+	}
+	return killErr
 }

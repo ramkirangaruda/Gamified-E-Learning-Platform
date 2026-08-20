@@ -86,6 +86,14 @@ func New(st *store.Store, levelsDir, hintsDir string, engine tutor.Engine, hintT
 
 func (s *Server) Mux() *http.ServeMux { return s.mux }
 
+// SetEngine attaches the tutor engine after construction. AUDIT P0-2: cmd/server now
+// loads levels (which can fail and call log.Fatalf) *before* spawning llama-server, so
+// that a content failure can never exit the process with a child already running and
+// unkillable. That ordering means the engine isn't available at api.New time. Called once
+// during startup, before the HTTP server begins serving, so there is no concurrent
+// reader to race with.
+func (s *Server) SetEngine(engine tutor.Engine) { s.engine = engine }
+
 // PrewarmHints implements queue item 5's startup pre-warm routine: generate and cache
 // every (level_id, error_signature) pair in the hint bank at history bucket 0 -- the
 // bucket a first-time attempt always lands in, which is also the overwhelmingly common
