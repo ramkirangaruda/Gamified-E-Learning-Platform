@@ -28,7 +28,8 @@ export interface Treat {
   cost: number;
   /** Hunger it restores, before clamping at 100. */
   fills: number;
-  /** One short line in Pip's voice, shown when it's eaten. */
+  /** One short line in the pet's voice, shown when it's eaten. Deliberately written
+   *  character-neutral so it reads correctly for whichever of the seven is selected. */
   line: string;
 }
 

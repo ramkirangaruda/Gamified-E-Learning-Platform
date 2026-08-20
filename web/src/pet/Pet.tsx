@@ -1,17 +1,21 @@
 import type { PetMood } from "./mood";
 import { FRAME, MOOD_ANIMATION, SHEET } from "./spriteLayout";
-import { spriteUrlFor } from "./characters";
+import { characterById, spriteUrlFor } from "./characters";
 
 // Sprite-sheet character rendering, shared by every selectable companion (settings
-// screen: "choose your pet") -- replacing Pip's inline SVG at explicit product
-// direction, see DECISIONS.md for why that was a deliberate, logged reversal of "every
-// illustration here is inline SVG", not an oversight. Originally Tom-Lizard-only;
-// generalized to `species` once the roster grew, since every character turned out to
-// share the identical sprite grid (spriteLayout.ts). The prop contract is otherwise
-// unchanged from Pip's: PetBar/Trail/CompareView/StyleGuide all render <Pet mood=...
-// name=... evolutionStage=... size=... feedTick=... showName=... /> plus the new
-// `species`, which defaults to Tom so an old call site that hasn't been told which
-// character is selected still renders something correct.
+// screen: "choose your pet") -- replacing the original inline-SVG mascot at explicit
+// product direction, see DECISIONS.md for why that was a deliberate, logged reversal of
+// "every illustration here is inline SVG", not an oversight. Originally written for a
+// single character; generalized to `species` once the roster grew to seven, since every
+// character turned out to share the identical sprite grid (spriteLayout.ts). The prop
+// contract is otherwise unchanged: PetBar/Trail/CompareView/StyleGuide all render <Pet
+// mood=... name=... evolutionStage=... size=... feedTick=... showName=... /> plus
+// `species`, which defaults to the roster's first entry so an old call site that hasn't
+// been told which character is selected still renders something correct.
+//
+// `name` is deliberately NOT defaulted to a hardcoded string any more -- it falls back
+// to whichever character `species` names (characterById), so a call site that passes a
+// species but no name captions the right pet instead of always saying "Tom".
 //
 // Frame-stepping is done with CSS `transform: translate(...)` in PERCENTAGES of the
 // sheet image's own box (see index.css) rather than fixed pixel values, so the exact
@@ -19,14 +23,15 @@ import { spriteUrlFor } from "./characters";
 // trail, 84px in the pet bar, 96px by default) with no per-instance CSS needed, and for
 // every character's sheet since they're all the same pixel dimensions. Only `idle` and
 // `thinking` loop -- every other mood is a one-shot reaction that holds its final frame
-// -- mirroring Pip's own "idle animation is a rare, budgeted exception" rule
+// -- keeping the "idle animation is a rare, budgeted exception" rule
 // (pet/idleAnimation.test.ts polices this for whichever character is here).
 
 interface PetProps {
   mood: PetMood;
   name?: string;
   /** Which character's spritesheet to render -- `pet.species` on the saved state.
-   *  Defaults to Tom Lizard for call sites that don't (yet) know the selection. */
+   *  Defaults to the roster's first entry for call sites that don't (yet) know the
+   *  selection. */
   species?: string;
   evolutionStage?: number;
   /** Rendered pixel size (height-constrained; the frame's own aspect ratio sets width). */
@@ -40,7 +45,7 @@ interface PetProps {
 
 export default function Pet({
   mood,
-  name = "Tom",
+  name,
   species = "tom-lizard",
   evolutionStage = 0,
   size = 96,
@@ -53,9 +58,11 @@ export default function Pet({
   const sheetW = SHEET.width * scale;
   const sheetH = SHEET.height * scale;
   const spriteUrl = spriteUrlFor(species);
+  // Caption/aria fall back to the selected character rather than to a fixed name.
+  const displayName = name ?? characterById(species).displayName;
 
   // null = a static resting pose (hungry, sleepy) -- no animation class at all, so the
-  // sheet just sits at its default (idle frame 0) position. See tomLizard.ts.
+  // sheet just sits at its default (idle frame 0) position. See spriteLayout.ts.
   const animName = MOOD_ANIMATION[mood];
 
   return (
@@ -66,7 +73,7 @@ export default function Pet({
         data-stage={evolutionStage}
         style={{ width: frameW, height: frameH }}
         role="img"
-        aria-label={`${name} looks ${MOOD_WORD[mood]}`}
+        aria-label={`${displayName} looks ${MOOD_WORD[mood]}`}
       >
         {/* Evolution stage aura -- deliberately outside the frame-clipping box below, so
             it can bleed past the sprite's own bounds (index.css: inset < 0). */}
@@ -76,7 +83,7 @@ export default function Pet({
             and this is what turns it into a window onto exactly one cell of it. */}
         <div className="relative overflow-hidden" style={{ width: frameW, height: frameH }}>
           <div
-            className={`tom-lizard-sheet${animName ? ` tom-lizard-anim-${animName}` : ""}`}
+            className={`pet-sheet${animName ? ` pet-anim-${animName}` : ""}`}
             style={{
               position: "absolute",
               top: 0,
@@ -89,8 +96,9 @@ export default function Pet({
           />
         </div>
 
-        {/* Evolution stage art (§13 step 2): same additive hat/badge language Pip used,
-            now a small overlay above the sprite instead of a recolor -- stage 1 adds the
+        {/* Evolution stage art (§13 step 2): the same additive hat/badge language the
+            original mascot used, now a small overlay above the sprite instead of a
+            recolor, so it works over any character's art -- stage 1 adds the
             hat, stage 2 adds the badge, stage 3 (via .pet-stage-aura above) adds the
             glow. See index.css's [data-stage] rules. */}
         <svg
@@ -112,7 +120,7 @@ export default function Pet({
         <div key={feedTick} className={`pet-treat ${feedTick > 0 ? "quest-pet-eat" : ""}`} />
       </div>
 
-      {showName && <div className="mt-1 font-display text-sm font-bold text-quest-ink">{name}</div>}
+      {showName && <div className="mt-1 font-display text-sm font-bold text-quest-ink">{displayName}</div>}
     </div>
   );
 }

@@ -61,7 +61,7 @@ interface PetContextValue extends MascotEvents {
   state: GameState | null;
   levels: LevelDef[];
   error: string | null;
-  /** "Pip suggests" -- null until the first fetch resolves. Refreshed after every
+  /** "<pet> suggests" -- null until the first fetch resolves. Refreshed after every
    *  commitState, so a solve/loss immediately reflects in the next suggestion. */
   suggestion: Suggestion | null;
 

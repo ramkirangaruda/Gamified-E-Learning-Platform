@@ -4,6 +4,7 @@ import LevelGrid from "./trail/LevelGrid";
 import Trail from "./trail/Trail";
 import { ChunkyButton } from "./ui/Chunky";
 import ClassroomPanel from "./pet/ClassroomPanel";
+import { characterById } from "./pet/characters";
 import { usePet } from "./pet/PetProvider";
 
 // The home screen. Trail is primary ("where am I, what's next"); the grid is secondary
@@ -30,6 +31,11 @@ export default function HomePage({ onSelectLevel, onOpenSandbox, onOpenSettings,
   const { state, levels, error, suggestion } = usePet();
   const [view, setView] = useState<View>("trail");
   const [classroomOpen, setClassroomOpen] = useState(false);
+
+  // Whatever the child actually named their pet, falling back to the chosen character's
+  // display name and finally to the roster default -- this callout used to hardcode
+  // "Tom", which was wrong for six of the seven selectable characters.
+  const petName = state?.pet.name?.trim() || characterById(state?.pet.species).displayName;
 
   const solvedIds = state?.solved_levels ?? [];
   // handoff/04-stars.md: real, server-computed per-level star counts, persisted in
@@ -84,7 +90,7 @@ export default function HomePage({ onSelectLevel, onOpenSandbox, onOpenSettings,
           </ChunkyButton>
         </div>
 
-        {/* "Tom suggests" -- a deterministic recommendation (internal/api/suggestion.go),
+        {/* "<pet> suggests" -- a deterministic recommendation (internal/api/suggestion.go),
             never the model's call. Only rendered once a real suggestion has loaded, and
             silently absent if the fetch failed -- this is a nice-to-have on top of the
             trail, not something worth showing an error state for. */}
@@ -92,11 +98,11 @@ export default function HomePage({ onSelectLevel, onOpenSandbox, onOpenSettings,
           <button
             type="button"
             onClick={() => (suggestion.level_id ? onSelectLevel(suggestion.level_id) : onOpenSandbox())}
-            aria-label={`Tom suggests: ${suggestion.message}`}
+            aria-label={`${petName} suggests: ${suggestion.message}`}
             className="mt-4 flex w-full items-center gap-3 rounded-chunk-lg border-[var(--outline-chunk)] border-quest-gold bg-quest-gold/15 px-5 py-3 text-left shadow-chunk transition-transform hover:-translate-y-0.5"
           >
             <span className="font-display text-sm font-bold uppercase tracking-wide text-quest-gold-dark">
-              Tom suggests
+              {petName} suggests
             </span>
             <span className="font-medium text-quest-ink">{suggestion.message}</span>
           </button>

@@ -303,3 +303,46 @@ One line per non-obvious choice, and why. Newest at the bottom.
   of 2026-08-20, so the open "nobody has pointed a real webcam at the real printed cards"
   gap cannot be closed by rehearsal. Recorded in the file so the documented fallback gets
   budgeted for rather than discovered on the day.
+
+
+## All seven pets consolidated under one folder, and the single-pet strings fixed (2026-08-20)
+
+- **Every spritesheet was committed twice.** Each character existed once as a delivery
+  drop at the repo root with inconsistent nesting (`carrot-bouncer/carrot-bouncer/` but
+  `tom-lizard/`) and once under `web/public/<id>/`. All seven pairs were verified
+  byte-identical with `cmp` *before* anything was deleted -- the root copies went, the
+  served copies moved to `web/public/pets/<id>/`, and each character's `pet.json` moved in
+  beside its art. That `pet.json` documents the frame grid and per-row animation
+  semantics and is **not read at runtime**; `spriteLayout.ts` remains the runtime
+  authority, and the two independently agreeing is what originally confirmed all seven
+  share one grid.
+- **One folder, one path-building function.** `spriteUrlFor` is the only place that knows
+  the layout, so adding character eight is now "drop `<id>/` into `web/public/pets/`, add
+  a roster entry" and nothing else. Verified with `npm run build`: all seven land in
+  `app/pets/`, so the assembled drive layout (brief §7) is unaffected.
+- **Roster/art agreement is now a test, because that failure is invisible in review.** A
+  rostered character with no art breaks no build and no type-check -- it shows up as a
+  child picking a pet and getting a blank box. `characters.test.ts` now asserts both
+  directions: every rostered id has art on disk, and no art sits there unrostered (dead
+  weight shipped to every pendrive). Implemented with `import.meta.glob` rather than
+  `node:fs` deliberately -- `tsconfig.app.json` scopes `src/` to `["vite/client"]`, and
+  widening it to `"node"` just to satisfy a test would let real browser code reach for
+  node APIs that don't exist in the bundle. Vite resolves the glob against the real
+  filesystem at transform time, so it stays a genuine on-disk check.
+- **"Tom suggests" was a live bug, not a tidy-up.** The home screen's suggestion callout
+  contained a literal `"Tom suggests"`, wrong for six of the seven selectable characters.
+  It now resolves the child's own pet name, falling back to the chosen character's display
+  name (`SettingsPage.choosePet` already keeps `pet.name` in step with `pet.species`).
+  `Pet.tsx` no longer defaults `name` to `"Tom"` -- it derives from `species` via
+  `characterById` -- and `MascotCanvas`'s aria-label no longer announces "Pip", a name
+  that has not existed since the rename.
+- **Shared CSS classes renamed `tom-lizard-*` -> `pet-*`.** One character's name on a class
+  every character uses is actively misleading to the next person reading it. Same
+  keyframes, same stepped-animation budget rule, which `idleAnimation.test.ts` still
+  polices.
+- **Historical "Pip" references in comments were deliberately left alone.** The ones
+  explaining *measured* rationale -- the +41.5-CPU-points SVG-vs-div finding, the
+  eased-vs-stepped repaint numbers -- are the provenance of real measurements taken
+  against that implementation. Renaming them to a character that was never benchmarked
+  would quietly destroy the evidence. Only comments describing *current* behaviour were
+  updated.

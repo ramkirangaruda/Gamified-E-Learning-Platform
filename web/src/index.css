@@ -171,51 +171,51 @@
  * Row Y-offsets are fixed per animation (the row never changes mid-clip); only X steps.
  * Both are percentages of the SHEET IMAGE's own box (9 rows, 8 columns), which is why
  * the exact same rule works at 52px, 84px or 96px with no per-size CSS. */
-.tom-lizard-sheet {
+.pet-sheet {
   transform: translate(0%, 0%); /* default: row 0 (idle), frame 0 */
 }
 
-@keyframes tom-lizard-anim-idle {
+@keyframes pet-anim-idle {
   from { transform: translate(0%, 0%); }
   to   { transform: translate(-75%, 0%); } /* 6 frames * 12.5% */
 }
-.quest-pet-shell[data-pet-mood="idle"] .tom-lizard-anim-idle {
-  animation: tom-lizard-anim-idle 1s steps(6) infinite;
+.quest-pet-shell[data-pet-mood="idle"] .pet-anim-idle {
+  animation: pet-anim-idle 1s steps(6) infinite;
 }
 
-@keyframes tom-lizard-anim-waiting {
+@keyframes pet-anim-waiting {
   from { transform: translate(0%, -66.6667%); }   /* row 6 */
   to   { transform: translate(-75%, -66.6667%); } /* 6 frames * 12.5% */
 }
-.quest-pet[data-mood="thinking"] .tom-lizard-anim-waiting {
-  animation: tom-lizard-anim-waiting 1s steps(6) infinite;
+.quest-pet[data-mood="thinking"] .pet-anim-waiting {
+  animation: pet-anim-waiting 1s steps(6) infinite;
 }
 
 /* One-shot reactions: steps(frames - 1), landing exactly on and holding the real last
  * frame, never the "one past the end" position a looping clip would wrap from. */
-@keyframes tom-lizard-anim-waving {
+@keyframes pet-anim-waving {
   from { transform: translate(0%, -33.3333%); }   /* row 3 */
   to   { transform: translate(-37.5%, -33.3333%); } /* (4-1) frames * 12.5% */
 }
-.quest-pet[data-mood="curious"] .tom-lizard-anim-waving,
-.quest-pet[data-mood="happy"] .tom-lizard-anim-waving {
-  animation: tom-lizard-anim-waving 0.5s steps(3) forwards;
+.quest-pet[data-mood="curious"] .pet-anim-waving,
+.quest-pet[data-mood="happy"] .pet-anim-waving {
+  animation: pet-anim-waving 0.5s steps(3) forwards;
 }
 
-@keyframes tom-lizard-anim-jumping {
+@keyframes pet-anim-jumping {
   from { transform: translate(0%, -44.4444%); }   /* row 4 */
   to   { transform: translate(-50%, -44.4444%); } /* (5-1) frames * 12.5% */
 }
-.quest-pet[data-mood="celebrating"] .tom-lizard-anim-jumping {
-  animation: tom-lizard-anim-jumping 0.5s steps(4) forwards;
+.quest-pet[data-mood="celebrating"] .pet-anim-jumping {
+  animation: pet-anim-jumping 0.5s steps(4) forwards;
 }
 
-@keyframes tom-lizard-anim-failed {
+@keyframes pet-anim-failed {
   from { transform: translate(0%, -55.5556%); }   /* row 5 */
   to   { transform: translate(-87.5%, -55.5556%); } /* (8-1) frames * 12.5% */
 }
-.quest-pet[data-mood="confused"] .tom-lizard-anim-failed {
-  animation: tom-lizard-anim-failed 1s steps(7) forwards;
+.quest-pet[data-mood="confused"] .pet-anim-failed {
+  animation: pet-anim-failed 1s steps(7) forwards;
 }
 
 /* ===========================================================================
