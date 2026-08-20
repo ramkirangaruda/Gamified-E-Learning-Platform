@@ -24,8 +24,8 @@ interface TierHUDProps {
 export default function TierHUD({ tier, lastLatencyMs }: TierHUDProps) {
   if (!tier || !tier.tier) {
     return (
-      <div className="inline-flex items-center gap-1.5 rounded-full bg-slate-100 px-3 py-1 text-xs text-slate-400">
-        <span className="h-1.5 w-1.5 rounded-full bg-slate-300" />
+      <div className="inline-flex items-center gap-1.5 rounded-full bg-white/70 px-3 py-1 font-display text-xs font-bold text-quest-ink/40 shadow-sm">
+        <span className="h-1.5 w-1.5 rounded-full bg-quest-ink/20" />
         Tutor offline
       </div>
     );
@@ -34,17 +34,17 @@ export default function TierHUD({ tier, lastLatencyMs }: TierHUDProps) {
   const ramGb = (tier.available_mb / 1024).toFixed(1);
 
   return (
-    <div className="inline-flex items-center gap-2 rounded-full bg-slate-800 px-3 py-1.5 text-xs font-medium text-white shadow-sm">
-      <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
+    <div className="inline-flex items-center gap-2 rounded-full bg-quest-ink px-3 py-1.5 font-display text-xs font-bold text-white shadow-md">
+      <span className="h-1.5 w-1.5 rounded-full bg-quest-grass" />
       <span>{TIER_LABEL[tier.tier] ?? tier.tier}</span>
-      <span className="text-slate-400">·</span>
+      <span className="text-white/40">·</span>
       <span>{shortModelName(tier.model)}</span>
-      <span className="text-slate-400">·</span>
+      <span className="text-white/40">·</span>
       <span>{ramGb} GB</span>
       {lastLatencyMs !== null && (
         <>
-          <span className="text-slate-400">·</span>
-          <span className="text-slate-300">{lastLatencyMs}ms</span>
+          <span className="text-white/40">·</span>
+          <span className="text-quest-sun">{lastLatencyMs}ms</span>
         </>
       )}
     </div>

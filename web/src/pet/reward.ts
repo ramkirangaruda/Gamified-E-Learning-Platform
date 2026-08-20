@@ -28,6 +28,12 @@ export interface AttemptInput {
   hard: boolean;
   blocksUsed: number;
   parBlocks: number;
+  // True when this level's index is already <= the learner's highest_level -- i.e. this
+  // "solve" isn't new progress, just a re-run of a level already beaten. Without this,
+  // clicking Run repeatedly on a finished level grants the full solve bonus every single
+  // time with no cap, unlike hunger (which clampHunger already bounds at 100) -- points
+  // have no such ceiling, so this has to be gated at the source instead.
+  alreadySolved: boolean;
 }
 
 export interface AttemptReward {
@@ -47,7 +53,7 @@ const HUNGER_EASY_SOLVED_BONUS = 2;
 
 export function computeAttemptReward(input: AttemptInput): AttemptReward {
   let points = ATTEMPT_POINTS;
-  if (input.outcome === "solved") {
+  if (input.outcome === "solved" && !input.alreadySolved) {
     points += input.firstTry ? SOLVED_FIRST_TRY_POINTS : SOLVED_POINTS;
     if (input.hard) points += HARD_SOLVED_BONUS;
     if (input.blocksUsed < input.parBlocks) points += UNDER_PAR_BONUS;

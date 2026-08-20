@@ -87,7 +87,7 @@ export default function GridRenderer({ grid, startPos, startDir, events, outcome
       <svg
         width={grid.width * CELL_PX}
         height={grid.height * CELL_PX}
-        className="rounded-lg border border-slate-300 bg-slate-50"
+        className="rounded-2xl border-4 border-white bg-quest-cream shadow-inner"
       >
         {grid.walls.map((row, y) =>
           row.map(
@@ -99,32 +99,33 @@ export default function GridRenderer({ grid, startPos, startDir, events, outcome
                   y={y * CELL_PX}
                   width={CELL_PX}
                   height={CELL_PX}
-                  className="fill-slate-700"
+                  rx={6}
+                  className="fill-quest-ink/70"
                 />
               ),
           ),
         )}
 
         {Array.from({ length: grid.width + 1 }, (_, i) => (
-          <line key={`gx-${i}`} x1={i * CELL_PX} y1={0} x2={i * CELL_PX} y2={grid.height * CELL_PX} className="stroke-slate-200" />
+          <line key={`gx-${i}`} x1={i * CELL_PX} y1={0} x2={i * CELL_PX} y2={grid.height * CELL_PX} className="stroke-quest-ink/10" />
         ))}
         {Array.from({ length: grid.height + 1 }, (_, i) => (
-          <line key={`gy-${i}`} x1={0} y1={i * CELL_PX} x2={grid.width * CELL_PX} y2={i * CELL_PX} className="stroke-slate-200" />
+          <line key={`gy-${i}`} x1={0} y1={i * CELL_PX} x2={grid.width * CELL_PX} y2={i * CELL_PX} className="stroke-quest-ink/10" />
         ))}
 
         {(grid.items ?? []).map(([ix, iy], i) => (
-          <circle key={`item-${i}`} cx={(ix + 0.5) * CELL_PX} cy={(iy + 0.5) * CELL_PX} r={CELL_PX * 0.14} className="fill-amber-400" />
+          <circle key={`item-${i}`} cx={(ix + 0.5) * CELL_PX} cy={(iy + 0.5) * CELL_PX} r={CELL_PX * 0.14} className="fill-quest-sun" />
         ))}
 
         <g transform={`translate(${(grid.goal[0] + 0.5) * CELL_PX}, ${(grid.goal[1] + 0.5) * CELL_PX})`}>
-          <polygon points={`0,${-CELL_PX * 0.3} ${CELL_PX * 0.28},${CELL_PX * 0.22} ${-CELL_PX * 0.28},${CELL_PX * 0.22}`} className="fill-emerald-400" />
+          <polygon points={`0,${-CELL_PX * 0.3} ${CELL_PX * 0.28},${CELL_PX * 0.22} ${-CELL_PX * 0.28},${CELL_PX * 0.22}`} className="fill-quest-grass" />
         </g>
 
         <g transform={`translate(${cx}, ${cy})`} className={effectClass} key={index}>
           <polygon
             points={`${CELL_PX * 0.32},0 ${-CELL_PX * 0.22},${CELL_PX * 0.24} ${-CELL_PX * 0.22},${-CELL_PX * 0.24}`}
             transform={`rotate(${angle})`}
-            className="fill-sky-500 stroke-sky-700"
+            className="fill-quest-sky stroke-quest-sky-dark"
             strokeWidth={2}
           />
         </g>
@@ -134,7 +135,7 @@ export default function GridRenderer({ grid, startPos, startDir, events, outcome
         <button
           type="button"
           onClick={() => setIndex(0)}
-          className="rounded bg-slate-200 px-3 py-1 text-sm hover:bg-slate-300"
+          className="rounded-xl border-b-2 border-quest-ink/20 bg-white px-3 py-1.5 font-display text-sm font-bold text-quest-ink shadow-sm hover:-translate-y-0.5 transition-transform"
         >
           ⟲ Reset
         </button>
@@ -142,7 +143,7 @@ export default function GridRenderer({ grid, startPos, startDir, events, outcome
           type="button"
           onClick={() => setPlaying((p) => !p)}
           disabled={atEnd && !playing}
-          className="rounded bg-sky-600 px-3 py-1 text-sm text-white hover:bg-sky-700 disabled:opacity-40"
+          className="rounded-xl border-b-2 border-quest-sky-dark bg-quest-sky px-3 py-1.5 font-display text-sm font-bold text-white shadow-sm hover:-translate-y-0.5 transition-transform disabled:translate-y-0 disabled:opacity-40"
         >
           {playing ? "⏸ Pause" : "▶ Play"}
         </button>
@@ -150,17 +151,17 @@ export default function GridRenderer({ grid, startPos, startDir, events, outcome
           type="button"
           onClick={() => setIndex((i) => Math.min(i + 1, events.length))}
           disabled={atEnd}
-          className="rounded bg-slate-200 px-3 py-1 text-sm hover:bg-slate-300 disabled:opacity-40"
+          className="rounded-xl border-b-2 border-quest-ink/20 bg-white px-3 py-1.5 font-display text-sm font-bold text-quest-ink shadow-sm hover:-translate-y-0.5 transition-transform disabled:translate-y-0 disabled:opacity-40"
         >
           ⏭ Step
         </button>
-        <span className="ml-2 text-xs text-slate-500">
+        <span className="ml-2 font-display text-xs font-bold text-quest-ink/40">
           {index} / {events.length}
         </span>
       </div>
 
       {atEnd && outcome && (
-        <div className={outcome === "solved" ? "text-emerald-600 font-semibold" : "text-slate-500"}>
+        <div className={`font-display font-bold ${outcome === "solved" ? "text-quest-grass-dark" : "text-quest-ink/50"}`}>
           {outcome === "solved" ? "🎉 Solved!" : "Not there yet — try again"}
         </div>
       )}

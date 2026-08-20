@@ -13,10 +13,10 @@ interface PetProps {
 }
 
 const BODY_FILL: Record<PetMood, string> = {
-  idle: "#38bdf8",
-  happy: "#34d399",
-  confused: "#a78bfa",
-  hungry: "#fb923c",
+  idle: "#3bb4e5",
+  happy: "#4caf50",
+  confused: "#9b6bdb",
+  hungry: "#ffb703",
 };
 
 const ANIMATION_CLASS: Record<PetMood, string> = {
@@ -28,8 +28,8 @@ const ANIMATION_CLASS: Record<PetMood, string> = {
 
 export default function Pet({ mood, name = "Pip", evolutionStage = 0 }: PetProps) {
   return (
-    <div className="flex flex-col items-center gap-1" data-pet-mood={mood}>
-      <svg viewBox="-60 -60 120 120" width={140} height={140} className={ANIMATION_CLASS[mood]}>
+    <div className="flex flex-col items-center" data-pet-mood={mood}>
+      <svg viewBox="-60 -60 120 120" width={150} height={150} className={ANIMATION_CLASS[mood]}>
         {/* body */}
         <ellipse cx={0} cy={8} rx={42} ry={38} fill={BODY_FILL[mood]} stroke="#0f172a" strokeOpacity={0.15} strokeWidth={2} />
         {/* stage marker: a tiny extra ring once evolved, cheap stand-in for real stage art */}
@@ -66,7 +66,8 @@ export default function Pet({ mood, name = "Pip", evolutionStage = 0 }: PetProps
           </g>
         )}
       </svg>
-      <div className="text-sm font-medium text-slate-600">{name}</div>
+      <div className="-mt-2 h-3 w-16 rounded-full bg-quest-ink/10 blur-[2px]" />
+      <div className="mt-1 font-display text-sm font-bold text-quest-ink">{name}</div>
     </div>
   );
 }

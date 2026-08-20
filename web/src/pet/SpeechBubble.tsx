@@ -11,9 +11,9 @@ const PLACEHOLDER = "Hi! I'm Pip. I'll have real hints for you soon — M3 terri
 
 export default function SpeechBubble({ text = PLACEHOLDER }: SpeechBubbleProps) {
   return (
-    <div className="relative max-w-xs rounded-2xl border border-slate-300 bg-white px-4 py-2 text-sm text-slate-700 shadow-sm">
+    <div className="relative max-w-xs rounded-3xl border-2 border-quest-sun bg-white px-4 py-3 text-sm font-medium text-quest-ink shadow-md">
       {text}
-      <div className="absolute -bottom-2 left-8 h-4 w-4 rotate-45 border-b border-r border-slate-300 bg-white" />
+      <div className="absolute -bottom-2 left-8 h-4 w-4 rotate-45 border-b-2 border-r-2 border-quest-sun bg-white" />
     </div>
   );
 }

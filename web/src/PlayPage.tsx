@@ -76,16 +76,23 @@ export default function PlayPage() {
       const firstTry = attemptsSoFar === 0;
       setAttemptCounts((prev) => ({ ...prev, [level.id]: attemptsSoFar + 1 }));
 
+      const levelIndex = levels.findIndex((l) => l.id === level.id);
+      // Only a *new* highest_level milestone counts as "just solved" for reward
+      // purposes -- otherwise re-running an already-beaten level's saved program keeps
+      // granting the full solve bonus forever, since nothing else caps it (unlike
+      // hunger, which clampHunger bounds at 100).
+      const alreadySolved = !!state && levelIndex + 1 <= state.learner.highest_level;
+
       const reward = computeAttemptReward({
         outcome: execResult.outcome,
         firstTry,
         hard: level.hard,
         blocksUsed,
         parBlocks: level.parBlocks,
+        alreadySolved,
       });
 
       if (state) {
-        const levelIndex = levels.findIndex((l) => l.id === level.id);
         const next: GameState = {
           ...state,
           learner: {
@@ -133,35 +140,53 @@ export default function PlayPage() {
 
   const mood = state ? moodFromHunger(state.pet.hunger, result?.outcome ?? null) : "idle";
 
+  const LEVEL_COLOR = [
+    { bg: "bg-quest-sky", border: "border-quest-sky-dark" },
+    { bg: "bg-quest-coral", border: "border-quest-coral-dark" },
+    { bg: "bg-quest-grass", border: "border-quest-grass-dark" },
+  ];
+
   return (
-    <div className="flex h-screen w-screen">
-      <div className="flex-1">
-        <Editor onWorkspaceReady={onWorkspaceReady} />
+    <div className="flex h-screen w-screen bg-quest-cream">
+      <div className="flex-1 p-3">
+        <div className="h-full overflow-hidden rounded-3xl border-4 border-white bg-white shadow-lg">
+          <Editor onWorkspaceReady={onWorkspaceReady} />
+        </div>
       </div>
 
-      <div className="flex w-[420px] flex-col gap-4 overflow-y-auto border-l border-slate-200 bg-white p-4">
+      <div className="flex w-[440px] flex-col gap-5 overflow-y-auto p-5">
         <div className="flex items-center justify-between">
-          <div>
-            <div className="mb-1 text-xs font-medium uppercase tracking-wide text-slate-400">Level</div>
-            <div className="flex gap-2">
-              {levels.map((l, i) => (
+          <h1 className="font-display text-2xl font-bold text-quest-ink">Tessera Quest</h1>
+          <TierHUD tier={tierInfo} lastLatencyMs={hintLatencyMs} />
+        </div>
+
+        <div>
+          <div className="mb-2 font-display text-sm font-bold uppercase tracking-wide text-quest-ink/60">
+            Pick a level
+          </div>
+          <div className="flex gap-3">
+            {levels.map((l, i) => {
+              const active = l.id === levelId;
+              const color = LEVEL_COLOR[i % LEVEL_COLOR.length];
+              return (
                 <button
                   key={l.id}
                   type="button"
                   onClick={() => setLevelId(l.id)}
-                  className={`rounded px-3 py-1 text-sm ${
-                    l.id === levelId ? "bg-sky-600 text-white" : "bg-slate-100 text-slate-700 hover:bg-slate-200"
+                  className={`flex-1 rounded-2xl border-b-4 px-3 py-3 text-center font-display text-sm font-bold text-white shadow-md transition-transform hover:-translate-y-0.5 ${color.bg} ${
+                    active ? `${color.border} scale-105` : "border-transparent opacity-70"
                   }`}
                 >
-                  {i + 1}. {l.name}
+                  <div className="text-2xl leading-none">{i + 1}</div>
+                  <div className="mt-1 text-xs font-semibold">{l.name}</div>
                 </button>
-              ))}
-            </div>
+              );
+            })}
           </div>
-          <TierHUD tier={tierInfo} lastLatencyMs={hintLatencyMs} />
         </div>
+
         {level && (
-          <p className="-mt-2 text-xs text-slate-400">
+          <p className="-mt-2 text-xs font-medium text-quest-ink/50">
             teaches: {level.teaches} · par: {level.parBlocks} blocks {level.hard && "· hard"}
           </p>
         )}
@@ -170,11 +195,11 @@ export default function PlayPage() {
           type="button"
           onClick={handleRun}
           disabled={!workspace || !level || running}
-          className="rounded-lg bg-emerald-600 px-4 py-2 font-medium text-white hover:bg-emerald-700 disabled:opacity-40"
+          className="rounded-2xl border-b-4 border-quest-grass-dark bg-quest-grass px-5 py-3 font-display text-lg font-bold text-white shadow-md transition-transform hover:-translate-y-0.5 hover:brightness-105 active:translate-y-0 active:border-b-2 disabled:translate-y-0 disabled:opacity-40"
         >
           {running ? "Running…" : "▶ Run program"}
         </button>
-        {runError && <p className="text-sm text-red-600">{runError}</p>}
+        {runError && <p className="text-sm font-medium text-quest-coral-dark">{runError}</p>}
 
         {level && (
           <GridRenderer
@@ -192,8 +217,10 @@ export default function PlayPage() {
         </div>
 
         {state && (
-          <div className="text-xs text-slate-400">
-            {state.learner.points} pts · hunger {state.pet.hunger} · level {state.learner.highest_level}
+          <div className="flex justify-between rounded-2xl bg-white/70 px-4 py-2 font-display text-sm font-bold text-quest-ink shadow-sm">
+            <span>⭐ {state.learner.points} pts</span>
+            <span>🍎 {state.pet.hunger}</span>
+            <span>🏆 Level {state.learner.highest_level}</span>
           </div>
         )}
       </div>
