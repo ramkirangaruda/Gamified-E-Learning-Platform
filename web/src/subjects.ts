@@ -27,13 +27,28 @@ export interface Subject {
   tone: ChunkyTone;
   /** False = no content exists yet; the UI must not imply progress. */
   available: boolean;
+  /** True for an available subject whose content isn't measured in levels/stars at all
+   *  (Math's four mini-games, not a trail). `levelsForSubject` already returns [] for
+   *  any subject but `coding`, so a standalone subject's card/progress-row would
+   *  otherwise show a literal "0 of 0 done" -- which reads as "you have done nothing
+   *  here" on a subject that is genuinely playable. Cards/ProgressPage show a "Play now"
+   *  badge instead for these. Absent (falsy) for every levels-based subject. */
+  standalone?: boolean;
 }
 
 export const SUBJECTS: Subject[] = [
   { id: "coding", letter: "Cd", title: "Coding", desc: "Programs & logic", tone: "move", available: true },
   { id: "chem", letter: "Ch", title: "Chemistry", desc: "Atoms to reactions", tone: "while", available: false },
   { id: "phys", letter: "Ph", title: "Physics", desc: "Forces & energy", tone: "repeat", available: false },
-  { id: "math", letter: "Mt", title: "Math", desc: "Numbers & patterns", tone: "coral", available: false },
+  {
+    id: "math",
+    letter: "Mt",
+    title: "Math",
+    desc: "Numbers & patterns",
+    tone: "coral",
+    available: true,
+    standalone: true,
+  },
   { id: "bio", letter: "Bi", title: "Biology", desc: "Life & living systems", tone: "cond", available: false },
 ];
 
@@ -45,8 +60,10 @@ export function subjectById(id: string | null | undefined): Subject {
 }
 
 /** Which levels belong to a subject. Only `coding` has any today -- every other subject
- *  returns [], which is what makes the cards and the progress table read "coming soon"
- *  rather than "0 of 0 done" (see homeCardFor / ProgressPage). */
+ *  returns [], including `math` (its content is four standalone mini-games, not a level
+ *  trail): callers must key off `available`/`standalone`, not level count, to tell "no
+ *  content yet" apart from "real content that isn't levels-shaped" (see HomePage /
+ *  ProgressPage). */
 export function levelsForSubject<T>(subjectId: string, codingLevels: T[]): T[] {
   return subjectId === DEFAULT_SUBJECT_ID ? codingLevels : [];
 }

@@ -4,7 +4,7 @@ import Pet from "./pet/Pet";
 import { characterById } from "./pet/characters";
 import { usePet } from "./pet/PetProvider";
 import { mascotStateToLegacyMood } from "./mascot/state";
-import { SUBJECTS, type Subject } from "./subjects";
+import { SUBJECTS, levelsForSubject, type Subject } from "./subjects";
 import type { Route } from "./routes";
 import { StarRow } from "./ui/Chunky";
 import { toneClasses } from "./ui/tone";
@@ -47,7 +47,11 @@ function SubjectCard({ card, onOpen }: { card: CardData; onOpen: () => void }) {
       type="button"
       onClick={onOpen}
       aria-label={
-        subject.available ? `${subject.title}: ${solved} of ${total} levels done` : `${subject.title}, coming soon`
+        subject.standalone
+          ? `${subject.title}: play now`
+          : subject.available
+            ? `${subject.title}: ${solved} of ${total} levels done`
+            : `${subject.title}, coming soon`
       }
       className={`flex flex-col gap-2 rounded-chunk-lg border-(length:--outline-chunk-thick) p-4 text-left shadow-chunk transition-transform duration-100
         hover:-translate-y-1 active:translate-y-[3px] active:shadow-chunk-sm
@@ -73,7 +77,16 @@ function SubjectCard({ card, onOpen }: { card: CardData; onOpen: () => void }) {
       </span>
       <p className={`text-sm ${subject.available ? "text-quest-ink-soft" : "text-quest-ink/40"}`}>{subject.desc}</p>
 
-      {subject.available ? (
+      {subject.standalone ? (
+        // Real, playable content that just isn't levels-shaped (Math's mini-games): no
+        // numeric "0 of 0", which would read as "you've done nothing here" on a subject
+        // that has nothing to count in the first place, but not the locked "Coming soon"
+        // treatment either -- this one is genuinely ready to open.
+        <span className={`mt-auto inline-flex w-fit items-center gap-1 rounded-chunk-sm border-2 ${t.border} ${t.soft} px-2.5 py-1 font-display text-[11px] font-bold ${t.ink}`}>
+          <Icon name="play" size={11} />
+          Play now
+        </span>
+      ) : subject.available ? (
         <>
           {/* Three stars, in the same vocabulary every level already uses, so the card
               reads in units a child has already learned: one per third of the subject. */}
@@ -117,9 +130,12 @@ export default function HomePage({ onNavigate }: HomePageProps) {
   const solvedCount = solvedIds.length;
 
   const cards: CardData[] = SUBJECTS.map((subject) => {
-    // Only Coding has levels today; every other subject is deliberately empty, which is
-    // exactly what makes its card render "coming soon" instead of an empty meter.
-    const subjectLevels = subject.available ? levels : [];
+    // levelsForSubject, not `subject.available ? levels : []`: the latter hands the
+    // CODING level list to ANY available subject, which would misattribute Coding's 25
+    // levels to Math (or any future non-coding subject) the moment it's flipped on.
+    // levelsForSubject already only special-cases "coding", so Math correctly gets []
+    // here too -- its card renders via the `standalone` branch below instead.
+    const subjectLevels = levelsForSubject(subject.id, levels);
     return {
       subject,
       total: subjectLevels.length,
