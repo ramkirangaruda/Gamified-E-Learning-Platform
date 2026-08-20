@@ -41,21 +41,16 @@ function SubjectCard({ card, onOpen }: { card: CardData; onOpen: () => void }) {
   const { subject, solved, total } = card;
   const t = toneClasses(subject.tone);
   const done = total > 0 && solved === total;
-  // A subject can be available without using the shared level-progress model at all (Chem
-  // Lab's rounds aren't "levels") -- showing "0 of 0 done" there would be exactly the
-  // untrue-empty-meter problem subjects.ts warns about, just from the opposite direction.
-  // Three real states, not two: locked, available-but-not-level-tracked, and level-tracked.
-  const hasLevels = subject.available && total > 0;
 
   return (
     <button
       type="button"
       onClick={onOpen}
       aria-label={
-        hasLevels
-          ? `${subject.title}: ${solved} of ${total} levels done`
+        subject.standalone
+          ? `${subject.title}: play now`
           : subject.available
-            ? `${subject.title}, ready to play`
+            ? `${subject.title}: ${solved} of ${total} levels done`
             : `${subject.title}, coming soon`
       }
       className={`flex flex-col gap-2 rounded-chunk-lg border-(length:--outline-chunk-thick) p-4 text-left shadow-chunk transition-transform duration-100
@@ -82,7 +77,17 @@ function SubjectCard({ card, onOpen }: { card: CardData; onOpen: () => void }) {
       </span>
       <p className={`text-sm ${subject.available ? "text-quest-ink-soft" : "text-quest-ink/40"}`}>{subject.desc}</p>
 
-      {hasLevels ? (
+      {subject.standalone ? (
+        // Real, playable content that just isn't levels-shaped (Chemistry's rounds,
+        // Math's mini-games): no numeric "0 of 0", which would read as "you've done
+        // nothing here" on a subject that has nothing to count in the first place, but
+        // not the locked "Coming soon" treatment either -- this one is genuinely ready
+        // to open.
+        <span className={`mt-auto inline-flex w-fit items-center gap-1 rounded-chunk-sm border-2 ${t.border} ${t.soft} px-2.5 py-1 font-display text-[11px] font-bold ${t.ink}`}>
+          <Icon name="play" size={11} />
+          Play now
+        </span>
+      ) : subject.available ? (
         <>
           {/* Three stars, in the same vocabulary every level already uses, so the card
               reads in units a child has already learned: one per third of the subject. */}
@@ -104,10 +109,6 @@ function SubjectCard({ card, onOpen }: { card: CardData; onOpen: () => void }) {
             {solved} of {total} done{done ? " — all finished!" : ""}
           </span>
         </>
-      ) : subject.available ? (
-        <span className={`mt-auto inline-flex w-fit items-center rounded-chunk-sm border-2 ${t.border} ${t.soft} px-2.5 py-1 font-display text-[11px] font-bold ${t.ink}`}>
-          Ready to play
-        </span>
       ) : (
         // No bar, no stars, no "0 of 0" -- an empty meter reads as "you have done none of
         // this", which would be untrue of a subject that does not exist yet.
@@ -137,16 +138,17 @@ export default function HomePage({ onNavigate }: HomePageProps) {
   const physicsSolved = loadPhysicsSolved();
   const cards: CardData[] = SUBJECTS.map((subject) => {
     // Physics keeps its own progress source entirely (localStorage, not pet.db), so it
-    // short-circuits before the shared levels lookup below.
+    // short-circuits before the shared levels lookup below -- it's deliberately NOT
+    // `standalone` (see subjects.ts), so its card needs a real total/solved pair rather
+    // than falling through to the empty-list case every other non-Coding subject gets.
     if (subject.id === "phys") {
       return { subject, total: PHYSICS_LEVEL_KEYS.length * PHYSICS_ROUNDS_PER_LEVEL, solved: physicsRoundsSolved(physicsSolved) };
     }
-    // Only Coding has levels in the shared array today; every other subject (including
-    // Chemistry, which has its own /api/chemistry/samples source) is deliberately empty.
-    // Reading this from levelsForSubject (subject.id === "coding"), not subject.available,
-    // is what keeps an available-but-not-level-tracked subject from inheriting Coding's
-    // own level list -- that bug is exactly why this file has both concepts as separate
-    // fields on Subject, not one flag standing in for both.
+    // levelsForSubject, not `subject.available ? levels : []`: the latter hands the
+    // CODING level list to ANY available subject, which would misattribute Coding's 25
+    // levels to Chemistry or Math the moment either is flipped on. levelsForSubject
+    // already only special-cases "coding", so both correctly get [] here too -- their
+    // cards render via the `standalone` branch in SubjectCard instead.
     const subjectLevels = levelsForSubject(subject.id, levels);
     return {
       subject,

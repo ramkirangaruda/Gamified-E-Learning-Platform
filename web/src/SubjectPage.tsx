@@ -2,6 +2,7 @@ import { useState } from "react";
 import BackgroundScene from "./BackgroundScene";
 import ChemLabPage from "./ChemLabPage";
 import Icon from "./icons/Icon";
+import MathPage from "./MathPage";
 import Pet from "./pet/Pet";
 import { usePet } from "./pet/PetProvider";
 import { loadPhysicsSolved, physicsLevelsCleared, PHYSICS_LEVEL_KEYS } from "./physics/progress";
@@ -67,7 +68,14 @@ export default function SubjectPage({ subjectId, onNavigate }: SubjectPageProps)
           <p className="font-medium text-quest-ink-soft">{subject.desc}</p>
         </div>
 
-        {subject.available && (
+        {/* Not for a standalone subject (Chemistry, Math): `levels`/`solvedCount` here
+            default to Coding's when a subject has no dedicated override above, so this
+            badge would show Coding's numbers mislabeled under a different subject's
+            header -- see subjects.ts's `standalone` doc comment. Moot for Chemistry
+            specifically (its branch never renders `header` at all), but the guard still
+            has to be correct in principle since `header` is built once, above every
+            branch below. */}
+        {subject.available && !subject.standalone && (
           <span className={`rounded-chunk-sm border-2 ${t.border} ${t.soft} px-3 py-1.5 font-display text-sm font-bold ${t.ink}`}>
             {solvedCount} of {totalCount} done
           </span>
@@ -129,6 +137,21 @@ export default function SubjectPage({ subjectId, onNavigate }: SubjectPageProps)
         <main className="relative mt-6">
           <PhysicsQuest />
         </main>
+      </div>
+    );
+  }
+
+  // ---- Any other standalone subject: real content, not levels-shaped, and with no
+  // dedicated branch of its own above (today: Math's iframe). Checked last among the
+  // "real content" branches -- Chemistry and Physics are ALSO `standalone`/non-levels in
+  // spirit, but each has its own specific branch above that must win first, or every
+  // standalone subject would render Math's iframe regardless of which one a child opened.
+  if (subject.standalone) {
+    return (
+      <div className="relative min-h-[calc(100vh-var(--app-header-h))] w-full overflow-x-clip">
+        <BackgroundScene solvedCount={solvedCount} />
+        {header}
+        <MathPage />
       </div>
     );
   }

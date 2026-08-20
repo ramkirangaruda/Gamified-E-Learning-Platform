@@ -34,10 +34,12 @@ interface ProgressRow {
   stars: number;
   /** False for a subject with no content yet -- renders "coming soon", never "0 of 0". */
   available: boolean;
-  /** True only when this row's `total` comes from the shared level-progress model
-   *  (Coding today). An available subject without levels (Chem Lab) renders a plain
-   *  "ready to play" badge instead of a bar claiming 0 of 0. */
-  hasLevels: boolean;
+  /** True for a subject whose real content isn't levels-shaped (Chemistry's rounds,
+   *  Math's mini-games) -- renders "Play now" instead of a numeric 0-of-0. Absent/false
+   *  for everything else, including every topic row (concept groups are always
+   *  levels-shaped) and Physics (available and real, but deliberately not standalone --
+   *  it has its own genuine total/solved, computed below). */
+  standalone?: boolean;
 }
 
 function StatTile({ label, value, icon }: { label: string; value: string | number; icon: React.ReactNode }) {
@@ -71,7 +73,14 @@ function RowList({ title, rows }: { title: string; rows: ProgressRow[] }) {
                 <div className="text-xs font-medium text-quest-ink-soft">{row.blurb}</div>
               </div>
 
-              {row.hasLevels ? (
+              {row.standalone ? (
+                // Real, playable content that isn't levels-shaped -- no numeric 0/0,
+                // same reasoning as HomePage's subject card.
+                <span className={`inline-flex items-center gap-1.5 rounded-chunk-sm border-2 ${t.border} ${t.soft} px-2.5 py-1 font-display text-[11px] font-bold ${t.ink}`}>
+                  <Icon name="play" size={12} />
+                  Play now
+                </span>
+              ) : row.available ? (
                 <>
                   <div className="min-w-[8rem] flex-[2]">
                     <div
@@ -93,10 +102,6 @@ function RowList({ title, rows }: { title: string; rows: ProgressRow[] }) {
                     {row.solved} / {row.total}
                   </span>
                 </>
-              ) : row.available ? (
-                <span className={`inline-flex items-center rounded-chunk-sm border-2 ${t.border} ${t.soft} px-2.5 py-1 font-display text-[11px] font-bold ${t.ink}`}>
-                  Ready to play
-                </span>
               ) : (
                 <span className="inline-flex items-center gap-1.5 rounded-chunk-sm border-2 border-quest-locked bg-quest-locked/25 px-2.5 py-1 font-display text-[11px] font-bold text-quest-ink-soft">
                   <Icon name="lock" size={12} />
@@ -124,7 +129,7 @@ export default function ProgressPage() {
   const subjectRows: ProgressRow[] = SUBJECTS.map((s) => {
     // Physics keeps its own progress source entirely (localStorage, not pet.db), so it
     // short-circuits before the shared levels lookup below -- same reasoning as
-    // HomePage's identical special-case.
+    // HomePage's identical special-case. Explicitly NOT standalone: it has a real total.
     if (s.id === "phys") {
       return {
         key: s.id, title: s.title, blurb: s.desc, tone: s.tone,
@@ -132,9 +137,11 @@ export default function ProgressPage() {
         total: PHYSICS_LEVEL_KEYS.length * PHYSICS_ROUNDS_PER_LEVEL,
         stars: physicsStarsSum(physicsSolved),
         available: s.available,
-        hasLevels: true,
+        standalone: false,
       };
     }
+    // levelsForSubject, not `s.available ? levels : []` -- see HomePage's identical fix:
+    // the latter would misattribute Coding's levels to any other available subject.
     const subjectLevels = levelsForSubject(s.id, levels);
     return {
       key: s.id,
@@ -145,7 +152,7 @@ export default function ProgressPage() {
       total: subjectLevels.length,
       stars: subjectLevels.reduce((a, l) => a + (starsByLevel[l.id] ?? 0), 0),
       available: s.available,
-      hasLevels: s.available && subjectLevels.length > 0,
+      standalone: s.standalone,
     };
   });
 
@@ -162,7 +169,6 @@ export default function ProgressPage() {
       total: groupLevels.length,
       stars: groupLevels.reduce((a, l) => a + (starsByLevel[l.id] ?? 0), 0),
       available: groupLevels.length > 0,
-      hasLevels: groupLevels.length > 0,
     };
   });
 

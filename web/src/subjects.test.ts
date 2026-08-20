@@ -8,15 +8,22 @@ import { HOME, activeSubjectId, type Route } from "./routes";
 // both would be a lie told to a child rather than a crash someone would notice.
 
 describe("the subject registry", () => {
-  it("has Coding, Chemistry and Physics available today, and Coding is the default", () => {
-    // Chem Lab (ChemLabPage.tsx) and Physics Quest (PhysicsQuest.tsx) are both real,
-    // playable content -- but neither is level-based, so neither appears in this list's
-    // levelsForSubject expectations below: available and "has levels" are different
-    // questions now, which is why HomePage/ProgressPage derive each subject's own
-    // total/solved instead of reusing `available` for both.
+  it("has exactly the available subjects it means to today, and Coding is the default", () => {
+    // Not a style preference: HomePage/ProgressPage hand `levelsForSubject(id, levels)`
+    // to whichever subject is available, and that function only special-cases "coding" --
+    // any OTHER available subject must either be `standalone` (skips the levels/stars UI
+    // entirely -- Chemistry and Math) or bring its own real total/solved the way Physics
+    // does, or it would silently render Coding's levels under its own header, or an
+    // empty "0 of 0" that lies about a subject with real, playable content having
+    // nothing to show.
     const available = SUBJECTS.filter((s) => s.available);
-    expect(available.map((s) => s.id).sort()).toEqual(["chem", DEFAULT_SUBJECT_ID, "phys"].sort());
+    expect(available.map((s) => s.id).sort()).toEqual(["chem", "coding", "math", "phys"]);
     expect(DEFAULT_SUBJECT_ID).toBe("coding");
+    // Chemistry and Math are standalone (nothing counted at all); Physics deliberately
+    // is not, since it has a real total HomePage/ProgressPage compute from localStorage.
+    expect(SUBJECTS.find((s) => s.id === "chem")?.standalone).toBe(true);
+    expect(SUBJECTS.find((s) => s.id === "math")?.standalone).toBe(true);
+    expect(SUBJECTS.find((s) => s.id === "phys")?.standalone).toBeFalsy();
   });
 
   it("gives every subject a distinct id and badge letter", () => {
@@ -29,21 +36,18 @@ describe("the subject registry", () => {
   it("never lets a non-default subject silently inherit Coding's levels", () => {
     // Not a style preference: HomePage/ProgressPage hand `levels` (which is the CODING
     // level list, the only one levelsForSubject serves) to whichever subject reads it. A
-    // subject flipped to available=true without wiring its own content through -- or,
-    // like Physics, its own dedicated page (PhysicsQuest, via SubjectPage's isPhysics
-    // branch) entirely -- would otherwise silently show Coding's levels under, say,
-    // Chemistry. This holds for every subject but the default, available or not: an
-    // unavailable one gets the empty list that makes its card render "coming soon" rather
-    // than a 0% bar, and Physics gets the empty list because its real content never comes
-    // through this function at all.
+    // subject flipped to available=true without wiring its own content through -- its own
+    // dedicated page and progress source, the way Chemistry/Physics/Math each do -- would
+    // otherwise silently show Coding's levels under a science subject's own header.
     const levels = [{ id: "level-1" }, { id: "level-2" }];
     expect(levelsForSubject(DEFAULT_SUBJECT_ID, levels)).toHaveLength(2);
-    // Every OTHER subject gets none -- including Chemistry and Physics, both available
-    // but each playing through its own content/progress source, never through this
-    // level list. An empty list is what makes the card render "coming soon" (unavailable)
-    // or a real bar sourced elsewhere (available, not level-tracked) rather than a false
-    // 0% progress bar -- an empty meter reads as "you have done none of this", untrue
-    // either way.
+    // Every OTHER subject gets none -- including Chemistry, Physics and Math, all
+    // available but each playing through its own content/progress source, never through
+    // this level list. An empty list is what makes the card render "coming soon"
+    // (unavailable), "Play now" (available, standalone, nothing to count), or a real bar
+    // sourced elsewhere (available, not standalone -- Physics) rather than a false 0%
+    // progress bar -- an empty meter reads as "you have done none of this", untrue in
+    // every one of those cases.
     for (const s of SUBJECTS.filter((s) => s.id !== DEFAULT_SUBJECT_ID)) {
       expect(levelsForSubject(s.id, levels), s.id).toEqual([]);
     }
