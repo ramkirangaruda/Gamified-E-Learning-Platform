@@ -1,6 +1,6 @@
 import type { PetMood } from "./mood";
 import { FRAME, MOOD_ANIMATION, SHEET } from "./spriteLayout";
-import { spriteUrlFor } from "./characters";
+import { characterById, spriteUrlFor } from "./characters";
 
 // Sprite-sheet character rendering, shared by every selectable companion (settings
 // screen: "choose your pet") -- replacing Pip's inline SVG at explicit product
@@ -52,7 +52,16 @@ export default function Pet({
   const frameH = FRAME.height * scale;
   const sheetW = SHEET.width * scale;
   const sheetH = SHEET.height * scale;
-  const spriteUrl = spriteUrlFor(species);
+  // characterById(), not spriteUrlFor(species) directly: this is the one place the
+  // component-doc-comment's "defaults to Tom for a call site that doesn't know the
+  // selection" promise actually has to hold for an unrecognized species too, not just
+  // an absent one. The default *prop* value only covers `species === undefined`; a
+  // saved account whose `pet.species` is a stale/removed id (e.g. "pip", from before
+  // this roster existed) is a truthy string that skips right past that default and
+  // would otherwise request a spritesheet that was never shipped. characterById()
+  // already has the correct fallback (`CHARACTERS.find(...) ?? CHARACTERS[0]`) --
+  // route through it instead of duplicating that logic here.
+  const spriteUrl = spriteUrlFor(characterById(species).id);
 
   // null = a static resting pose (hungry, sleepy) -- no animation class at all, so the
   // sheet just sits at its default (idle frame 0) position. See tomLizard.ts.
