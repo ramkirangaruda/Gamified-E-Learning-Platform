@@ -38,13 +38,38 @@ func ExeDir() (string, error) {
 // `exec ./bin/linux/launcher` would have failed the same way on the Pi.
 //
 // Walking up rather than assuming a fixed "one level down" keeps both layouts working:
-// the shipped drive (binary in bin/<os>/) and the flat dev/dist directory, plus
-// `go run ./cmd/server` from anywhere.
+// the shipped drive (binary in bin/<os>/) and the flat dev/dist directory.
+//
+// `go run`/`go test` are a third case this comment used to (wrongly) claim the exe-dir
+// walk already covered: `go run` compiles to a temp build cache directory (e.g.
+// %TEMP%\go-buildNNNN\b001\exe on Windows) that shares no ancestor with the repo at all,
+// so no bound on the exe-dir walk can ever find content/ from there -- confirmed by
+// hub/tests/test_integration.py failing outright (server: "reading
+// ...\go-build...\exe\content\levels: the system cannot find the path specified")
+// the first time that test was actually run with a Go toolchain present. If the exe-dir
+// walk finds nothing, fall back to the same bounded walk from the process's working
+// directory: `go run ./cmd/server` is conventionally invoked from the repo root (every
+// caller in this repo already does this -- scripts/, this package's own tests via `go
+// test`, and hub/tests/test_integration.py), so cwd is the right second guess. The
+// shipped binary's behavior is unchanged: a real drive's cwd is unpredictable (whatever
+// launched it), so the exe-dir result is still tried first and wins whenever it finds a
+// real drive root.
 func DriveRoot() (string, error) {
 	exeDir, err := ExeDir()
 	if err != nil {
 		return "", err
 	}
+	if found := findDriveRoot(exeDir); looksLikeDriveRoot(found) {
+		return found, nil
+	}
+	if wd, err := os.Getwd(); err == nil {
+		if found := findDriveRoot(wd); looksLikeDriveRoot(found) {
+			return found, nil
+		}
+	}
+	// Nothing recognisable anywhere: return the exe-dir walk's result, same as before --
+	// the caller then fails with a path naming the binary's own directory, the most
+	// useful thing to print when someone has run the launcher outside a drive layout.
 	return findDriveRoot(exeDir), nil
 }
 
