@@ -11,6 +11,7 @@ import (
 	"html/template"
 	"io"
 	"log"
+	"net"
 	"net/http"
 	"sort"
 	"time"
@@ -62,9 +63,38 @@ func (s *Server) handleClassroomSync(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]bool{"ok": true})
 }
 
+// isLoopback reports whether a request arrived from this same machine.
+//
+// This is the access control on every TEACHER-facing endpoint, and it is deliberately not
+// a password. The Hub has to listen on the classroom LAN -- that is the entire point, it
+// is where student drives sync to -- so "who may read the roster" cannot be answered by
+// the listen address alone. Splitting by handler instead: students reach sync/restore over
+// the network, while the roster and the dashboard are readable only from the Pi itself.
+//
+// A teacher who wants the dashboard on their own laptop should SSH-tunnel to the Pi
+// (`ssh -L 8080:localhost:8080 pi@<ip>`) rather than this growing a credential: a shared
+// classroom password on plain HTTP is a worse answer than no remote access at all, and
+// every child's first name and progress is on the other side of it.
+//
+// RemoteAddr is the kernel's view of the peer, not a header, so unlike X-Forwarded-For it
+// cannot be spoofed by the client. There is no reverse proxy anywhere in this project's
+// deployment story; if one is ever added, this check has to be revisited.
+func isLoopback(r *http.Request) bool {
+	host, _, err := net.SplitHostPort(r.RemoteAddr)
+	if err != nil {
+		host = r.RemoteAddr
+	}
+	ip := net.ParseIP(host)
+	return ip != nil && ip.IsLoopback()
+}
+
 func (s *Server) handleClassroomRoster(w http.ResponseWriter, r *http.Request) {
 	if s.classroomStore == nil {
 		writeError(w, http.StatusNotFound, "this server is not running as a classroom hub")
+		return
+	}
+	if !isLoopback(r) {
+		writeError(w, http.StatusForbidden, "the roster is readable only from the hub machine itself")
 		return
 	}
 	roster, err := s.classroomStore.Roster()
@@ -87,6 +117,16 @@ func (s *Server) handleClassroomRestore(w http.ResponseWriter, r *http.Request) 
 	name := r.URL.Query().Get("name")
 	if name == "" {
 		writeError(w, http.StatusBadRequest, "missing ?name=")
+		return
+	}
+	// Signed over the NAME being asked for, not an empty body. This endpoint hands out a
+	// child's whole snapshot to anyone who can name them, so it has to be authenticated
+	// exactly like sync is -- it was not, until this check was added, despite
+	// signClassroomRequest's own comment claiming it was. Signing the name rather than
+	// nothing also stops one captured signature from being replayed to read a DIFFERENT
+	// student: a signature for "Priya" is not a signature for "Sam".
+	if !s.verifyClassroomSignature(r, []byte(name)) {
+		writeError(w, http.StatusUnauthorized, "missing or invalid signature")
 		return
 	}
 	snap, ok, err := s.classroomStore.FindByDisplayName(name)
@@ -154,6 +194,17 @@ type dashboardRow struct {
 func (s *Server) handleClassroomDashboard(w http.ResponseWriter, r *http.Request) {
 	if s.classroomStore == nil {
 		http.Error(w, "this server is not running as a classroom hub", http.StatusNotFound)
+		return
+	}
+	// Same loopback rule as the roster JSON this page is a rendering of -- see isLoopback.
+	// A browser cannot send an HMAC header, so the dashboard could never have used the
+	// signing mechanism the sync endpoints use; being local-only is what protects it.
+	if !isLoopback(r) {
+		http.Error(w, "the classroom dashboard is viewable only from the hub machine itself.\n\n"+
+			"To read it from another computer, forward the port over SSH:\n"+
+			"    ssh -L 8080:localhost:8080 <user>@<hub-ip>\n"+
+			"then open http://localhost:8080/classroom on your own machine.",
+			http.StatusForbidden)
 		return
 	}
 	roster, err := s.classroomStore.Roster()
@@ -300,7 +351,9 @@ func (s *Server) handleRestoreFromClassroom(w http.ResponseWriter, r *http.Reque
 		writeJSON(w, http.StatusOK, syncResult{OK: false, Error: err.Error()})
 		return
 	}
-	s.signClassroomRequest(httpReq, nil)
+	// Sign the name being requested -- must match what the Hub verifies against (see
+	// handleClassroomRestore). A GET has no body to sign, so the name IS the payload.
+	s.signClassroomRequest(httpReq, []byte(req.DisplayName))
 
 	resp, err := s.classroomHTTPClient().Do(httpReq)
 	if err != nil {

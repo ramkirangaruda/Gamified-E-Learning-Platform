@@ -21,6 +21,13 @@ models/*.gguf
 bin/win/
 bin/linux/
 
+# manifest.sha256 describes ONE assembled drive: it hashes app/ and bin/, both of which
+# are build outputs that are themselves gitignored. Committing it would ship every clone a
+# manifest that cannot possibly match that clone's own build, and since a mismatch stops
+# the launcher, the app would refuse to start for every contributor on first run. It is
+# generated at the END of drive prep (`launcher -write-manifest`), per drive, never in git.
+/manifest.sha256
+
 # Editor/OS cruft
 .vscode/
 .DS_Store

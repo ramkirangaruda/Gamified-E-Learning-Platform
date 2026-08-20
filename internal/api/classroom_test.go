@@ -2,6 +2,9 @@ package api
 
 import (
 	"bytes"
+	"crypto/hmac"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"io"
 	"net/http"
@@ -348,6 +351,81 @@ func TestIntegration_ClassroomDashboard_ShowsTotalXPForNonCodingProgress(t *test
 	}
 	if !strings.Contains(html, "0 / 25") {
 		t.Fatalf("dashboard HTML did not show 0 / 25 coding levels for a student who never played Coding:\n%s", html)
+	}
+}
+
+// The restore endpoint hands out a child's entire snapshot to whoever can name them, so
+// it has to be signed exactly like sync is. It was NOT checked at all until this test was
+// written -- signClassroomRequest's comment claimed the protection, the hub's handler
+// never called it, and anyone on the classroom LAN could read any student by name.
+func TestIntegration_ClassroomRestore_RejectsUnsignedWhenSecretConfigured(t *testing.T) {
+	hub, _ := newHubServer(t, "shared-secret")
+
+	resp, err := http.Get(hub.URL + "/api/classroom/restore?name=Priya")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusUnauthorized {
+		t.Fatalf("status = %d, want 401 for an unsigned restore against a secured hub", resp.StatusCode)
+	}
+}
+
+// A signature captured for one student must not be replayable to read a different one --
+// which is why the signature covers the requested name rather than an empty body.
+func TestIntegration_ClassroomRestore_SignatureIsBoundToTheName(t *testing.T) {
+	hub, _ := newHubServer(t, "shared-secret")
+	student := newStudentServer(t, hub.URL, "shared-secret")
+	setDisplayName(t, student, "Priya")
+	syncResp, err := http.Post(student.URL+"/api/sync-to-classroom", "application/json", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	syncResp.Body.Close()
+
+	// The signature a legitimate client would send for "Priya"...
+	mac := hmac.New(sha256.New, []byte("shared-secret"))
+	mac.Write([]byte("Priya"))
+	priyaSig := hex.EncodeToString(mac.Sum(nil))
+
+	// ...replayed against a different name must be rejected.
+	req, err := http.NewRequest(http.MethodGet, hub.URL+"/api/classroom/restore?name=Sam", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	req.Header.Set("X-Classroom-Signature", priyaSig)
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusUnauthorized {
+		t.Fatalf("status = %d, want 401 -- a signature for \"Priya\" must not authorize reading \"Sam\"", resp.StatusCode)
+	}
+}
+
+// isLoopback is the entire access control on the teacher-facing endpoints, so its edge
+// cases are worth pinning directly: httptest always binds 127.0.0.1, meaning an
+// integration test can only ever exercise the allow path.
+func TestIsLoopback(t *testing.T) {
+	cases := []struct {
+		remoteAddr string
+		want       bool
+	}{
+		{"127.0.0.1:54321", true},
+		{"[::1]:54321", true},
+		{"127.0.0.1", true}, // no port: SplitHostPort fails, fall back to the whole string
+		{"192.168.1.50:54321", false},
+		{"10.0.0.7:80", false},
+		{"[2001:db8::1]:443", false},
+		{"", false},
+		{"not-an-ip:80", false},
+	}
+	for _, tc := range cases {
+		got := isLoopback(&http.Request{RemoteAddr: tc.remoteAddr})
+		if got != tc.want {
+			t.Errorf("isLoopback(%q) = %v, want %v", tc.remoteAddr, got, tc.want)
+		}
 	}
 }
 

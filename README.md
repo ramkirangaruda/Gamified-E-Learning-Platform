@@ -41,7 +41,10 @@ go run ./cmd/server                      # serves the API and app/ on :8080
 ```
 
 Then open <http://localhost:8080>. `go run ./cmd/server` accepts `-addr` (default
-`:8080`), `-open=false` (skip auto-opening a browser tab — useful on a headless hub),
+`127.0.0.1:8080` — loopback, so a child's save file isn't served to the school network;
+see [`SECURITY.md`](SECURITY.md)), `-open=false` (skip auto-opening a browser tab — useful
+on a headless hub), `-write-manifest` (record a checksum of the drive at the end of prep)
+and `-skip-integrity-check` (start despite a mismatch),
 `-lite` (disable decorative animation), `-prewarm-hints=false`, `-hint-timeout`, and
 `-tutor=false` (skip `llama-server` entirely; hints fall back to their verified text,
 which is what the classroom hub below runs with, and what a machine with no
@@ -69,6 +72,13 @@ drive root and start the launcher, so everything resolves relative to wherever t
 is mounted — no hardcoded path. Full script-by-script detail in
 [`scripts/README.md`](scripts/README.md).
 
+As the **last** step of drive prep, once `app/`, `content/` and `bin/` are all in place,
+run `launcher -write-manifest` at the drive root. That records a checksum of the drive so
+a later launch can tell whether its contents changed on some machine it was plugged into —
+a USB drive that travels between unmanaged computers is this project's largest security
+exposure, and [`SECURITY.md`](SECURITY.md) is honest about what the check does and doesn't
+prove.
+
 ## The classroom Hub
 
 Ordinary play is unchanged by any of this and needs none of it: no accounts, no server,
@@ -80,14 +90,19 @@ recover from.
 One machine in the room (a Raspberry Pi 5 is the intended one) runs as the aggregator:
 
 ```
-./bin/linux/launcher -classroom-hub -open=false          # the Pi
-./bin/linux/launcher -classroom-addr http://<pi-ip>:8080 # each student machine
+./bin/linux/launcher -classroom-hub -classroom-secret <value> -open=false      # the Pi
+./bin/linux/launcher -classroom-addr http://<pi-ip>:8080 -classroom-secret <value>  # students
 ```
 
-`scripts/pi-setup.sh --classroom-hub` does the Pi side end to end, including printing the
-dashboard URL and the exact command for the student machines. Add `-classroom-secret`
-(the same value on the Pi and every student machine) to HMAC-sign sync and restore, so
-another device on the room's LAN can't forge a child's progress.
+`scripts/pi-setup.sh --classroom-hub` does the Pi side end to end, generating the secret,
+printing it, and printing the exact command for the student machines.
+
+`-classroom-secret` is **required** on a hub — it HMAC-signs sync and restore so another
+device on the room's LAN can't forge or read a child's progress, and a hub without one
+refuses to start rather than coming up silently unauthenticated. The teacher dashboard is
+**readable only from the Pi itself**; to see it from your own laptop, forward the port
+(`ssh -L 8080:localhost:8080 <user>@<pi-ip>`). Full reasoning in
+[`SECURITY.md`](SECURITY.md).
 
 Students still play on their own laptop or lab machine off their own drive — the Pi is
 only the aggregator, and it **mirrors** what each drive already decided rather than
