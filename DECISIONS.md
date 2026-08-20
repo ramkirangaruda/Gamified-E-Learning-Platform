@@ -262,3 +262,189 @@ One line per non-obvious choice, and why. Newest at the bottom.
   - **Two real bugs found only by driving a live instance, not by reasoning or unit tests**: (1) `pointing` had no transient duration in the mascot state table, silently making `react("pointing")` a no-op; (2) `Trail.tsx`'s locked-level buttons used the native `disabled` attribute, which suppresses ALL mouse events in real browsers (not just click) -- so a locked level's hover reaction could never fire. Fixed by giving `pointing` a real duration and switching to `aria-disabled` + manual click-gating. Both logged in code comments at the fix site, not just here.
   - **`web/public/mascot.riv` (84KB) and `web/public/rive.wasm` (1.8MB, copied from `node_modules/@rive-app/canvas`) are committed, not gitignored** -- unlike this repo's other vendored/generated binaries (`bin/`, `models/*.gguf`), there's no build script that reproduces `mascot.riv` (it's a sourced design asset with no generator), and committing `rive.wasm` alongside it was the pragmatic call for this checkpoint rather than adding a copy-on-build step for a feature that isn't live yet. Worth revisiting (e.g. gitignoring `rive.wasm` + a `postinstall` copy step) once/if the Rive mascot actually ships.
 - **2026-08-20 -- merged `hub-mode-frontend` into master.** The branch predated Sandbox mode, the classroom Hub, dynamic suggestions, and the Tom Lizard swap, all of which had landed on master since. Reconciled by hand rather than trusting git's auto-merge blindly: kept every master feature (Sandbox/Classroom buttons and panel, "Tom suggests" callout, `PetProvider`'s `suggestion`/`refreshState`/classroom wiring, the Tom Lizard name and default species), layered the branch's mascot event-bus, milestone detection, playground `BackgroundScene`, and horizontal `trailPath` redesign on top, and reran `mascotStateToLegacyMood` against the current `Pet.tsx` (Tom's sprite renderer, not Pip's SVG) rather than the version it was written against. `PetProvider.commitState` now does both: the branch's milestone-detection pass *and* master's post-save suggestion refetch, in one function. A few leftover "Pip" strings in comments/prompts the branch's diff didn't touch (because it never saw the rename) were caught by grep and fixed to "Tom" during the merge, not left stale.
+- **2026-08-20 — Character picker: "choose your pet", 7 selectable companions plus Tom.** The user dropped 8 more character folders (`carrot-bouncer/`, `momo/`, `pebble-otter/`, `rex/`, `xiaoxin-static/`, `yeelight-knob-dance-disk/`, `yi-bu/`) at the repo root alongside Tom Lizard's own, each a `pet.json` + `spritesheet.webp`. Before wiring anything up: inspected every sheet's actual pixel dimensions (`PIL.Image.open(...).size`) and found all eight are byte-identical 1536x1872 -- the same 8-column/9-row, 192x208-frame grid Tom Lizard shipped with. Rex's own `pet.json` independently names the same nine atlas rows in the same order (`idle`/`running-right`/`running-left`/`waving`/`jumping`/`failed`/`waiting`/`running`/`review`), the strongest signal this is one shared generator template rather than coincidence. Cross-checked by visually diffing cropped row strips from several characters against Tom's known frame counts per row (idle=6, jumping=5, failed=8, review=6) -- all matched exactly. So `spriteLayout.ts` (renamed from the old Tom-only `tomLizard.ts`) now holds FRAME/SHEET/ANIMATIONS/MOOD_ANIMATION as shared infrastructure for every character, and `characters.ts` is just a small registry of id/displayName/description -- adding a ninth character later is a five-line registry entry plus a `web/public/<id>/spritesheet.webp`, not new rendering code.
+  - **`xiaoxin-static` was dropped, not shipped.** Its row-0 strip is unmistakably Crayon Shin-chan -- a copyrighted, trademarked commercial anime character, not an original or licensed asset. Flagged to the user directly before writing any integration code (not silently included, not silently excluded); confirmed to leave it out. The folder stays untracked at the repo root; `web/public/xiaoxin-static/` was never created, and `characters.ts` documents the omission in its own comment so a future reader doesn't wonder where the eighth character went.
+  - **`Pet.tsx` generalized from a hardcoded `SPRITE_URL` import to a `species` prop**, defaulting to `"tom-lizard"` so every existing call site (PetBar, Trail's evolution markers, StyleGuide, CompareView, the parked MascotCanvas fallback) keeps rendering correctly even where threading the real species through wasn't warranted (StyleGuide/CompareView are static dev/judge demos with no real pet state) -- PetBar and Trail were updated to pass `state.pet.species` since they do have it.
+  - **No new backend endpoint.** `POST /api/state` (`internal/store.SaveState`) already writes `pet.species`/`pet.name` verbatim with zero validation -- confirmed by reading the handler before building anything client-side. `SettingsPage.tsx` reuses `PetProvider.commitState` exactly as the treat shop and every other pet-state write already does.
+  - **Selecting a card previews, it does not save** -- a deliberate two-step flow (`previewId` local state vs. `commitState` only on an explicit "Make this my pet" click) so a child can browse the whole roster without every click overwriting their actual companion. Verified this distinction really holds, not just assumed from the code: drove the flow live against a real running server, confirming `GET /api/state` still reported `tom-lizard` after clicking through several preview cards, and only changed to `rex` after the explicit save click.
+  - **"Show all the actions it performs based on the current scenario"** (the user's literal ask) is a grid of all 8 `PetMood` values rendered live for whichever character is previewed, each labeled with the real in-game moment that triggers it ("Your program hit a wall" for `confused`, "You solved a level!" for `celebrating`, etc.) rather than a bare animation-name gallery -- reuses `ALL_MOODS`/`SCENARIO_LABEL`, no new mood vocabulary.
+  - **Accessible names, not an afterthought**: the character cards initially rendered with no distinguishing accessible name at all (just "button", no text/aria-label) since their content is an image plus styled text a screen reader doesn't reliably compose into a name -- caught during live verification (browser automation couldn't distinguish cards by anything but source order either, the same problem a screen reader user would hit), fixed with an explicit `aria-label` per card before shipping, not left as a known gap.
+  - Verified: `go build/vet/test` clean, `tsc --noEmit` clean, `vitest` 133/133 (added `characters.test.ts`: unique ids, Tom present, `xiaoxin-static` absent, `characterById` fallback, `spriteUrlFor` shape), plus a full live run against a real server -- all 7 sprites confirmed loading (200 OK each), preview-vs-save behavior confirmed via direct `GET /api/state` checks between clicks, the pet bar and trail correctly picked up the new species and name immediately after saving with no reload needed.
+- **2026-08-20 — `tsc --noEmit` alone has been checking nothing this whole session; the root tsconfig is reference-only (`"files": []`).** Discovered while rebuilding the frontend to actually check the settings screen worked (`npm run build`, i.e. `tsc -b && vite build`): it failed where every prior `npx tsc --noEmit` this session had reported clean, because `tsconfig.json` at the web root has an empty `files` array and only `references` to `tsconfig.app.json`/`tsconfig.node.json` -- bare `tsc --noEmit` against that config type-checks zero files and exits 0 no matter what's broken. `tsc -b` (or `tsc -p tsconfig.app.json --noEmit`) actually walks the references. The real bug it caught: `SandboxPage.tsx` still called `react("curious")` and `react(... ? "happy" : "curious")`, left over from `hub-mode-frontend`'s merge -- that branch predated Sandbox mode entirely, so its rewrite of `react()`'s signature from the old 8-mood `PetMood` to the new 14-state `MascotState` (which folds `curious` into `playful`) never touched this file, and Sandbox wasn't part of that merge's own conflict set to catch it by hand either. Fixed both call sites to `"playful"`, matching how the branch's own `PlayPage.tsx` diff had already updated the equivalent call. Every earlier "`tsc --noEmit` clean" claim logged in this file today was accurate about what it actually ran, just running the wrong command -- worth remembering for whoever reviews this file later, not silently corrected in place (this file is append-only). `npm run build` now succeeds; `go build/vet/test` and `vitest` (133/133) still clean.
+
+
+## DEMO.md corrected: two beats re-graded from "cut" to built (2026-08-20)
+
+- **The demo script was stale and *under-reporting* the build.** `DEMO.md` is dated
+  2026-08-18 and was written before `handoff/02-key-hot-swap.md` and
+  `handoff/05-pet-evolution-art.md` merged on 2026-08-19. Confirmed mechanically rather
+  than by reading the prose and trusting it: `git merge-base --is-ancestor 13e8f0e
+  80f426a` returns false, so the evolution-art commit is not an ancestor of this file's
+  last edit. The risk here is asymmetric and worth naming -- a script that *over*-claims
+  gets caught in rehearsal, but a script that *under*-claims makes a presenter cut a
+  feature that actually works, and no amount of rehearsal recovers that.
+- **Step 2 (pet evolution art): "cut" -> real.** It was graded "never built" while the art
+  had in fact shipped (`13e8f0e`) and been verified live in a browser. The step's original
+  wording was also rewritten: it named "Pip", who no longer exists, and promised a
+  specific colour, which is meaningless now that the roster is seven selectable
+  characters. It now tells the presenter to name whichever character is actually on
+  screen.
+- **Step 6 (key hot-swap): "cut" -> half.** `backup.db` re-snapshots after every
+  progress-bearing write (`30a95f0`), so the mechanism is real and pinned by a test that
+  was confirmed to fail on the pre-fix code. But nobody has physically pulled a drive
+  mid-session. "Don't pull the drive on stage" therefore still stands -- for a different
+  reason than before, and the file now says which reason, because "not built" and "built,
+  untested on hardware" are very different distances to close.
+- **Step 5 re-checked, original grade holds.** `internal/api/api.go` still drives
+  evolution solely off `AdvanceEvolutionStage(evolutionStageFor(len(solvedIDs)))`, so
+  feeding the pet genuinely does not evolve it. Re-verified against the code rather than
+  assumed to have changed alongside step 2.
+- **Step 3 annotated with a hardware fact, not a code one.** There is no camera on hand as
+  of 2026-08-20, so the open "nobody has pointed a real webcam at the real printed cards"
+  gap cannot be closed by rehearsal. Recorded in the file so the documented fallback gets
+  budgeted for rather than discovered on the day.
+
+
+## All seven pets consolidated under one folder, and the single-pet strings fixed (2026-08-20)
+
+- **Every spritesheet was committed twice.** Each character existed once as a delivery
+  drop at the repo root with inconsistent nesting (`carrot-bouncer/carrot-bouncer/` but
+  `tom-lizard/`) and once under `web/public/<id>/`. All seven pairs were verified
+  byte-identical with `cmp` *before* anything was deleted -- the root copies went, the
+  served copies moved to `web/public/pets/<id>/`, and each character's `pet.json` moved in
+  beside its art. That `pet.json` documents the frame grid and per-row animation
+  semantics and is **not read at runtime**; `spriteLayout.ts` remains the runtime
+  authority, and the two independently agreeing is what originally confirmed all seven
+  share one grid.
+- **One folder, one path-building function.** `spriteUrlFor` is the only place that knows
+  the layout, so adding character eight is now "drop `<id>/` into `web/public/pets/`, add
+  a roster entry" and nothing else. Verified with `npm run build`: all seven land in
+  `app/pets/`, so the assembled drive layout (brief §7) is unaffected.
+- **Roster/art agreement is now a test, because that failure is invisible in review.** A
+  rostered character with no art breaks no build and no type-check -- it shows up as a
+  child picking a pet and getting a blank box. `characters.test.ts` now asserts both
+  directions: every rostered id has art on disk, and no art sits there unrostered (dead
+  weight shipped to every pendrive). Implemented with `import.meta.glob` rather than
+  `node:fs` deliberately -- `tsconfig.app.json` scopes `src/` to `["vite/client"]`, and
+  widening it to `"node"` just to satisfy a test would let real browser code reach for
+  node APIs that don't exist in the bundle. Vite resolves the glob against the real
+  filesystem at transform time, so it stays a genuine on-disk check.
+- **"Tom suggests" was a live bug, not a tidy-up.** The home screen's suggestion callout
+  contained a literal `"Tom suggests"`, wrong for six of the seven selectable characters.
+  It now resolves the child's own pet name, falling back to the chosen character's display
+  name (`SettingsPage.choosePet` already keeps `pet.name` in step with `pet.species`).
+  `Pet.tsx` no longer defaults `name` to `"Tom"` -- it derives from `species` via
+  `characterById` -- and `MascotCanvas`'s aria-label no longer announces "Pip", a name
+  that has not existed since the rename.
+- **Shared CSS classes renamed `tom-lizard-*` -> `pet-*`.** One character's name on a class
+  every character uses is actively misleading to the next person reading it. Same
+  keyframes, same stepped-animation budget rule, which `idleAnimation.test.ts` still
+  polices.
+- **Historical "Pip" references in comments were deliberately left alone.** The ones
+  explaining *measured* rationale -- the +41.5-CPU-points SVG-vs-div finding, the
+  eased-vs-stepped repaint numbers -- are the provenance of real measurements taken
+  against that implementation. Renaming them to a character that was never benchmarked
+  would quietly destroy the evidence. Only comments describing *current* behaviour were
+  updated.
+
+
+## The Pi's classroom-hub role: no model, and therefore no internet (2026-08-20)
+
+- **`-classroom-hub` no longer starts `llama-server`.** `startTutorEngine` was called
+  unconditionally, so the classroom aggregator loaded a language model and pre-warmed
+  every bank hint -- on the 4 GB Pi this mode exists for, essentially the entire RAM
+  budget, spent on something the machine never does. The hub aggregates; every student
+  machine rephrases locally against its own drive, which is the whole offline premise.
+  A nil engine was already a first-class supported state (`api.Server` documents it as
+  nil-able, `handleHint` returns the verified human-written text without one), so this
+  needed no downstream change, and `TierHUD` already renders "Tutor offline" for an empty
+  tier -- checked rather than assumed.
+- **The decision is `resolveTutor`, a pure function, and `flag.Visit` decides "explicit".**
+  Split out of `main()` so the one non-obvious branch in an otherwise untestable startup
+  sequence could be pinned (`cmd/server/tutorflag_test.go`, 7 cases). `flag.Visit` reports
+  only flags actually typed on the command line, so `-classroom-hub -tutor=true` still
+  forces the engine on for a dev box being hub and player at once -- a case `main.go`
+  already tolerates where the two classroom flags are read, and one that comparing
+  `*tutorOn` against its default could not distinguish.
+- **Verified by running it, not only by unit test.** `-classroom-hub -open=false` comes up
+  logging `tutor: off`, and `/classroom`, `/api/levels`, `/api/state` and `/api/tier` all
+  answer (tier reports empty, which is the nil-engine path the HUD already handles).
+- **`scripts/pi-setup.sh --classroom-hub` removes the only internet dependency in Pi
+  bring-up.** Because a hub needs neither a model nor `llama-server`, the mode skips step
+  3 -- building llama.cpp from source -- which the script's own header, and
+  `scripts/README.md`, both identify as the one step requiring connectivity. A classroom
+  hub can therefore be brought up start to finish on a Pi that has never been online,
+  which applies this project's offline premise to its own setup rather than only to the
+  game. The mode also passes `-open=false` (a hub is a headless appliance, possibly with
+  no display attached at all) and prints the teacher dashboard URL plus the exact
+  `-classroom-addr` command for student machines. Player mode is unchanged.
+- **NOT verified on hardware, and this matters.** The arch guard correctly refuses to run
+  on x86_64, so only argument parsing, `--help` and `bash -n` were exercised. The hub
+  bring-up path has never been executed on a real Pi, and there is no Pi peripheral set on
+  hand to do it with as of this date. Treat "the script is correct" as an untested claim.
+- **Documentation caught up with reality.** The classroom Hub was a shipped feature with
+  no `README.md` coverage at all; it now has a section. `README.md`'s test counts were
+  badly stale ("88 Go tests across 10 packages, 58 TypeScript") and are now measured: 138
+  Go test funcs across 11 packages, 134 TypeScript. `scripts/README.md`'s standing warning
+  that `pi-setup.sh` needs internet now carries its one explicit exception, since that
+  paragraph is load-bearing for event planning.
+
+
+## Dashboard redesign: a subject-led shell around the existing game (2026-08-20)
+
+The dashboard was reworked against an attached UI wireframe. The brief was explicit that
+the old one was "clunky, not scalable" and that the existing components should be
+integrated into the new frame rather than replaced -- so this is an information-architecture
+change, and every component that already worked was lifted into the new shell verbatim.
+
+- **Five subjects, one of them real, and the other four say so.** The wireframe drew
+  Coding, Chemistry, Physics, Math and Biology. Only Coding has content: 25 levels, one
+  executor, one AST. The other four ship as `available: false` in `web/src/subjects.ts`
+  and render a locked card with no progress bar, no stars and no "0 of 25" -- an empty
+  meter reads as "you have done none of this", which would be a lie about a subject that
+  does not exist yet, and §10's "never punish, never mislead" applies to a subject as
+  much as to a level. Clicking one opens a real page that says it isn't ready and points
+  back at Coding, because a tab that silently ignores a click reads as broken to a child.
+  `subjects.test.ts` pins that exactly one subject is available and that every other one
+  gets an empty level list, since flipping a flag without a level source would silently
+  show Coding's levels under Chemistry.
+- **One header, two rows, still mounted once.** `nav/AppHeader.tsx` owns the fixed shell;
+  the navigation row sits above `pet/PetBar.tsx`, which lost its own positioning and
+  nothing else. The mounted-once property is the whole reason the pet is persistent
+  (PetProvider: unmounting resets mood, speech and animation phase), so the nav joined it
+  inside the same single fixed element rather than becoming a second stacked bar. Pages
+  pad past one value, `--app-header-h`, which is now *derived* (`calc(nav + pet)`) rather
+  than typed a third time, so changing either row keeps every page correct with no second
+  edit.
+- **Impossible states deleted, not documented.** App's `sandboxOpen` / `settingsOpen` /
+  `selectedLevelId` booleans became one `Route` union (`web/src/routes.ts`). The booleans
+  could encode settings and sandbox open at once with a level selected underneath both;
+  the union cannot. Still no router, for the reason `App.tsx` has always given -- one
+  offline binary, no URL bar worth addressing.
+- **What did NOT change.** `Trail`, `LevelGrid`, `PlayPage`, `Editor`, `GridRenderer`,
+  `SettingsPage`, `ClassroomPanel`, `TreatShop`, `BackgroundScene` and the whole mascot
+  event system were re-parented, not rewritten. Classroom deliberately stays the modal it
+  was (same convention as TreatShop: a short two-field errand, not somewhere to be);
+  giving it a route only changes what lights up in the nav.
+- **No new looping animation.** The wireframe's bob/drift/spin would have been three more
+  infinite animations, eased rather than stepped -- `pet/idleAnimation.test.ts` caps the
+  budget at ten and requires `steps()`. The hero's decoration is therefore static shapes,
+  and its speech bubble reuses the existing one-shot `quest-bubble-in`. The budget test
+  passes untouched.
+- **A second `<Pet>` on the home screen is deliberate and cheap.** It is purely
+  presentational (Trail already renders several at its evolution markers) and its one loop
+  is a stepped transform on an HTML wrapper -- the shape this codebase measured at ~0 CPU,
+  as opposed to the +41-point SVG-group version (see index.css's IDLE LIFE).
+- **Fixed en route: a legacy save rendered an invisible pet.** `spriteUrlFor` interpolated
+  the raw species id, so a drive saved before the sprite roster existed (`pet.species =
+  "pip"`, the original inline-SVG mascot) requested a sheet that 404s -- the character
+  simply vanished, taking the hunger badge's anchor with it, with nothing on screen
+  saying why. It now resolves through `characterById` exactly like every caption already
+  did, so the sprite and the name can no longer disagree either. Found by running the app
+  against the real `data/pet.db`, not by reading code.
+- **Verified by driving the built app, not only by typecheck.** `go run ./cmd/server` on
+  the production build, then Chrome over CDP (Node 24's built-in WebSocket, no new
+  dependency) to click through home, the Coding trail, a level, Progress, Settings and the
+  Classroom modal, screenshotting each. Two real defects came out of looking at those
+  screenshots rather than at the diff: the Biology tab was clipped by a crowded nav, and
+  the locked cards were too translucent to read over the meadow. Both fixed.

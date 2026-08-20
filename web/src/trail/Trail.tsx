@@ -142,7 +142,7 @@ export default function Trail({ levels, solvedIds, starsByLevel, onSelectLevel, 
                   levelSelected(level);
                   onSelectLevel(level.id);
                 }}
-                className={`flex h-tap-lg w-tap-lg items-center justify-center rounded-full border-[var(--outline-chunk-thick)] font-display text-xl font-bold shadow-chunk transition-transform
+                className={`flex h-tap-lg w-tap-lg items-center justify-center rounded-full border-(length:--outline-chunk-thick) font-display text-xl font-bold shadow-chunk transition-transform
                   ${
                     locked
                       ? "cursor-not-allowed border-quest-locked-deep bg-quest-locked text-white/80 shadow-chunk-sm"

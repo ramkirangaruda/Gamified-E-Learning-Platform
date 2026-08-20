@@ -96,13 +96,34 @@
 
 :root {
   color-scheme: light;
+  /* Use these as `border-(length:--outline-chunk)`, NEVER as
+     `border-[var(--outline-chunk)]`. The bracket form is a silent no-op: `border-*` takes
+     both a width and a colour, Tailwind cannot tell which a bare var() means, and it
+     resolves the ambiguity as COLOUR -- emitting `border-color: 3px`, which the browser
+     drops, while preflight's `border: 0 solid` leaves the width at zero. The whole app
+     shipped that way once and drew no outlines at all; the `(length:--x)` form states the
+     type, so the width actually lands. Same rule for the -t/-r/-b/-l variants. */
   --outline-chunk: 3px;
   --outline-chunk-thick: 4px;
 
-  /* Height of the persistent pet bar (pet/PetBar.tsx). Every page pads past it by this
-     value rather than hard-coding a number, so the bar's height is changeable in exactly
-     one place. Within the 88-96px the design calls for. */
-  --pet-bar-h: 92px;
+  /* Height of the persistent app header (nav/AppHeader.tsx), which is two stacked rows:
+     the navigation row (brand, subject tabs, Progress/Classroom/Settings) above the pet
+     row (sprite, hunger meter, points). Every page pads past --app-header-h rather than
+     hard-coding a number, so the header's height is changeable in exactly one place.
+
+     The total is derived from the two rows rather than typed a third time -- editing
+     either row's height keeps every page's padding correct with no second edit. The pet
+     row stays within the 88-96px the pet design calls for; the nav row is deliberately
+     slimmer, since it is chrome rather than a character.
+
+     The outline is the third term and is not optional: the header sizes itself with
+     `h-[var(--app-header-h)]` under border-box, so its own bottom border is subtracted
+     from the space the two rows have to sit in. Leave it out and the rows total 4px more
+     than the box they are in -- the border paints across the bottom of the pet sprite --
+     and every page below starts 4px too high, tucked under that same border. */
+  --app-header-nav-h: 56px;
+  --app-header-pet-h: 88px;
+  --app-header-h: calc(var(--app-header-nav-h) + var(--app-header-pet-h) + var(--outline-chunk-thick));
 }
 
 html {
@@ -114,6 +135,75 @@ body {
   background: var(--color-quest-cream);
   color: var(--color-quest-ink);
   font-family: var(--font-body);
+}
+
+/* --- Scrollbars ------------------------------------------------------------
+ * The default OS scrollbar is a 17px grey channel with square ends, and next to a UI
+ * built entirely out of thick outlines and rounded sticker shapes it reads as a piece of
+ * somebody else's application bolted onto the side. There are several of them on screen
+ * at once -- the page, the Play screen's right-hand panel, the header's subject strip --
+ * so they are collectively one of the loudest things in the app.
+ *
+ * These are global on purpose: a scrollbar is chrome, like the page background, and
+ * every one in the app should look the same without a component opting in.
+ *
+ * WHY THE @supports SPLIT, which looks redundant but is not: Chromium ignores the
+ * ::-webkit-scrollbar pseudo-elements entirely on any element whose computed
+ * `scrollbar-width` or `scrollbar-color` is not `auto`. Both of those properties INHERIT,
+ * so setting them on <html> for Firefox's benefit would silently switch off every rule
+ * below on the Pi's Chromium -- the one browser this actually ships on. Gating them
+ * behind "does this engine understand the webkit selector at all" hands each engine the
+ * mechanism it actually implements: standard properties to Firefox, pseudo-elements to
+ * Chromium and Safari.
+ */
+@supports not selector(::-webkit-scrollbar) {
+  html {
+    scrollbar-width: thin;
+    scrollbar-color: var(--color-quest-locked) transparent;
+  }
+}
+
+::-webkit-scrollbar {
+  width: 12px;
+  height: 12px;
+}
+/* No track and no stepper arrows: the thumb floats over whatever is behind it, so a
+   scrollbar costs nothing visually until there is something to scroll. */
+::-webkit-scrollbar-track,
+::-webkit-scrollbar-corner {
+  background: transparent;
+}
+::-webkit-scrollbar-button {
+  width: 0;
+  height: 0;
+}
+/* The transparent border plus background-clip is what insets the thumb inside the 12px
+   gutter: a 6px pill with breathing room either side, rather than a bar wedged against
+   the edge. The colour is the same "present but not shouting" neutral the locked-level
+   art uses -- it is navigation furniture, never content. */
+::-webkit-scrollbar-thumb {
+  background-color: var(--color-quest-locked);
+  background-clip: padding-box;
+  border: 3px solid transparent;
+  border-radius: 999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background-color: var(--color-quest-locked-deep);
+}
+
+/* Opt-out, for a strip where the scrollbar is noise rather than information: the header's
+   subject tabs scroll sideways past the edge, and a tab cut off mid-shape already says
+   "there is more this way" better than a 12px bar under it can. It would also eat into a
+   fixed-height row and clip the tabs' offset shadows. Nothing that a child must scroll to
+   FIND may use this -- only strips whose overflow is already visible in the content. */
+.quest-scroll-hidden::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+}
+@supports not selector(::-webkit-scrollbar) {
+  .quest-scroll-hidden {
+    scrollbar-width: none;
+  }
 }
 
 /* --- Motion policy --------------------------------------------------------

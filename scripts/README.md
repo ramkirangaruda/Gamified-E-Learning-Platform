@@ -12,7 +12,16 @@ with no PowerShell, so the `.sh` versions exist for it (and any Linux dev machin
   startup): verifies the drive layout, builds `bin/linux/llama-server` from source if it
   isn't already staged (the one step here that needs internet — see the script's own
   header comment for exactly what to pre-stage if it won't have any), then starts the
-  hub. No Windows equivalent — this script only ever runs on the Pi.
+  game. No Windows equivalent — this script only ever runs on the Pi.
+  `--help` prints the full header.
+- **`pi-setup.sh --classroom-hub`** — the same script in its other mode: brings the Pi up
+  as the classroom aggregator (`cmd/server -classroom-hub`) instead of as a player. It
+  **skips the llama-server build entirely**, because the hub never generates a hint —
+  every student machine rephrases locally against its own drive — so there is no model to
+  serve and nothing to serve it with. Also passes `-open=false` (a hub is a headless
+  appliance) and prints the teacher dashboard URL plus the exact `-classroom-addr`
+  command for student machines. `--addr` and `--secret` override the listen address and
+  set the shared HMAC secret.
 - **`pi-benchmark.sh <url>`** — hits an already-running hub's real `/api/hint` endpoint
   20 times with distinct synthetic signatures (forcing 20 genuine cache misses, i.e. 20
   real model generations, not 20 cache hits) and reports p50/p95/max latency in ms.
@@ -23,6 +32,14 @@ That's fine during prep (Aug 14–18, real internet available) but is a real con
 of the project's offline-at-the-event premise if run at the venue — the brief's own
 router-unplugged assumption (§13) means neither script can be the thing standing between
 a working demo and a broken one.
+
+**One exception, added 2026-08-20: `pi-setup.sh --classroom-hub` needs no internet at
+all.** The build-from-source path is the only connectivity-dependent step in the script,
+and hub mode skips it, because an aggregator has no use for a model. A classroom hub can
+therefore be brought up start to finish on a Pi that has never been online — the offline
+premise applied to the project's own setup rather than only to the game. This does not
+change anything about *player* mode, which still needs `bin/linux/llama-server` staged
+ahead of time exactly as described above.
 
 The actual source of truth for what ships on stage is an **offline copy of every
 platform binary (including `bin/linux/llama-server`) kept on a spare drive**, not a

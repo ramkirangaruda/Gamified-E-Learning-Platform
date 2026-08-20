@@ -6,6 +6,7 @@ import { gateCssEffect } from "./calmMode";
 import { mascotStateToLegacyMood, type MascotState } from "./state";
 import Pet from "../pet/Pet";
 
+import { characterById } from "../pet/characters";
 const RIVE_SRC = "/mascot.riv";
 const STATE_MACHINE = "State Machine 1";
 
@@ -135,7 +136,7 @@ export function MascotCanvas({ state, species, evolutionStage, feedTick, size = 
       onClick={onClick}
       role={onClick ? "button" : undefined}
       tabIndex={onClick ? 0 : undefined}
-      aria-label={onClick ? "Pip, your learning companion" : undefined}
+      aria-label={onClick ? `${characterById(species).displayName}, your learning companion` : undefined}
     >
       <div className="mascot-tilt">
         <canvas ref={canvasRef} width={size} height={size} style={{ width: size, height: size }} />
