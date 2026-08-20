@@ -42,6 +42,7 @@ type Server struct {
 	engine      tutor.Engine // nil-able: tests and any hint-free path work without one
 	hintCache   *hints.Cache
 	hintTimeout time.Duration
+	lite        bool
 	mux         *http.ServeMux
 }
 
@@ -93,6 +94,11 @@ func (s *Server) Mux() *http.ServeMux { return s.mux }
 // during startup, before the HTTP server begins serving, so there is no concurrent
 // reader to race with.
 func (s *Server) SetEngine(engine tutor.Engine) { s.engine = engine }
+
+// SetLiteMode records whether decorative animation should be off. Set once during
+// startup (before serving), read by the frontend via GET /api/tier so the Pi comes up in
+// lite mode without the child or the operator having to toggle anything.
+func (s *Server) SetLiteMode(v bool) { s.lite = v }
 
 // PrewarmHints implements queue item 5's startup pre-warm routine: generate and cache
 // every (level_id, error_signature) pair in the hint bank at history bucket 0 -- the
@@ -362,13 +368,21 @@ func (s *Server) handleHint(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// handleTierInfo backs the HUD (queue item 5): selected tier, model, RAM, last latency.
+// tierResponse is TierInfo plus the lite-mode decision, which the frontend needs at the
+// same moment and from the same place -- both answer "what kind of machine is this".
+type tierResponse struct {
+	tutor.TierInfo
+	Lite bool `json:"lite"`
+}
+
+// handleTierInfo backs the HUD: selected tier, model, RAM, last latency, and whether
+// decorative animation should be suppressed.
 func (s *Server) handleTierInfo(w http.ResponseWriter, r *http.Request) {
-	if s.engine == nil {
-		writeJSON(w, http.StatusOK, tutor.TierInfo{})
-		return
+	info := tutor.TierInfo{}
+	if s.engine != nil {
+		info = s.engine.TierInfo()
 	}
-	writeJSON(w, http.StatusOK, s.engine.TierInfo())
+	writeJSON(w, http.StatusOK, tierResponse{TierInfo: info, Lite: s.lite})
 }
 
 // handleCompare backs the ?compare=1 debug/demo view (queue item 6): the last hint

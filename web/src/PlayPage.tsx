@@ -250,7 +250,11 @@ export default function PlayPage({ initialLevelId, onBackToDashboard }: PlayPage
           <div className="flex justify-between rounded-2xl bg-white/70 px-4 py-2 font-display text-sm font-bold text-quest-ink shadow-sm">
             <span className="flex items-center gap-1.5">
               <Icon name="star" size={16} />
-              {state.learner.points}
+              {/* key on the value so a change remounts the span and re-fires the one-shot
+                  bump -- no interval, no rAF, nothing running between runs. */}
+              <span key={state.learner.points} className="quest-decorative quest-count-bump">
+                {state.learner.points}
+              </span>
             </span>
             <span className="flex items-center gap-1.5">
               <Icon name="apple" size={16} />

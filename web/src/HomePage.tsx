@@ -7,6 +7,7 @@ import Trail from "./trail/Trail";
 import { ChunkyButton } from "./ui/Chunky";
 import { fetchLevels, fetchState, type GameState, type LevelDef } from "./api";
 import { friendlyError } from "./friendlyError";
+import { setOverride, storedOverride } from "./lite";
 
 // The home screen. Trail is primary ("where am I, what's next"); the grid is secondary
 // ("where was that one about loops"). Replaces the old four-card Dashboard, which did not
@@ -23,6 +24,11 @@ export default function HomePage({ onSelectLevel }: HomePageProps) {
   const [state, setState] = useState<GameState | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [view, setView] = useState<View>("trail");
+  // Reflects whatever is currently applied, so the toggle shows the real state whether it
+  // came from --lite, the low-tier auto-detect, or a previous click.
+  const [lite, setLite] = useState<boolean>(
+    () => storedOverride() ?? document.documentElement.dataset.lite === "on",
+  );
 
   useEffect(() => {
     fetchLevels().then(setLevels).catch((e) => setError(friendlyError("levels", e)));
@@ -76,6 +82,19 @@ export default function HomePage({ onSelectLevel }: HomePageProps) {
           </ChunkyButton>
           <ChunkyButton tone={view === "grid" ? "gold" : "neutral"} onClick={() => setView("grid")}>
             All levels
+          </ChunkyButton>
+          <ChunkyButton
+            tone="neutral"
+            className="ml-auto"
+            aria-pressed={lite}
+            title="Turn decoration off for slower machines"
+            onClick={() => {
+              const next = !lite;
+              setLite(next);
+              setOverride(next);
+            }}
+          >
+            {lite ? "Calm mode: on" : "Calm mode: off"}
           </ChunkyButton>
         </div>
 
