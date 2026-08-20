@@ -27,3 +27,10 @@ func configureChildLifetime(cmd *exec.Cmd) {
 	}
 	cmd.SysProcAttr.Pdeathsig = syscall.SIGKILL
 }
+
+// attachChildLifetime is a no-op on Linux: Pdeathsig above already does the whole job,
+// pre-Start. It exists so callers (llamaengine.go) can call the same post-Start hook
+// unconditionally on every platform -- see childlifetime_windows.go for why Windows
+// needs a second, post-Start hook at all (a Job Object needs a process handle, which
+// only exists once Start() has actually succeeded).
+func attachChildLifetime(cmd *exec.Cmd) error { return nil }

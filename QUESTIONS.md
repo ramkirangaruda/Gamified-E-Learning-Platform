@@ -57,11 +57,12 @@ blocking; these are the calls that are yours rather than mine.
    open, restore on corruption, quarantine-and-continue otherwise) and left the full
    write-then-rename scheme for M4. If you'd rather that had stayed untouched, it reverts
    cleanly — it's one commit.
-4. **Windows parent-crash orphan is still open.** `llama-server` surviving a hard-killed
-   launcher is now kernel-prevented on Linux (`Pdeathsig`) — the Pi, where 1.4 GB matters.
-   Windows would need a Job Object; I judged that more startup-failure risk than the
-   residual exposure warrants this close to the event. If a Windows laptop is the primary
-   demo machine rather than the Pi, say so and I'll reconsider.
+4. **Windows parent-crash orphan — resolved 2026-08-19 (handoff/06-windows-orphan.md).**
+   `llama-server` surviving a hard-killed launcher is now kernel-prevented on Windows too
+   via a Job Object (`internal/tutor/childlifetime_windows.go`), not just Linux's
+   `Pdeathsig`. Proven with an actual hard-kill-and-check test, not just a graceful
+   shutdown path — see `DECISIONS.md`. `golang.org/x/sys/windows` was already an
+   indirect dependency, so this added zero new modules.
 5. **Hunger is cumulative for the life of the key, not session-scoped** (brief §10 says
    session-scoped). The two hard rules hold — it never decays, it never regresses — but a
    well-used key sits permanently at 100 and the stat stops meaning anything. Related:
