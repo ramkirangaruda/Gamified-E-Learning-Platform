@@ -1,18 +1,21 @@
 # Parallel work briefs
 
-Each file here is a self-contained task brief. **Paste one whole file into Claude Code**
-and it can be worked cold, without the context of the main workstream.
+All six are done and merged to `master` — this file is kept as a record of the original
+scoping and for anyone who wants the full reasoning behind each fix (every entry below
+links to the exact `DECISIONS.md` writeup).
 
-They are ordered by value. Take them one at a time.
+| # | Task | Why it matters | Status |
+|---|------|----------------|--------|
+| 01 | [Hub Mode: camera reads the cards](01-hub-mode-camera.md) | §13 step 3. The biggest gap in the demo, and the moment the physical-cards premise lands | ✅ Merged, verified for real (`DECISIONS.md` 2026-08-18) |
+| 02 | [Key hot-swap and crash-safe writes](02-key-hot-swap.md) | §13 step 6. Yanking a live key on stage is the most memorable beat in the script | ✅ Merged, verified with a reproduced-then-fixed test (`DECISIONS.md` 2026-08-19) |
+| 03 | [README and an honest demo script](03-readme-and-demo-script.md) | A judge's first contact with a public repo, and there wasn't one | ✅ Merged (`README.md`, `DEMO.md`) |
+| 04 | [Stars, end to end](04-stars.md) | A dead schema column; the trail under-reported on purpose until it was wired | ✅ Merged, verified live against a real server (`DECISIONS.md` 2026-08-19) |
+| 05 | [Pet evolution art](05-pet-evolution-art.md) | §13 step 2. Visible growth is what sells the companion idea | ✅ Merged, verified live in a real browser (`DECISIONS.md` 2026-08-19) |
+| 06 | [Windows parent-crash orphan](06-windows-orphan.md) | Robustness. Invisible to judges, real for users | ✅ Merged, verified with a real hard-kill test (`DECISIONS.md` 2026-08-19) |
 
-| # | Task | Why it matters | Needs | Status |
-|---|------|----------------|-------|--------|
-| 01 | [Hub Mode: camera reads the cards](01-hub-mode-camera.md) | §13 step 3. The biggest gap in the demo, and the moment the physical-cards premise lands | Laptop webcam | ✅ Merged to `master`, verified for real (see `DECISIONS.md` 2026-08-18) |
-| 02 | [Key hot-swap and crash-safe writes](02-key-hot-swap.md) | §13 step 6. Yanking a live key on stage is the most memorable beat in the script | A USB stick or two | 🟡 **Open — no branch yet** |
-| 03 | [README and an honest demo script](03-readme-and-demo-script.md) | A judge's first contact with a public repo, and there isn't one | Nothing | ✅ Merged to `master` (`README.md`, `DEMO.md`) |
-| 04 | [Stars, end to end](04-stars.md) | A dead schema column; the trail under-reports on purpose until it is wired | Nothing | 🟡 **Open — no branch yet** |
-| 05 | [Pet evolution art](05-pet-evolution-art.md) | §13 step 2. Visible growth is what sells the companion idea | Nothing | 🟡 **Open — no branch yet. Unblocked now that 01 has merged.** |
-| 06 | [Windows parent-crash orphan](06-windows-orphan.md) | Robustness. Invisible to judges, real for users | Windows | 🟡 **Open — no branch yet** |
+One more real gap was found and closed along the way, not originally on this list: the
+`wrong_order` hint signature (brief §11's last undetected one) now has a detector,
+scoped to the `move` concept group — see `DECISIONS.md`'s 2026-08-19 entry.
 
 ## Rules for every one of these
 
