@@ -4,7 +4,7 @@ import Icon, { type IconName } from "./icons/Icon";
 import Pet from "./pet/Pet";
 import SpeechBubble from "./pet/SpeechBubble";
 import { ChunkyButton, ChunkyCard, ConceptChip, StarRow, type ChunkyTone } from "./ui/Chunky";
-import type { PetMood } from "./pet/reward";
+import { ALL_MOODS, type PetMood } from "./pet/mood";
 
 // Dev-only review surface at ?styleguide=1 — every token, component and state on one
 // page so the whole system can be judged at once instead of hunting states across the
@@ -54,7 +54,7 @@ const SUPPORT_SWATCHES = [
 ] as const;
 
 const TONES: ChunkyTone[] = ["move", "repeat", "cond", "while", "gold", "coral", "neutral"];
-const MOODS: PetMood[] = ["idle", "happy", "confused", "hungry"];
+const MOODS: PetMood[] = ALL_MOODS;
 const ANIMALS: AnimalKind[] = ["monkey", "rabbit", "owl", "turtle"];
 const ICONS: IconName[] = ["star", "trophy", "apple", "check", "party", "play", "pause", "reset", "step", "lock"];
 
@@ -208,7 +208,10 @@ export default function StyleGuide() {
           </div>
         </Section>
 
-        <Section title="Pet — the same character everywhere" note="Play, trail, shop and celebration all render this component. Four moods.">
+        <Section
+          title="Pet — one SVG, eight moods"
+          note="Every mood below is the same markup with a different data-mood on the SVG root. No image swapping, no second file. Idle is the only one that animates on its own."
+        >
           <div className="flex flex-wrap gap-8">
             {MOODS.map((m) => (
               <div key={m} className="text-center">

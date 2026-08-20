@@ -98,6 +98,11 @@
   color-scheme: light;
   --outline-chunk: 3px;
   --outline-chunk-thick: 4px;
+
+  /* Height of the persistent pet bar (pet/PetBar.tsx). Every page pads past it by this
+     value rather than hard-coding a number, so the bar's height is changeable in exactly
+     one place. Within the 88-96px the design calls for. */
+  --pet-bar-h: 92px;
 }
 
 html {
