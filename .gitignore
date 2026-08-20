@@ -6,6 +6,8 @@
 # Node / frontend (M2+)
 node_modules/
 dist/
+/app/
+/print/cards/
 
 # Runtime data — never commit a child's save file or drive contents
 data/*.db
