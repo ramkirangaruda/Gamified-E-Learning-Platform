@@ -1,0 +1,15 @@
+{
+  "id": "level-1",
+  "name": "Straight Line",
+  "teaches": "move",
+  "hard": false,
+  "parBlocks": 5,
+  "startPos": [0, 0],
+  "startDir": "right",
+  "grid": {
+    "width": 6,
+    "height": 1,
+    "walls": [[false, false, false, false, false, false]],
+    "goal": [5, 0]
+  }
+}

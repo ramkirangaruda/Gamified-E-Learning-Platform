@@ -30,3 +30,31 @@ body {
   stroke-width: 2px;
   stroke-dasharray: 6 4;
 }
+
+/* GridRenderer.tsx -- reacts to the executor's bump/goal events, never decides them. */
+@keyframes quest-shake {
+  0%, 100% { transform: translateX(0); }
+  20% { transform: translateX(-6px); }
+  40% { transform: translateX(5px); }
+  60% { transform: translateX(-4px); }
+  80% { transform: translateX(3px); }
+}
+.quest-robot-bump {
+  animation: quest-shake 0.4s ease-in-out;
+}
+
+@keyframes quest-celebrate {
+  0% { transform: scale(1) rotate(0deg); }
+  30% { transform: scale(1.4) rotate(-10deg); }
+  60% { transform: scale(1.4) rotate(10deg); }
+  100% { transform: scale(1) rotate(0deg); }
+}
+.quest-robot-goal {
+  animation: quest-celebrate 0.6s ease-in-out;
+  transform-box: fill-box;
+  transform-origin: center;
+}
+.quest-robot-bump {
+  transform-box: fill-box;
+  transform-origin: center;
+}

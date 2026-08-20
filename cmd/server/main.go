@@ -36,15 +36,19 @@ func main() {
 	}
 	defer st.Close()
 
-	srv := api.New(st)
+	levelsDir := filepath.Join(exeDir, "content", "levels")
+	srv, err := api.New(st, levelsDir)
+	if err != nil {
+		log.Fatalf("starting api server: %v", err)
+	}
 	mux := srv.Mux()
 
 	// app/ is the built React/Blockly bundle (brief's drive layout, app/) — empty until
-	// M2. http.Dir on a not-yet-existing directory is fine; it just 404s every request
-	// until the bundle is built and placed there.
+	// the frontend is built and placed there. http.Dir on a not-yet-existing directory
+	// is fine; it just 404s every request until then.
 	appDir := filepath.Join(exeDir, "app")
 	mux.Handle("/", http.FileServer(http.Dir(appDir)))
 
-	log.Printf("tessera quest listening on %s (data: %s, app: %s)", *addr, dbPath, appDir)
+	log.Printf("tessera quest listening on %s (data: %s, app: %s, levels: %s)", *addr, dbPath, appDir, levelsDir)
 	log.Fatal(http.ListenAndServe(*addr, mux))
 }

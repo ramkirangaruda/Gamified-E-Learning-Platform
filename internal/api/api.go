@@ -5,37 +5,55 @@ package api
 
 import (
 	"encoding/json"
+	"fmt"
 	"io"
 	"net/http"
 
 	"github.com/ramkirangaruda/Gamified-E-Learning-Platform/internal/executor"
+	"github.com/ramkirangaruda/Gamified-E-Learning-Platform/internal/levels"
 	"github.com/ramkirangaruda/Gamified-E-Learning-Platform/internal/store"
 	"github.com/ramkirangaruda/Gamified-E-Learning-Platform/packages/ast"
 )
 
 type Server struct {
-	store *store.Store
-	grid  executor.Grid
-	mux   *http.ServeMux
+	store      *store.Store
+	levels     map[string]levels.Level
+	levelOrder []string
+	mux        *http.ServeMux
 }
 
-func New(st *store.Store) *Server {
-	s := &Server{store: st, grid: defaultGrid()}
+// New loads every level under levelsDir once at startup — content/levels/ is prep-time
+// authored content, not something that changes while the server is running, so there's
+// no need to re-read it per request.
+func New(st *store.Store, levelsDir string) (*Server, error) {
+	loaded, err := levels.LoadAll(levelsDir)
+	if err != nil {
+		return nil, fmt.Errorf("api: loading levels: %w", err)
+	}
+
+	byID := make(map[string]levels.Level, len(loaded))
+	order := make([]string, 0, len(loaded))
+	for _, lvl := range loaded {
+		byID[lvl.ID] = lvl
+		order = append(order, lvl.ID)
+	}
+
+	s := &Server{store: st, levels: byID, levelOrder: order}
 	mux := http.NewServeMux()
+	mux.HandleFunc("GET /api/levels", s.handleGetLevels)
 	mux.HandleFunc("POST /api/program", s.handleProgram)
 	mux.HandleFunc("GET /api/state", s.handleGetState)
 	mux.HandleFunc("POST /api/state", s.handlePostState)
 	s.mux = mux
-	return s
+	return s, nil
 }
 
 func (s *Server) Mux() *http.ServeMux { return s.mux }
 
-// defaultGrid stands in for brief's content/levels/ system, which doesn't exist until M2.
-// It's spacious and wall-free so any valid AST fixture can run against it without
-// incident — good enough to prove POST /api/program end to end for the M1 acceptance
-// test. Real level loading (grid per level_id) replaces this wholesale in M2.
-func defaultGrid() executor.Grid {
+// fallbackGrid is used only when a request doesn't name a level_id (quick manual
+// testing, e.g. curl without query params) — spacious and wall-free so any valid AST
+// fixture runs without incident. Real gameplay always passes level_id.
+func fallbackGrid() executor.Grid {
 	w, h := 8, 8
 	walls := make([][]bool, h)
 	for y := range walls {
@@ -49,6 +67,14 @@ type programResponse struct {
 	Outcome        string           `json:"outcome"`
 	TicksUsed      int              `json:"ticks_used"`
 	ErrorSignature string           `json:"error_signature,omitempty"`
+}
+
+func (s *Server) handleGetLevels(w http.ResponseWriter, r *http.Request) {
+	ordered := make([]levels.Level, 0, len(s.levelOrder))
+	for _, id := range s.levelOrder {
+		ordered = append(ordered, s.levels[id])
+	}
+	writeJSON(w, http.StatusOK, ordered)
 }
 
 func (s *Server) handleProgram(w http.ResponseWriter, r *http.Request) {
@@ -66,7 +92,27 @@ func (s *Server) handleProgram(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	result := executor.Run(s.grid, executor.Pos{X: 0, Y: 0}, executor.DirRight, program.Program)
+	grid := fallbackGrid()
+	startPos := executor.Pos{X: 0, Y: 0}
+	startDir := executor.DirRight
+
+	if levelID := r.URL.Query().Get("level_id"); levelID != "" {
+		lvl, ok := s.levels[levelID]
+		if !ok {
+			writeError(w, http.StatusNotFound, fmt.Sprintf("unknown level_id %q", levelID))
+			return
+		}
+		dir, err := lvl.StartExecDir()
+		if err != nil {
+			writeError(w, http.StatusInternalServerError, err.Error())
+			return
+		}
+		grid = lvl.Grid
+		startPos = lvl.StartExecPos()
+		startDir = dir
+	}
+
+	result := executor.Run(grid, startPos, startDir, program.Program)
 	writeJSON(w, http.StatusOK, programResponse{
 		Events:         result.Events,
 		Outcome:        result.Outcome,

@@ -1,0 +1,21 @@
+{
+  "id": "level-3",
+  "name": "Turn the Corner",
+  "teaches": "if_wall_ahead",
+  "hard": true,
+  "parBlocks": 9,
+  "startPos": [0, 0],
+  "startDir": "right",
+  "grid": {
+    "width": 5,
+    "height": 5,
+    "walls": [
+      [false, false, false, false, true],
+      [false, false, false, false, false],
+      [false, false, false, false, false],
+      [false, false, false, false, false],
+      [false, false, false, false, false]
+    ],
+    "goal": [3, 3]
+  }
+}
