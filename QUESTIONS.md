@@ -507,3 +507,28 @@ correctly, and `test_integration.py` now passes for real against a live server -
 getting there required a fix to a *pre-existing* bug in `internal/paths.DriveRoot()`
 (its `go run` fallback claim was never actually true) that had nothing to do with
 `hub-mode` itself. That fix is in the same commit.
+
+## README and demo script (`readme-and-demo-script` task, 2026-08-18)
+
+1. **No `LICENSE` file exists at the repo root.** Brief for this task said to flag
+   rather than pick one myself. Worth deciding before the repo is judged publicly —
+   even a permissive default (MIT/Apache-2.0) is better than an implicit
+   all-rights-reserved default most people don't intend for a public hackathon repo.
+   **Still open** — nobody has picked one yet.
+2. **This pass could not run `go build`/`go run` or fetch Go modules** — the sandbox it
+   was written in has no route to the Go module proxy (`proxy.golang.org` and
+   `modernc.org` both returned 403/Forbidden, apparently a network allowlist
+   restriction of that environment, not a repo problem). `DEMO.md` is built from the
+   code, the test suites, and already-logged live runs in `DECISIONS.md`/`AUDIT.md`,
+   plus a real `npm test`/`npm run build` (58/58 TS tests passing, clean build into
+   `app/`) — but nobody re-ran the Go server or the camera pipeline live while writing
+   it. Flagging so whoever rehearses next knows `DEMO.md` still needs a real walkthrough
+   on a machine with the Go toolchain before it's treated as demo-ready, especially step
+   3 (camera) and step 4 (hint latency).
+   **Resolved, 2026-08-18, on merge**: `go build ./...`, `go vet ./...`, `go test ./...`
+   all ran clean (see the `hub-mode` verification entry above), and `DEMO.md`/`README.md`
+   were corrected at merge time to stop citing the two now-fixed step-3 caveats. Step 4
+   was already independently verified live in earlier `DECISIONS.md` entries (2026-08-15
+   through 17). What's still genuinely unwalked end-to-end: a live webcam pointed at real
+   cards (item 3 above), and a full presenter run-through of all eight steps back to
+   back.
