@@ -48,3 +48,29 @@ func BuildHintPrompt(hintText string, priorCount int) string {
 	}
 	return base
 }
+
+// HistoryPrefix returns a short, human-written acknowledgement that the child has hit
+// this same mistake before, or "" for a first-time mistake.
+//
+// AUDIT P1-5 (found during Phase 3 regression, against the real 0.6B model). §13 step 4's
+// scripted beat is "Pip ... gives a hint -- pointing out this child has done it before".
+// BuildHintPrompt does tell the model exactly that ("This child has made this mistake N
+// time(s) before -- acknowledge that gently"), and a unit test proves the clause reaches
+// the model. But across five consecutive real generations at buckets 1-4 the 0.6B model
+// never once surfaced it in its output -- the nuance is simply beyond what a 0.6B reliably
+// carries. The prompt instruction stays (a bigger model on the high tier may well use it),
+// but the demo beat cannot depend on it.
+//
+// So the acknowledgement is prepended deterministically instead. This is *more* aligned
+// with brief §11, not less: it is fixed, human-written text chosen by a number this
+// system already knows, never a model claim about the child's code.
+func HistoryPrefix(priorCount int) string {
+	switch {
+	case priorCount <= 0:
+		return ""
+	case priorCount <= 2:
+		return "This one's caught you before! "
+	default:
+		return "We keep meeting this one, don't we? "
+	}
+}

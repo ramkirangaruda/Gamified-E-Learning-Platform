@@ -336,7 +336,13 @@ func (s *Server) handleHint(w http.ResponseWriter, r *http.Request) {
 	hintCtx, cancel := context.WithTimeout(r.Context(), s.hintTimeout)
 	defer cancel()
 	gen := hints.GenerateVerifiedHint(hintCtx, s.engine, hintText, priorCount)
-	finalText, latencyMs := gen.Text, gen.LatencyMs
+	// AUDIT P1-5: prepend the repeat acknowledgement deterministically rather than hoping
+	// the model does it. Verified against the real 0.6B during Phase 3 regression: the
+	// prompt does carry "this child has made this mistake N times before", but 5/5
+	// generations dropped it, and that acknowledgement is §13 step 4's visible payoff.
+	// Human-written fixed text, so this stays inside §11's rule -- the model is still
+	// never the source of truth about the child's code.
+	finalText, latencyMs := hints.HistoryPrefix(priorCount)+gen.Text, gen.LatencyMs
 
 	s.hintCache.Set(req.LevelID, req.ErrorSignature, bucket, finalText)
 
