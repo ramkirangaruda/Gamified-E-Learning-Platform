@@ -1,0 +1,16 @@
+{
+  "version": 1,
+  "source": "cards",
+  "program": [
+    {
+      "op": "if",
+      "cond": { "check": "wall_ahead" },
+      "then": [
+        { "op": "turn", "dir": "right" }
+      ],
+      "else": [
+        { "op": "move", "steps": 1 }
+      ]
+    }
+  ]
+}

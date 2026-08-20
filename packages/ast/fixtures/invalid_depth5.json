@@ -1,0 +1,31 @@
+{
+  "version": 1,
+  "source": "cards",
+  "program": [
+    {
+      "op": "repeat",
+      "times": 2,
+      "body": [
+        {
+          "op": "if",
+          "cond": { "check": "wall_ahead" },
+          "then": [
+            {
+              "op": "while",
+              "cond": { "check": "not", "of": { "check": "on_goal" } },
+              "body": [
+                {
+                  "op": "repeat",
+                  "times": 2,
+                  "body": [
+                    { "op": "move", "steps": 1 }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

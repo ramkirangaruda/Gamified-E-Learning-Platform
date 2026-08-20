@@ -1,0 +1,16 @@
+{
+  "version": 1,
+  "source": "blocks",
+  "program": [
+    {
+      "op": "define",
+      "name": "hop",
+      "body": [
+        { "op": "move", "steps": 1 },
+        { "op": "turn", "dir": "left" }
+      ]
+    },
+    { "op": "call", "name": "hop" },
+    { "op": "call", "name": "hop" }
+  ]
+}

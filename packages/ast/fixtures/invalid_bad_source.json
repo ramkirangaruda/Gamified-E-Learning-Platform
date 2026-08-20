@@ -1,0 +1,7 @@
+{
+  "version": 1,
+  "source": "keyboard",
+  "program": [
+    { "op": "move", "steps": 1 }
+  ]
+}

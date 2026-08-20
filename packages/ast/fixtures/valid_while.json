@@ -1,0 +1,13 @@
+{
+  "version": 1,
+  "source": "cards",
+  "program": [
+    {
+      "op": "while",
+      "cond": { "check": "not", "of": { "check": "on_goal" } },
+      "body": [
+        { "op": "move", "steps": 1 }
+      ]
+    }
+  ]
+}
