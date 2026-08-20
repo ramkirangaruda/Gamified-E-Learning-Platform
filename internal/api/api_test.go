@@ -529,6 +529,34 @@ func TestIntegration_SandboxInvalidASTIs400NotCrash(t *testing.T) {
 	}
 }
 
+// handoff: dynamic level suggestion, over real HTTP against the real 25-level content --
+// a fresh drive must be pointed at level-1, not crash on an empty progress map.
+func TestIntegration_SuggestionOnFreshDrive(t *testing.T) {
+	ts := newTestServer(t)
+
+	resp, err := http.Get(ts.URL + "/api/suggestion")
+	if err != nil {
+		t.Fatalf("GET /api/suggestion: %v", err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+		t.Fatalf("status = %d, want 200: %s", resp.StatusCode, body)
+	}
+
+	var got struct {
+		LevelID  string `json:"level_id"`
+		Category string `json:"category"`
+		Message  string `json:"message"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&got); err != nil {
+		t.Fatal(err)
+	}
+	if got.LevelID != "level-1" || got.Category != "next" || got.Message == "" {
+		t.Fatalf("suggestion on a fresh drive = %+v, want level-1/next with real message text", got)
+	}
+}
+
 func TestIntegration_UnknownLevelIs404(t *testing.T) {
 	ts := newTestServer(t)
 

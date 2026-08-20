@@ -363,6 +363,52 @@ func TestAdvanceEvolutionStage_NeverRegresses(t *testing.T) {
 	}
 }
 
+// handoff: dynamic level suggestion. GetAllLevelProgress needed to expose
+// attempts_count and first_solved_at alongside stars -- all three already existed in
+// level_progress, this is a read, not a schema change.
+func TestGetAllLevelProgress(t *testing.T) {
+	dbPath := filepath.Join(t.TempDir(), "pet.db")
+	s, err := Open(dbPath)
+	if err != nil {
+		t.Fatalf("Open: %v", err)
+	}
+	defer s.Close()
+
+	if got, err := s.GetAllLevelProgress(); err != nil || len(got) != 0 {
+		t.Fatalf("progress on empty table = %v, %v, want empty map", got, err)
+	}
+
+	// A struggling level: several attempts, never solved.
+	for i := 0; i < 3; i++ {
+		if err := s.RecordLevelAttempt("level-1", false, int64(100+i)); err != nil {
+			t.Fatal(err)
+		}
+	}
+	// A mastered level: solved, 3 stars.
+	if err := s.RecordLevelAttempt("level-2", true, 200); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.RecordStars("level-2", 3); err != nil {
+		t.Fatal(err)
+	}
+
+	got, err := s.GetAllLevelProgress()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(got) != 2 {
+		t.Fatalf("progress = %v, want exactly 2 entries", got)
+	}
+	l1 := got["level-1"]
+	if l1.AttemptsCount != 3 || l1.FirstSolvedAt != 0 || l1.Stars != 0 {
+		t.Fatalf("level-1 progress = %+v, want {Stars:0 AttemptsCount:3 FirstSolvedAt:0}", l1)
+	}
+	l2 := got["level-2"]
+	if l2.AttemptsCount != 1 || l2.FirstSolvedAt != 200 || l2.Stars != 3 {
+		t.Fatalf("level-2 progress = %+v, want {Stars:3 AttemptsCount:1 FirstSolvedAt:200}", l2)
+	}
+}
+
 // Hunger is session-scoped (brief §10), and StartSession is what makes that true --
 // before it existed, hunger was cumulative for the life of the key (AUDIT.md P2).
 func TestStartSessionResetsHungerButNotProgress(t *testing.T) {

@@ -125,6 +125,20 @@ export function runSandbox(program: AstProgram): Promise<SandboxResult> {
   }).then((r) => json<SandboxResult>(r));
 }
 
+export interface Suggestion {
+  level_id: string;
+  /** "next" | "review" | "challenge" | "done" -- see internal/api/suggestion.go. */
+  category: string;
+  message: string;
+}
+
+// "Pip suggests" (dynamic level suggestion, handoff item). Deterministic server-side
+// logic over real progress data; the model is never involved in deciding this -- see
+// internal/api/suggestion.go's own comment for why that boundary matters here.
+export function fetchSuggestion(): Promise<Suggestion> {
+  return fetch("/api/suggestion").then((r) => json<Suggestion>(r));
+}
+
 export function fetchState(): Promise<GameState> {
   return fetch("/api/state").then((r) => json<GameState>(r));
 }

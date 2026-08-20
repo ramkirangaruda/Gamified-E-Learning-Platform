@@ -25,7 +25,7 @@ interface HomePageProps {
 }
 
 export default function HomePage({ onSelectLevel, onOpenSandbox, lite, onToggleLite }: HomePageProps) {
-  const { state, levels, error } = usePet();
+  const { state, levels, error, suggestion } = usePet();
   const [view, setView] = useState<View>("trail");
 
   const solvedIds = state?.solved_levels ?? [];
@@ -70,6 +70,24 @@ export default function HomePage({ onSelectLevel, onOpenSandbox, lite, onToggleL
             {lite ? "Calm mode: on" : "Calm mode: off"}
           </ChunkyButton>
         </div>
+
+        {/* "Pip suggests" -- a deterministic recommendation (internal/api/suggestion.go),
+            never the model's call. Only rendered once a real suggestion has loaded, and
+            silently absent if the fetch failed -- this is a nice-to-have on top of the
+            trail, not something worth showing an error state for. */}
+        {suggestion && (
+          <button
+            type="button"
+            onClick={() => (suggestion.level_id ? onSelectLevel(suggestion.level_id) : onOpenSandbox())}
+            aria-label={`Pip suggests: ${suggestion.message}`}
+            className="mt-4 flex w-full items-center gap-3 rounded-chunk-lg border-[var(--outline-chunk)] border-quest-gold bg-quest-gold/15 px-5 py-3 text-left shadow-chunk transition-transform hover:-translate-y-0.5"
+          >
+            <span className="font-display text-sm font-bold uppercase tracking-wide text-quest-gold-dark">
+              Pip suggests
+            </span>
+            <span className="font-medium text-quest-ink">{suggestion.message}</span>
+          </button>
+        )}
 
         {error === "levels" && (
           <p className="mt-4 font-medium text-quest-coral-dark">

@@ -618,6 +618,38 @@ func (s *Store) GetStarsByLevel() (map[string]int, error) {
 	return stars, rows.Err()
 }
 
+// LevelProgressRow is one level's full progress row -- everything RecommendNextLevel
+// (internal/api) needs to judge how a child is actually doing on a level, not just
+// whether they've solved it.
+type LevelProgressRow struct {
+	Stars         int
+	AttemptsCount int
+	FirstSolvedAt int64 // 0 means never solved
+}
+
+// GetAllLevelProgress returns every level_id that has been attempted at least once.
+// Mirrors GetSolvedLevelIDs/GetStarsByLevel's shape (derived fresh on every call, never
+// nil) -- the dynamic-suggestion feature (handoff item) needed attempts_count and
+// first_solved_at alongside stars, and both already exist in level_progress; this is a
+// read, not a new column.
+func (s *Store) GetAllLevelProgress() (map[string]LevelProgressRow, error) {
+	rows, err := s.db.Query(`SELECT level_id, stars, attempts_count, COALESCE(first_solved_at, 0) FROM level_progress`)
+	if err != nil {
+		return nil, fmt.Errorf("store: reading level progress: %w", err)
+	}
+	defer rows.Close()
+	out := map[string]LevelProgressRow{}
+	for rows.Next() {
+		var id string
+		var p LevelProgressRow
+		if err := rows.Scan(&id, &p.Stars, &p.AttemptsCount, &p.FirstSolvedAt); err != nil {
+			return nil, fmt.Errorf("store: scanning level progress: %w", err)
+		}
+		out[id] = p
+	}
+	return out, rows.Err()
+}
+
 // AdvanceEvolutionStage upserts the pet's evolution_stage, clamped to never regress
 // (§10) -- handoff/05-pet-evolution-art.md. Same single-row assumption as SaveState and
 // getPet (LIMIT 1 / no WHERE): the drive is the account, there is exactly one pet row,
