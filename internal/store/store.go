@@ -618,6 +618,20 @@ func (s *Store) GetStarsByLevel() (map[string]int, error) {
 	return stars, rows.Err()
 }
 
+// AdvanceEvolutionStage upserts the pet's evolution_stage, clamped to never regress
+// (§10) -- handoff/05-pet-evolution-art.md. Same single-row assumption as SaveState and
+// getPet (LIMIT 1 / no WHERE): the drive is the account, there is exactly one pet row,
+// created before any level can be solved (the frontend always fetches /api/state, which
+// lazily creates it, before a child can reach a level at all).
+func (s *Store) AdvanceEvolutionStage(stage int) error {
+	_, err := s.db.Exec(`UPDATE pet SET evolution_stage = MAX(evolution_stage, ?)`, stage)
+	if err != nil {
+		return fmt.Errorf("store: advancing evolution stage: %w", err)
+	}
+	s.refreshBackup()
+	return nil
+}
+
 // TierHintRecord is one tier's most recent generated hint -- see tier_hint_history's
 // comment for why this needs to persist on the drive rather than live in memory.
 type TierHintRecord struct {

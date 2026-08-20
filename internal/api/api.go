@@ -201,6 +201,28 @@ func computeStars(blocksUsed, parBlocks int, firstTry bool) int {
 	return stars
 }
 
+// evolutionThresholds mirrors web/src/trail/concepts.ts's EVOLUTION_MARKERS -- three
+// fixed solved-count thresholds, kept in sync by hand across the Go/TS boundary rather
+// than through shared config, the same way the 14 physical cards are a fixed, final,
+// hand-verified set independently defined on both sides. handoff/05-pet-evolution-art.md
+// flagged this as the call to make and log rather than build cross-language config
+// sharing for three integers four days out.
+var evolutionThresholds = []int{5, 13, 22}
+
+// evolutionStageFor derives the pet's evolution stage fresh from a solved-level count,
+// rather than incrementing by 1 per solve -- so re-solving an already-solved level, or
+// solving levels out of order (the dashboard allows both), always lands on the correct
+// stage instead of drifting from double-counting or under-counting.
+func evolutionStageFor(solvedCount int) int {
+	stage := 0
+	for _, threshold := range evolutionThresholds {
+		if solvedCount >= threshold {
+			stage++
+		}
+	}
+	return stage
+}
+
 func (s *Server) handleGetLevels(w http.ResponseWriter, r *http.Request) {
 	ordered := make([]levels.Level, 0, len(s.levelOrder))
 	for _, id := range s.levelOrder {
@@ -304,6 +326,18 @@ func (s *Server) handleProgram(w http.ResponseWriter, r *http.Request) {
 			stars := computeStars(ast.CountCards(program.Program), lvl.ParBlocks, firstTry)
 			if err := s.store.RecordStars(levelID, stars); err != nil {
 				log.Printf("api: recording stars: %v", err)
+			}
+
+			// handoff/05-pet-evolution-art.md: evolution_stage was fully plumbed
+			// end to end but nothing ever advanced it. Re-derived from the
+			// authoritative solved-level count on every solve (not incremented by
+			// 1, so re-solving an already-solved level or solving levels out of
+			// order both land on the correct stage) and persisted with the same
+			// never-regress upsert stars uses.
+			if solvedIDs, err := s.store.GetSolvedLevelIDs(); err != nil {
+				log.Printf("api: reading solved levels for evolution stage: %v", err)
+			} else if err := s.store.AdvanceEvolutionStage(evolutionStageFor(len(solvedIDs))); err != nil {
+				log.Printf("api: advancing evolution stage: %v", err)
 			}
 		}
 	}

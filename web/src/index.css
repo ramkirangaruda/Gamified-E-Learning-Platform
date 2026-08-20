@@ -86,12 +86,16 @@
 .quest-pet .pet-glint,
 .quest-pet .pet-body,
 .quest-pet .pet-belly,
-.quest-pet .pet-stage-ring,
-.quest-pet .pet-stage-crown {
+.quest-pet .pet-foot,
+.quest-pet .pet-antenna-stalk,
+.quest-pet .pet-stage-aura,
+.quest-pet .pet-hat,
+.quest-pet .pet-hat-badge {
   transition:
     transform var(--pet-ease),
     opacity var(--pet-ease),
-    fill var(--pet-ease);
+    fill var(--pet-ease),
+    stroke var(--pet-ease);
   transform-box: fill-box;
   transform-origin: center;
 }
@@ -131,8 +135,9 @@
 .quest-pet .pet-eye-arc,
 .quest-pet .pet-accent,
 .quest-pet .pet-treat,
-.quest-pet .pet-stage-ring,
-.quest-pet .pet-stage-crown {
+.quest-pet .pet-stage-aura,
+.quest-pet .pet-hat,
+.quest-pet .pet-hat-badge {
   opacity: 0;
 }
 .quest-pet .pet-accent { fill: var(--color-quest-ink); }
@@ -141,24 +146,6 @@
 .quest-pet .pet-want-mark { stroke: var(--color-quest-ink); stroke-width: 3; stroke-linecap: round; }
 .quest-pet .pet-treat circle { fill: var(--color-quest-coral); }
 .quest-pet .pet-treat-leaf { fill: var(--color-quest-cond); }
-
-/* Evolution stage: additive only, never removed (§10 -- progress never reverses). */
-.quest-pet[data-stage="1"] .pet-stage-ring,
-.quest-pet[data-stage="2"] .pet-stage-ring,
-.quest-pet[data-stage="3"] .pet-stage-ring {
-  opacity: 1;
-  fill: none;
-  stroke: var(--color-quest-gold);
-  stroke-width: 3;
-  stroke-dasharray: 6 5;
-}
-.quest-pet[data-stage="2"] .pet-stage-crown,
-.quest-pet[data-stage="3"] .pet-stage-crown {
-  opacity: 1;
-  fill: var(--color-quest-gold);
-  stroke: var(--color-quest-gold-dark);
-  stroke-width: 2;
-}
 
 /* --- curious -------------------------------------------------------------- */
 .quest-pet[data-mood="curious"] .pet-breathe { transform: rotate(-6deg); }
@@ -268,6 +255,76 @@
 .quest-pet[data-mood="confused"] .pet-eye-r { transform: scale(0.85); }
 .quest-pet[data-mood="confused"] .pet-antenna-l { transform: rotate(26deg); }
 .quest-pet[data-mood="confused"] .pet-cheek { opacity: 0.3; }
+
+/* --- Evolution stage art (§13 step 2, handoff/05-pet-evolution-art.md) -------
+   Additive only, never removed (§10 -- progress never reverses): each stage adds one
+   more thing on top of the last rather than replacing anything.
+     stage 1 "Pip grew!"        -> recolors warm orange, hat appears (§13 step 2's own
+                                    "level 4, orange, wearing a hat")
+     stage 2 "Pip grew again!"  -> hat gains a gold star badge
+     stage 3 "Pip is fully grown!" -> a soft gold aura appears behind the body
+
+   The aura used to render at stage 1+ as a cheap stand-in (see git history) -- stage 2
+   and stage 3 were then visually identical, since both only ever got the aura plus a
+   small crown shape at the same time. Reserving the aura for stage 3 alone, and giving
+   stages 1 and 2 their own distinct additions instead, is what actually fixes that.
+
+   Placed AFTER every mood block above, not just anatomy: `[data-mood="hungry"]
+   .pet-body` also sets `fill` (a paler cyan), and CSS breaks a same-specificity tie by
+   source order, not by "more specific state wins". A hungry, evolved pet was silently
+   losing its orange back to hungry's cyan tint until this moved below the mood rules --
+   caught by opening a real browser and reading computed styles, not by inspecting the
+   stylesheet alone; see DECISIONS.md. */
+.quest-pet[data-stage="1"] .pet-body,
+.quest-pet[data-stage="2"] .pet-body,
+.quest-pet[data-stage="3"] .pet-body {
+  fill: #ff9d42;
+}
+.quest-pet[data-stage="1"] .pet-belly,
+.quest-pet[data-stage="2"] .pet-belly,
+.quest-pet[data-stage="3"] .pet-belly {
+  fill: #ffe0b3;
+}
+.quest-pet[data-stage="1"] .pet-foot,
+.quest-pet[data-stage="1"] .pet-limb ellipse,
+.quest-pet[data-stage="1"] .pet-antenna-stalk,
+.quest-pet[data-stage="2"] .pet-foot,
+.quest-pet[data-stage="2"] .pet-limb ellipse,
+.quest-pet[data-stage="2"] .pet-antenna-stalk,
+.quest-pet[data-stage="3"] .pet-foot,
+.quest-pet[data-stage="3"] .pet-limb ellipse,
+.quest-pet[data-stage="3"] .pet-antenna-stalk {
+  fill: #e8792a;
+  stroke: #e8792a;
+}
+
+.quest-pet .pet-hat-cone { fill: var(--color-quest-coral); }
+.quest-pet .pet-hat-brim,
+.quest-pet .pet-hat-pompom {
+  fill: var(--color-quest-gold);
+}
+.quest-pet .pet-hat-badge path {
+  fill: var(--color-quest-gold);
+  stroke: var(--color-quest-gold-dark);
+  stroke-width: 1;
+}
+
+.quest-pet[data-stage="1"] .pet-hat,
+.quest-pet[data-stage="2"] .pet-hat,
+.quest-pet[data-stage="3"] .pet-hat {
+  opacity: 1;
+}
+.quest-pet[data-stage="2"] .pet-hat-badge,
+.quest-pet[data-stage="3"] .pet-hat-badge {
+  opacity: 1;
+}
+.quest-pet[data-stage="3"] .pet-stage-aura {
+  opacity: 1;
+  fill: none;
+  stroke: var(--color-quest-gold);
+  stroke-width: 3;
+  stroke-dasharray: 6 5;
+}
 
 /* --- Eating (item 5) ------------------------------------------------------
  * One-shot, re-fired by re-keying the <g> in Pet.tsx. The treat drops in, is taken,

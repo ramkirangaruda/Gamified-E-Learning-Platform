@@ -388,6 +388,81 @@ func TestIntegration_StarsEarnedAndNeverRegress(t *testing.T) {
 	}
 }
 
+func TestComputeStars(t *testing.T) {
+	cases := []struct {
+		name            string
+		blocksUsed, par int
+		firstTry        bool
+		want            int
+	}{
+		{"solved, over par, not first try", 10, 5, false, 1},
+		{"solved, exactly at par (not strictly under), not first try", 5, 5, false, 1},
+		{"solved, under par, not first try", 4, 5, false, 2},
+		{"solved, over par, first try", 10, 5, true, 2},
+		{"solved, under par, first try", 4, 5, true, 3},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := computeStars(tc.blocksUsed, tc.par, tc.firstTry); got != tc.want {
+				t.Errorf("computeStars(%d, %d, %v) = %d, want %d", tc.blocksUsed, tc.par, tc.firstTry, got, tc.want)
+			}
+		})
+	}
+}
+
+func TestEvolutionStageFor(t *testing.T) {
+	cases := []struct {
+		solved int
+		want   int
+	}{
+		{0, 0}, {4, 0}, {5, 1}, {6, 1},
+		{12, 1}, {13, 2}, {14, 2},
+		{21, 2}, {22, 3}, {25, 3},
+	}
+	for _, tc := range cases {
+		if got := evolutionStageFor(tc.solved); got != tc.want {
+			t.Errorf("evolutionStageFor(%d) = %d, want %d", tc.solved, got, tc.want)
+		}
+	}
+}
+
+// handoff/05-pet-evolution-art.md, over real HTTP: below the first threshold (5 solved),
+// the pet must stay at stage 0 -- proves the wiring runs without error on the common
+// case. The never-regress/threshold-crossing behavior itself is proven directly against
+// evolutionStageFor above and against the store in TestAdvanceEvolutionStage_NeverRegresses
+// (internal/store) -- solving five distinct real levels just to cross a threshold here
+// would re-prove the same arithmetic through much more machinery for no extra confidence.
+func TestIntegration_EvolutionStageStaysZeroBelowFirstThreshold(t *testing.T) {
+	ts := newTestServer(t)
+
+	programJSON := `{"ast":{"version":1,"source":"blocks","program":[
+		{"op":"repeat","times":4,"body":[{"op":"move","steps":1}]},
+		{"op":"move","steps":1}
+	]},"client_problems":[]}`
+	resp, err := http.Post(ts.URL+"/api/program?level_id=level-1", "application/json", strings.NewReader(programJSON))
+	if err != nil {
+		t.Fatalf("POST /api/program: %v", err)
+	}
+	resp.Body.Close()
+
+	resp, err = http.Get(ts.URL + "/api/state")
+	if err != nil {
+		t.Fatalf("GET /api/state: %v", err)
+	}
+	defer resp.Body.Close()
+	var got struct {
+		Pet struct {
+			EvolutionStage int `json:"evolution_stage"`
+		} `json:"pet"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&got); err != nil {
+		t.Fatalf("decoding response: %v", err)
+	}
+	if got.Pet.EvolutionStage != 0 {
+		t.Fatalf("evolution_stage after solving 1 level = %d, want 0 (threshold is 5)", got.Pet.EvolutionStage)
+	}
+}
+
 func TestIntegration_UnknownLevelIs404(t *testing.T) {
 	ts := newTestServer(t)
 
