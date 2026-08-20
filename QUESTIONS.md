@@ -1,5 +1,39 @@
 # QUESTIONS.md
 
+## Design + curriculum queue (2026-08-16) — all 6 items complete
+
+Full reasoning in `DECISIONS.md`. Five things worth your judgement:
+
+1. **Conditional levels 14 and 17 are the one place hardcoding beats the intended
+   solution** (a 5-card hardcoded run vs a 6-card `if`-based one). With only one or two
+   corners a conditional genuinely costs more cards than writing the turns out. Par is set
+   to the intended solution there, and the teaching is carried by the level series
+   (14–18 apply one unchanging "look before you step" program to progressively bigger
+   maps). If you'd rather those two levels had more corners so the conditional actually
+   wins on card count, say so — it's a map edit, not a code change.
+2. **Collectibles are now required to finish a level** (the executor only opens the goal
+   once every item is gathered). Without it, "pickup objectives" on 23–25 would have been
+   cosmetic and §11's `never_picked_up` would have stayed undetectable forever. Levels
+   with no items behave identically, pinned by test — but it *is* a change to executor
+   semantics, so flagging it rather than burying it.
+3. **Stars are under-reported on purpose.** The store persists solved/attempts but not a
+   per-level star count, so a solved level shows 1 star until that lands. Under-reporting
+   is the safe direction under §10 — showing 1 now and 3 later is fine, 3 now and 1 later
+   would be a visible regression.
+4. **`wrong_order` is the last §11 signature without a detector.** It needs a canonical
+   per-level solution to diff against, which nothing tracks. `never_picked_up` is now
+   covered, so this is the only remaining gap in the taxonomy.
+5. **Five raster files remain in the bundle**, all belonging to vendored Blockly
+   (`sprites.png` and friends); one is actually requested at runtime. Every illustration
+   this project authors is inline SVG. Swapping a third-party library's internal sprite
+   sheet isn't something I'd attempt this close to the event, but it's the honest answer
+   to "no raster images anywhere".
+
+Still true from the audit pass, and still the biggest risk: **only §13 steps 4 and 7 are
+built.** This queue made the game look and teach like a product; it did not add the
+camera pipeline, the shop, or key hot-swap. That remains a scope decision, not a code one.
+
+
 ## Audit pass (2026-08-15) — decisions needed from you
 
 Full findings and the Phase 3 regression result are in `AUDIT.md`. Nothing below is
