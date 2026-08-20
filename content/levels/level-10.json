@@ -1,10 +1,10 @@
 {
-  "id": "level-6",
-  "name": "Eight in a Row",
-  "teaches": "repeat",
-  "difficulty": "easy",
-  "concept": "Two repeat cards beat writing every step by hand.",
-  "parBlocks": 7,
+  "id": "level-10",
+  "name": "Repeat Inside Repeat",
+  "teaches": "nested_repeat",
+  "difficulty": "medium",
+  "concept": "A repeat card can go inside another repeat card.",
+  "parBlocks": 6,
   "startPos": [
     0,
     0

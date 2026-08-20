@@ -1,0 +1,38 @@
+{
+  "id": "level-14",
+  "name": "Wall Ahead",
+  "teaches": "if_wall_ahead",
+  "difficulty": "easy",
+  "concept": "Ask if a wall is in front of you before you step.",
+  "parBlocks": 6,
+  "startPos": [
+    0,
+    0
+  ],
+  "startDir": "right",
+  "grid": {
+    "width": 3,
+    "height": 3,
+    "walls": [
+      [
+        false,
+        false,
+        false
+      ],
+      [
+        true,
+        true,
+        false
+      ],
+      [
+        true,
+        true,
+        false
+      ]
+    ],
+    "goal": [
+      2,
+      2
+    ]
+  }
+}

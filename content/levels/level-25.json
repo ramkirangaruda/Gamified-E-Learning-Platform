@@ -1,10 +1,10 @@
 {
-  "id": "level-4",
-  "name": "The Long Way",
-  "teaches": "move",
-  "difficulty": "medium",
-  "concept": "A long path is just many small steps in the right order.",
-  "parBlocks": 15,
+  "id": "level-25",
+  "name": "The Full Quest",
+  "teaches": "composition",
+  "difficulty": "hard",
+  "concept": "Everything you have learned, in one road.",
+  "parBlocks": 11,
   "startPos": [
     0,
     0
@@ -19,40 +19,50 @@
         false,
         false,
         false,
-        true
+        false
       ],
       [
         true,
         true,
         true,
-        false,
-        true
+        true,
+        false
       ],
       [
         true,
-        false,
-        false,
-        false,
-        true
+        true,
+        true,
+        true,
+        false
       ],
       [
         true,
-        false,
         true,
         true,
-        true
+        true,
+        false
       ],
       [
-        true,
         false,
         false,
         false,
-        true
+        false,
+        false
       ]
     ],
     "goal": [
-      3,
+      0,
       4
+    ],
+    "items": [
+      [
+        2,
+        0
+      ],
+      [
+        4,
+        4
+      ]
     ]
   }
 }

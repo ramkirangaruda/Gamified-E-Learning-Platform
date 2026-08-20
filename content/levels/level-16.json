@@ -1,10 +1,10 @@
 {
-  "id": "level-3",
-  "name": "Zigzag",
-  "teaches": "move",
-  "difficulty": "easy",
-  "concept": "Turn left and turn right send you opposite ways.",
-  "parBlocks": 8,
+  "id": "level-16",
+  "name": "Two Corners",
+  "teaches": "if_wall_ahead",
+  "difficulty": "medium",
+  "concept": "One rule -- turn when blocked -- handles every corner.",
+  "parBlocks": 10,
   "startPos": [
     0,
     0
@@ -17,31 +17,31 @@
       [
         false,
         false,
+        false,
+        false
+      ],
+      [
+        false,
         true,
-        true
+        true,
+        false
+      ],
+      [
+        false,
+        false,
+        false,
+        false
       ],
       [
         true,
-        false,
-        false,
-        true
-      ],
-      [
         true,
         true,
-        false,
-        true
-      ],
-      [
-        true,
-        true,
-        false,
         true
       ]
     ],
     "goal": [
-      2,
-      3
+      0,
+      1
     ]
   }
 }

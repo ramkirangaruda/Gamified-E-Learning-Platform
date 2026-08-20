@@ -1,0 +1,45 @@
+{
+  "id": "level-24",
+  "name": "Gather and Go",
+  "teaches": "composition",
+  "difficulty": "hard",
+  "concept": "Collect everything on the way -- the goal won't open until you do.",
+  "parBlocks": 9,
+  "startPos": [
+    0,
+    0
+  ],
+  "startDir": "right",
+  "grid": {
+    "width": 10,
+    "height": 1,
+    "walls": [
+      [
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false
+      ]
+    ],
+    "goal": [
+      9,
+      0
+    ],
+    "items": [
+      [
+        2,
+        0
+      ],
+      [
+        6,
+        0
+      ]
+    ]
+  }
+}

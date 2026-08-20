@@ -1,18 +1,18 @@
 {
-  "id": "level-7",
-  "name": "Around the Block",
-  "teaches": "repeat",
-  "difficulty": "medium",
-  "concept": "Repeat each straight stretch, then turn once between them.",
-  "parBlocks": 12,
+  "id": "level-22",
+  "name": "The Winding Road",
+  "teaches": "while",
+  "difficulty": "hard",
+  "concept": "One small loop, however long and however many corners.",
+  "parBlocks": 10,
   "startPos": [
     0,
     0
   ],
   "startDir": "right",
   "grid": {
-    "width": 7,
-    "height": 7,
+    "width": 6,
+    "height": 6,
     "walls": [
       [
         false,
@@ -20,67 +20,52 @@
         false,
         false,
         false,
+        false
+      ],
+      [
+        true,
+        true,
+        true,
+        true,
+        true,
+        false
+      ],
+      [
+        true,
+        true,
+        true,
+        true,
+        true,
+        false
+      ],
+      [
+        true,
+        true,
+        true,
+        true,
+        true,
+        false
+      ],
+      [
+        true,
+        true,
+        true,
+        true,
+        true,
+        false
+      ],
+      [
         false,
-        false
-      ],
-      [
-        true,
-        true,
-        true,
-        true,
-        true,
-        true,
-        false
-      ],
-      [
-        true,
-        true,
-        true,
-        true,
-        true,
-        true,
-        false
-      ],
-      [
-        true,
-        true,
-        true,
-        true,
-        true,
-        true,
-        false
-      ],
-      [
-        true,
-        true,
-        true,
-        true,
-        true,
-        true,
-        false
-      ],
-      [
-        true,
-        true,
-        true,
-        true,
-        true,
-        true,
-        false
-      ],
-      [
-        true,
-        true,
-        true,
-        true,
-        true,
-        true,
+        false,
+        false,
+        false,
+        false,
         false
       ]
     ],
     "goal": [
-      6,
-      6
+      0,
+      5
     ]
   }
 }

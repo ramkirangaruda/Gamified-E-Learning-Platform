@@ -248,3 +248,37 @@ func TestWaitConsumesTicksWithoutMoving(t *testing.T) {
 		t.Fatalf("ticks_used = %d, want at least 3 for wait(3)", res.TicksUsed)
 	}
 }
+
+// Collectibles are a real objective, not decoration. Levels 23-25 place items on the
+// route; without this rule a child could walk past every one of them straight to the goal
+// and still be told they solved it, which makes the "pick up" card meaningless and makes
+// brief §11's never_picked_up signature undetectable.
+//
+// Deliberately scoped so a level with no items behaves exactly as before -- the condition
+// is trivially satisfied when Items is empty, which is every level 1-22.
+func TestRun_GoalRequiresAllItemsCollected(t *testing.T) {
+	newGrid := func() Grid {
+		g := openGrid(5, 1, Pos{4, 0})
+		g.Items = []Pos{{X: 2, Y: 0}}
+		return g
+	}
+
+	walkPast := Run(newGrid(), Pos{0, 0}, DirRight, []ast.Node{move(4)})
+	if walkPast.Outcome != "failed" {
+		t.Fatalf("outcome = %q, want failed -- reaching the goal with an uncollected item must not count", walkPast.Outcome)
+	}
+
+	collected := Run(newGrid(), Pos{0, 0}, DirRight, []ast.Node{
+		move(1), move(1), pickup(), move(1), move(1),
+	})
+	if collected.Outcome != "solved" {
+		t.Fatalf("outcome = %q, want solved after collecting the item", collected.Outcome)
+	}
+}
+
+func TestRun_ItemlessLevelsAreUnaffected(t *testing.T) {
+	g := openGrid(3, 1, Pos{2, 0})
+	if got := Run(g, Pos{0, 0}, DirRight, []ast.Node{move(2)}); got.Outcome != "solved" {
+		t.Fatalf("outcome = %q, want solved -- a level with no items must behave exactly as before", got.Outcome)
+	}
+}

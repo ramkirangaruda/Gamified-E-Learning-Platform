@@ -1,20 +1,30 @@
 {
   "id": "level-5",
-  "name": "Staircase",
+  "name": "Four in a Row",
   "teaches": "repeat",
-  "hard": false,
-  "parBlocks": 6,
-  "startPos": [0, 0],
+  "difficulty": "easy",
+  "concept": "One repeat card does the same step again and again.",
+  "parBlocks": 3,
+  "startPos": [
+    0,
+    0
+  ],
   "startDir": "right",
   "grid": {
-    "width": 4,
-    "height": 4,
+    "width": 5,
+    "height": 1,
     "walls": [
-      [false, false, true, true],
-      [true, false, false, true],
-      [true, true, false, false],
-      [true, true, true, false]
+      [
+        false,
+        false,
+        false,
+        false,
+        false
+      ]
     ],
-    "goal": [3, 3]
+    "goal": [
+      4,
+      0
+    ]
   }
 }

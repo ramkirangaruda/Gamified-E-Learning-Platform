@@ -1,10 +1,10 @@
 {
-  "id": "level-4",
-  "name": "The Long Way",
-  "teaches": "move",
-  "difficulty": "medium",
-  "concept": "A long path is just many small steps in the right order.",
-  "parBlocks": 15,
+  "id": "level-18",
+  "name": "The Big Ring",
+  "teaches": "if_wall_ahead",
+  "difficulty": "hard",
+  "concept": "The same small rule solves a much bigger maze.",
+  "parBlocks": 12,
   "startPos": [
     0,
     0
@@ -19,39 +19,39 @@
         false,
         false,
         false,
-        true
+        false
       ],
       [
         true,
         true,
         true,
-        false,
-        true
+        true,
+        false
       ],
       [
         true,
-        false,
-        false,
-        false,
-        true
+        true,
+        true,
+        true,
+        false
       ],
       [
         true,
-        false,
         true,
         true,
-        true
+        true,
+        false
       ],
       [
-        true,
         false,
         false,
         false,
-        true
+        false,
+        false
       ]
     ],
     "goal": [
-      3,
+      0,
       4
     ]
   }

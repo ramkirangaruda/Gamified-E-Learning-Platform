@@ -1,9 +1,9 @@
 {
-  "id": "level-6",
-  "name": "Eight in a Row",
-  "teaches": "repeat",
-  "difficulty": "easy",
-  "concept": "Two repeat cards beat writing every step by hand.",
+  "id": "level-23",
+  "name": "Pick It Up",
+  "teaches": "composition",
+  "difficulty": "medium",
+  "concept": "Collect what you pass, then head for the goal.",
   "parBlocks": 7,
   "startPos": [
     0,
@@ -11,13 +11,10 @@
   ],
   "startDir": "right",
   "grid": {
-    "width": 9,
+    "width": 6,
     "height": 1,
     "walls": [
       [
-        false,
-        false,
-        false,
         false,
         false,
         false,
@@ -27,8 +24,14 @@
       ]
     ],
     "goal": [
-      8,
+      5,
       0
+    ],
+    "items": [
+      [
+        2,
+        0
+      ]
     ]
   }
 }

@@ -1,10 +1,10 @@
 {
-  "id": "level-3",
-  "name": "Zigzag",
-  "teaches": "move",
-  "difficulty": "easy",
-  "concept": "Turn left and turn right send you opposite ways.",
-  "parBlocks": 8,
+  "id": "level-9",
+  "name": "Step Pattern",
+  "teaches": "repeat",
+  "difficulty": "medium",
+  "concept": "A repeat can hold a whole pattern, not just one card.",
+  "parBlocks": 9,
   "startPos": [
     0,
     0
@@ -30,17 +30,17 @@
         true,
         true,
         false,
-        true
+        false
       ],
       [
         true,
         true,
-        false,
-        true
+        true,
+        false
       ]
     ],
     "goal": [
-      2,
+      3,
       3
     ]
   }

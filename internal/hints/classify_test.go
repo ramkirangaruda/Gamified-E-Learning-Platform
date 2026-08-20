@@ -123,6 +123,40 @@ func TestClassify_WhileLevelAcceptsRepeatToo(t *testing.T) {
 	}
 }
 
+var itemLevel = level{Teaches: "composition", StartPos: executor.Pos{X: 0, Y: 0}, Goal: executor.Pos{X: 5, Y: 0}, HasItems: true}
+
+// Levels 23-25 place collectibles on the route, and internal/executor only opens the goal
+// once every one is gathered -- so "you walked past the things you needed" is the real
+// reason those runs fail. Closes brief §11's never_picked_up gap.
+func TestClassify_NeverPickedUp(t *testing.T) {
+	program := []ast.Node{move(1), move(1), move(1)}
+	got := Classify(ClassifyInput{Level: itemLevel, Program: program, Result: executor.Result{Outcome: "failed"}})
+	if got != SigNeverPickedUp {
+		t.Fatalf("got %q, want %q", got, SigNeverPickedUp)
+	}
+}
+
+// The mirror case, and the one a broken usesOp would get wrong: a child who DID use a
+// pickup card must never be told they forgot to.
+func TestClassify_PickupUsedIsNotNeverPickedUp(t *testing.T) {
+	program := []ast.Node{
+		ast.WhileNode{OpField: "while", Cond: ast.CheckNot{CheckField: "not", Of: ast.CheckSimple{CheckField: "on_goal"}},
+			Body: []ast.Node{move(1), ast.PickupNode{OpField: "pickup"}}},
+	}
+	got := Classify(ClassifyInput{Level: itemLevel, Program: program, Result: executor.Result{Outcome: "failed"}})
+	if got == SigNeverPickedUp {
+		t.Fatal("a program containing a pickup card was reported as never_picked_up")
+	}
+}
+
+// A level with no collectibles must never produce this signature at all.
+func TestClassify_NoItemsMeansNoNeverPickedUp(t *testing.T) {
+	got := Classify(ClassifyInput{Level: moveLevel, Program: []ast.Node{move(1)}, Result: executor.Result{Outcome: "failed"}})
+	if got == SigNeverPickedUp {
+		t.Fatal("a level with no collectibles produced never_picked_up")
+	}
+}
+
 func TestClassify_UnrecognizedFailureFallsBackToEmpty(t *testing.T) {
 	// A move-only level failure that isn't empty/infinite/unbalanced -- nothing here
 	// claims to diagnose it, so it must fall back, not guess.

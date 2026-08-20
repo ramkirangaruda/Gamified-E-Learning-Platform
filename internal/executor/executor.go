@@ -311,7 +311,12 @@ func (in *interp) doMove() {
 	in.pos = next
 	to := in.pos
 	in.events = append(in.events, Event{T: in.ticks, Type: "move", From: &from, To: &to})
-	if in.pos == in.grid.Goal {
+	// Reaching the goal only counts once every collectible is gathered. On a level with
+	// no items (every level 1-22) len is 0 and this is the original behaviour exactly.
+	// On the composition levels it is what makes the "pick up" card an objective rather
+	// than decoration -- and what makes brief §11's never_picked_up signature detectable
+	// at all, since a child who walks past the items simply does not finish.
+	if in.pos == in.grid.Goal && len(in.grid.Items) == 0 {
 		in.events = append(in.events, Event{T: in.ticks, Type: "goal"})
 		in.goalHit = true
 	}

@@ -1,0 +1,38 @@
+{
+  "id": "level-17",
+  "name": "This Way or That",
+  "teaches": "if_wall_ahead",
+  "difficulty": "medium",
+  "concept": "Else is what to do when the answer is no.",
+  "parBlocks": 7,
+  "startPos": [
+    0,
+    0
+  ],
+  "startDir": "right",
+  "grid": {
+    "width": 3,
+    "height": 3,
+    "walls": [
+      [
+        false,
+        false,
+        true
+      ],
+      [
+        true,
+        false,
+        true
+      ],
+      [
+        true,
+        false,
+        true
+      ]
+    ],
+    "goal": [
+      1,
+      2
+    ]
+  }
+}

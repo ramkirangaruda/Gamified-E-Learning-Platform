@@ -32,19 +32,26 @@ func copyRealLevels(t *testing.T, dest string) {
 func TestLoadAll_SkipsOneBadFileAndKeepsTheRest(t *testing.T) {
 	dir := t.TempDir()
 	copyRealLevels(t, dir)
-	if err := os.WriteFile(filepath.Join(dir, "level-9.json"), []byte(`{"id":"level-9","truncat`), 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(dir, "level-99.json"), []byte(`{"id":"level-99","truncat`), 0o644); err != nil {
 		t.Fatal(err)
+	}
+
+	real, err := LoadAll("../../content/levels")
+	if err != nil {
+		t.Fatalf("loading the real levels dir: %v", err)
 	}
 
 	lvls, err := LoadAll(dir)
 	if err != nil {
 		t.Fatalf("one truncated level file took down the whole directory: %v", err)
 	}
-	if len(lvls) != 8 {
-		t.Fatalf("got %d levels, want the 8 good ones (bad file skipped)", len(lvls))
+	// Derived from the real content dir rather than hardcoded, so adding levels to the
+	// curriculum never breaks this test for an unrelated reason.
+	if len(lvls) != len(real) {
+		t.Fatalf("got %d levels, want the %d good ones (bad file skipped)", len(lvls), len(real))
 	}
 	for _, l := range lvls {
-		if l.ID == "level-9" {
+		if l.ID == "level-99" {
 			t.Fatal("the malformed level was loaded anyway")
 		}
 	}
@@ -53,19 +60,24 @@ func TestLoadAll_SkipsOneBadFileAndKeepsTheRest(t *testing.T) {
 func TestLoadAll_SkipsFileWithInvalidStartDir(t *testing.T) {
 	dir := t.TempDir()
 	copyRealLevels(t, dir)
-	bad := `{"id":"level-9","name":"Bad","teaches":"move","parBlocks":1,
+	bad := `{"id":"level-99","name":"Bad","teaches":"move","parBlocks":1,
 	         "startPos":[0,0],"startDir":"sideways",
 	         "grid":{"width":2,"height":1,"walls":[[false,false]],"goal":[1,0]}}`
-	if err := os.WriteFile(filepath.Join(dir, "level-9.json"), []byte(bad), 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(dir, "level-99.json"), []byte(bad), 0o644); err != nil {
 		t.Fatal(err)
+	}
+
+	real, err := LoadAll("../../content/levels")
+	if err != nil {
+		t.Fatalf("loading the real levels dir: %v", err)
 	}
 
 	lvls, err := LoadAll(dir)
 	if err != nil {
 		t.Fatalf("an invalid startDir took down the whole directory: %v", err)
 	}
-	if len(lvls) != 8 {
-		t.Fatalf("got %d levels, want 8", len(lvls))
+	if len(lvls) != len(real) {
+		t.Fatalf("got %d levels, want %d", len(lvls), len(real))
 	}
 }
 
@@ -94,4 +106,33 @@ func TestLoadAll_MissingDirectoryStillErrors(t *testing.T) {
 	if _, err := LoadAll(filepath.Join(t.TempDir(), "nope")); err == nil {
 		t.Fatal("a missing levels directory should still be an error")
 	}
+}
+
+// Level order IS curriculum order -- the trail, the dashboard and "what comes next" all
+// read it straight from LoadAll. A plain lexicographic sort puts level-10 immediately
+// after level-1 and level-2 after level-19, which silently scrambles the teaching
+// progression without failing anything else.
+func TestLoadAll_OrdersLevelsNumericallyNotLexicographically(t *testing.T) {
+	lvls, err := LoadAll("../../content/levels")
+	if err != nil {
+		t.Fatalf("LoadAll: %v", err)
+	}
+	for i, lvl := range lvls {
+		want := "level-" + itoa(i+1)
+		if lvl.ID != want {
+			t.Fatalf("position %d is %q, want %q -- curriculum order is wrong", i, lvl.ID, want)
+		}
+	}
+}
+
+func itoa(n int) string {
+	if n == 0 {
+		return "0"
+	}
+	var b []byte
+	for n > 0 {
+		b = append([]byte{byte('0' + n%10)}, b...)
+		n /= 10
+	}
+	return string(b)
 }
