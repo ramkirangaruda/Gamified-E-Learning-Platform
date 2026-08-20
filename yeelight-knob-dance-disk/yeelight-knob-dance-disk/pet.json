@@ -1,0 +1,7 @@
+{
+  "id": "yeelight-knob-dance-disk",
+  "displayName": "旋钮舞盘仔",
+  "description": "A cheeky Yeelight knob-control pet inspired by tactile dimming, rotation, and scene adjustment.",
+  "spritesheetPath": "spritesheet.webp",
+  "kind": "pixel"
+}

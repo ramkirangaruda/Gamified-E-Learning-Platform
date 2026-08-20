@@ -1,13 +1,12 @@
 import type { PetMood } from "./mood";
 
-// Tom Lizard replaces Pip as the companion (explicit product direction, logged in
-// DECISIONS.md -- this is a deliberate reversal of the project's earlier "every
-// illustration is inline SVG, no raster art" principle, not an oversight). Metadata
-// here mirrors tom-lizard/pet.json exactly, baked into TS rather than fetched at
-// runtime since it's fixed, prep-time content -- the same reasoning as cardBlocks.ts's
-// CARDS array or trail/concepts.ts's EVOLUTION_MARKERS.
-export const SPRITE_URL = "/tom-lizard/spritesheet.webp";
-
+// The shared sprite-sheet grid every selectable character uses. Confirmed by inspecting
+// each character's actual spritesheet.webp (all exactly 1536x1872, the same 8-column,
+// 9-row, 192x208-frame layout Tom Lizard shipped with first) rather than assumed from
+// file size alone -- Rex's own pet.json independently names the same nine rows in the
+// same order, which is the strongest signal this is one shared generator template, not
+// coincidence. A character with a genuinely different grid would need its own
+// FRAME/SHEET/ANIMATIONS, but none of the current roster does.
 export const FRAME = { width: 192, height: 208 };
 export const SHEET = { columns: 8, rows: 9, width: 1536, height: 1872 };
 

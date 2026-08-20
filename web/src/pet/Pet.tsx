@@ -1,24 +1,33 @@
 import type { PetMood } from "./mood";
-import { FRAME, MOOD_ANIMATION, SHEET, SPRITE_URL } from "./tomLizard";
+import { FRAME, MOOD_ANIMATION, SHEET } from "./spriteLayout";
+import { spriteUrlFor } from "./characters";
 
-// Tom Lizard. A sprite-sheet character (tom-lizard/spritesheet.webp), replacing Pip's
-// inline SVG at explicit product direction -- see DECISIONS.md for why this is a
-// deliberate, logged reversal of "every illustration here is inline SVG", not an
-// oversight. The prop contract is unchanged from Pip on purpose: PetBar/Trail/
-// CompareView/StyleGuide all render <Pet mood=... name=... evolutionStage=...
-// size=... feedTick=... showName=... /> and none of them needed to change.
+// Sprite-sheet character rendering, shared by every selectable companion (settings
+// screen: "choose your pet") -- replacing Pip's inline SVG at explicit product
+// direction, see DECISIONS.md for why that was a deliberate, logged reversal of "every
+// illustration here is inline SVG", not an oversight. Originally Tom-Lizard-only;
+// generalized to `species` once the roster grew, since every character turned out to
+// share the identical sprite grid (spriteLayout.ts). The prop contract is otherwise
+// unchanged from Pip's: PetBar/Trail/CompareView/StyleGuide all render <Pet mood=...
+// name=... evolutionStage=... size=... feedTick=... showName=... /> plus the new
+// `species`, which defaults to Tom so an old call site that hasn't been told which
+// character is selected still renders something correct.
 //
 // Frame-stepping is done with CSS `transform: translate(...)` in PERCENTAGES of the
 // sheet image's own box (see index.css) rather than fixed pixel values, so the exact
 // same keyframes work at every `size` this component is ever rendered at (52px in the
-// trail, 84px in the pet bar, 96px by default) with no per-instance CSS needed. Only
-// `idle` and `thinking` loop -- every other mood is a one-shot reaction that holds its
-// final frame -- mirroring Pip's own "idle animation is a rare, budgeted exception"
-// rule (pet/idleAnimation.test.ts polices this for whichever character is here).
+// trail, 84px in the pet bar, 96px by default) with no per-instance CSS needed, and for
+// every character's sheet since they're all the same pixel dimensions. Only `idle` and
+// `thinking` loop -- every other mood is a one-shot reaction that holds its final frame
+// -- mirroring Pip's own "idle animation is a rare, budgeted exception" rule
+// (pet/idleAnimation.test.ts polices this for whichever character is here).
 
 interface PetProps {
   mood: PetMood;
   name?: string;
+  /** Which character's spritesheet to render -- `pet.species` on the saved state.
+   *  Defaults to Tom Lizard for call sites that don't (yet) know the selection. */
+  species?: string;
   evolutionStage?: number;
   /** Rendered pixel size (height-constrained; the frame's own aspect ratio sets width). */
   size?: number;
@@ -32,6 +41,7 @@ interface PetProps {
 export default function Pet({
   mood,
   name = "Tom",
+  species = "tom-lizard",
   evolutionStage = 0,
   size = 96,
   feedTick = 0,
@@ -42,6 +52,7 @@ export default function Pet({
   const frameH = FRAME.height * scale;
   const sheetW = SHEET.width * scale;
   const sheetH = SHEET.height * scale;
+  const spriteUrl = spriteUrlFor(species);
 
   // null = a static resting pose (hungry, sleepy) -- no animation class at all, so the
   // sheet just sits at its default (idle frame 0) position. See tomLizard.ts.
@@ -72,7 +83,7 @@ export default function Pet({
               left: 0,
               width: sheetW,
               height: sheetH,
-              backgroundImage: `url(${SPRITE_URL})`,
+              backgroundImage: `url(${spriteUrl})`,
               backgroundSize: `${sheetW}px ${sheetH}px`,
             }}
           />

@@ -16,6 +16,9 @@ const PAUSE_AFTER_SLEEPY_MS = 10_000;
 
 interface MascotCanvasProps {
   state: MascotState;
+  /** Forwarded to the fallback Pet.tsx only -- the Rive canvas itself doesn't yet vary
+   *  by character (see DECISIONS.md's character-picker entry). */
+  species?: string;
   evolutionStage?: number;
   /** Bumped by the provider on every feed; forwarded to the fallback Pet.tsx so its
    *  one-shot eat animation still replays if Rive isn't available. */
@@ -33,7 +36,7 @@ interface MascotCanvasProps {
 /** Renders the Rive mascot, falling back to the existing inline-SVG Pet.tsx if the .riv
  *  asset or wasm runtime fails to load for any reason -- Pet.tsx is kept, not deleted,
  *  specifically to be this fallback (see DECISIONS.md). */
-export function MascotCanvas({ state, evolutionStage, feedTick, size = 96, calm = false, onClick, className }: MascotCanvasProps) {
+export function MascotCanvas({ state, species, evolutionStage, feedTick, size = 96, calm = false, onClick, className }: MascotCanvasProps) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const riveRef = useRef<Rive | null>(null);
   const inputsRef = useRef<ReturnType<Rive["stateMachineInputs"]> | null>(null);
@@ -122,7 +125,7 @@ export function MascotCanvas({ state, evolutionStage, feedTick, size = 96, calm 
   }, [state, ready, calm]);
 
   if (failed) {
-    return <Pet mood={mascotStateToLegacyMood(state)} evolutionStage={evolutionStage} size={size} feedTick={feedTick} />;
+    return <Pet mood={mascotStateToLegacyMood(state)} species={species} evolutionStage={evolutionStage} size={size} feedTick={feedTick} />;
   }
 
   return (

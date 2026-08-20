@@ -31,7 +31,7 @@ import type { LevelDef } from "../api";
 // and a "next" segment (the one still-open step into the current level) by
 // trailSegments() -- nothing is drawn past the frontier, per the brief's "no path for the
 // ones that aren't complete".
-export default function Trail({ levels, solvedIds, starsByLevel, onSelectLevel, petStage, petName }: TrailProps) {
+export default function Trail({ levels, solvedIds, starsByLevel, onSelectLevel, petStage, petName, petSpecies }: TrailProps) {
   const currentRef = useRef<HTMLButtonElement>(null);
   const { mood, celebratingLevelId } = usePet();
   const { levelHovered, levelSelected, levelLocked } = useMascotEvents();
@@ -197,7 +197,7 @@ export default function Trail({ levels, solvedIds, starsByLevel, onSelectLevel, 
             {EVOLUTION_MARKERS.map((m) =>
               m.afterSolved === index + 1 ? (
                 <div key={m.label} className="flex flex-col items-center">
-                  <Pet mood="happy" evolutionStage={petStage} size={52} />
+                  <Pet mood="happy" species={petSpecies} evolutionStage={petStage} size={52} />
                   <div className="-mt-1 rounded-chunk-sm border-2 border-quest-gold-dark bg-quest-gold px-2 py-0.5 font-display text-[10px] font-bold text-quest-ink">
                     {m.label}
                   </div>
@@ -241,4 +241,5 @@ interface TrailProps {
   onSelectLevel: (levelId: string) => void;
   petStage: number;
   petName?: string;
+  petSpecies?: string;
 }
