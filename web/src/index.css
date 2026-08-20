@@ -28,6 +28,25 @@
   stroke-dasharray: 6 4;
 }
 
+/* Blockly draws its own scrollbars as SVG rects rather than using the browser's, so
+   tokens.css's ::-webkit-scrollbar rules cannot reach them -- and left alone they are the
+   one pair of #ccc/#bbb grey bars left on a screen where every other scrollbar is now the
+   palette's neutral. Re-pointed here at the same two tokens, so the workspace matches the
+   panel beside it.
+
+   The selectors mirror Blockly's own (including the flyout's more specific pair) so each
+   rule meets its counterpart's specificity exactly, and wins on order: Blockly injects its
+   stylesheet as the FIRST child of <head>, deliberately, so that app CSS can override it. */
+.blocklyScrollbarHandle,
+.blocklyFlyout .blocklyScrollbarHandle {
+  fill: var(--color-quest-locked);
+}
+.blocklyScrollbarBackground:hover + .blocklyScrollbarHandle,
+.blocklyScrollbarHandle:hover,
+.blocklyFlyout .blocklyScrollbarHandle:hover {
+  fill: var(--color-quest-locked-deep);
+}
+
 /* GridRenderer.tsx -- reacts to the executor's bump/goal events, never decides them. */
 @keyframes quest-shake {
   0%, 100% { transform: translateX(0); }
@@ -281,13 +300,24 @@
   animation: quest-celebrate-pop 0.5s ease-out;
 }
 
-/* Speech bubble arriving with a hint. */
+/* Speech bubble arriving with a hint. Two directions, because the bubble should always
+   travel out of whoever is speaking: `-in` rises for a bubble sitting ABOVE the pet,
+   `-in-down` drops for the pet bar's, which hangs below the header. Same 6px, same
+   curve, same one-shot -- only the sign differs, and pet/SpeechBubble.tsx picks by the
+   same `tail` prop that decides which way the tail points, so the two can't disagree. */
 @keyframes quest-bubble-in {
   0% { opacity: 0; transform: translateY(6px) scale(0.96); }
   100% { opacity: 1; transform: translateY(0) scale(1); }
 }
 .quest-bubble-in {
   animation: quest-bubble-in 0.28s ease-out;
+}
+@keyframes quest-bubble-in-down {
+  0% { opacity: 0; transform: translateY(-6px) scale(0.96); }
+  100% { opacity: 1; transform: translateY(0) scale(1); }
+}
+.quest-bubble-in-down {
+  animation: quest-bubble-in-down 0.28s ease-out;
 }
 
 /* Trail node advancing to the next level. */

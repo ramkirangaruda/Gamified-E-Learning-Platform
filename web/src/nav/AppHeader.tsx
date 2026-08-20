@@ -105,7 +105,7 @@ export default function AppHeader({ route, onNavigate, lite, onToggleLite }: App
 
   return (
     <header
-      className="fixed inset-x-0 top-0 z-40 h-[var(--app-header-h)] border-b-[var(--outline-chunk-thick)] border-quest-ink/15 bg-quest-paper/95 backdrop-blur-sm"
+      className="fixed inset-x-0 top-0 z-40 h-[var(--app-header-h)] border-b-(length:--outline-chunk-thick) border-quest-ink/15 bg-quest-paper/95 backdrop-blur-sm"
       data-testid="app-header"
     >
       <nav
@@ -122,8 +122,15 @@ export default function AppHeader({ route, onNavigate, lite, onToggleLite }: App
         </button>
 
         {/* min-w-0 lets this flex child actually shrink, which is what allows the tab
-            strip to scroll instead of pushing the actions off the right edge. */}
-        <div className="flex min-w-0 flex-1 gap-2 overflow-x-auto py-1">
+            strip to scroll instead of pushing the actions off the right edge.
+
+            quest-scroll-hidden (tokens.css) drops the horizontal bar itself. A tab sliced
+            off at the edge is already the affordance, and the bar was costing more than it
+            told anyone: overflow-x also clips vertically, so 12px of scrollbar ate into a
+            fixed-height row and cut the flat offset shadows off the tabs above it. py-1.5
+            is the matching half -- 6px clears both the 3px shadow and the 2px hover lift,
+            which py-1 did not. */}
+        <div className="quest-scroll-hidden flex min-w-0 flex-1 gap-2 overflow-x-auto py-1.5">
           {SUBJECTS.map((s) => (
             <SubjectTab
               key={s.id}

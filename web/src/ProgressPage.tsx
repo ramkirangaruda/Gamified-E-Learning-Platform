@@ -37,7 +37,7 @@ interface ProgressRow {
 
 function StatTile({ label, value, icon }: { label: string; value: string | number; icon: React.ReactNode }) {
   return (
-    <div className="flex items-center gap-3 rounded-chunk-lg border-[var(--outline-chunk)] border-quest-ink/10 bg-quest-paper p-4 shadow-chunk">
+    <div className="flex items-center gap-3 rounded-chunk-lg border-(length:--outline-chunk) border-quest-ink/10 bg-quest-paper p-4 shadow-chunk">
       <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border-b-[3px] border-quest-gold-dark bg-quest-gold text-quest-ink">
         {icon}
       </span>
@@ -59,7 +59,7 @@ function RowList({ title, rows }: { title: string; rows: ProgressRow[] }) {
           return (
             <div
               key={row.key}
-              className="flex flex-wrap items-center gap-4 rounded-chunk-lg border-[var(--outline-chunk)] border-quest-ink/10 bg-quest-paper p-4 shadow-chunk"
+              className="flex flex-wrap items-center gap-4 rounded-chunk-lg border-(length:--outline-chunk) border-quest-ink/10 bg-quest-paper p-4 shadow-chunk"
             >
               <div className="min-w-[10rem] flex-1">
                 <div className="font-display text-base font-bold text-quest-ink">{row.title}</div>

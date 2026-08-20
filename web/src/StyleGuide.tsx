@@ -24,7 +24,7 @@ function Swatch({ name, cssVar }: { name: string; cssVar: string }) {
   return (
     <div className="flex items-center gap-3">
       <div
-        className="h-14 w-14 shrink-0 rounded-chunk-sm border-[var(--outline-chunk)] border-quest-ink/20"
+        className="h-14 w-14 shrink-0 rounded-chunk-sm border-(length:--outline-chunk) border-quest-ink/20"
         style={{ background: `var(${cssVar})` }}
       />
       <div className="min-w-0">
@@ -96,7 +96,7 @@ export default function StyleGuide() {
         </Section>
 
         <Section title="Type" note="Fredoka for headings and buttons; Nunito for anything read as a sentence. Both self-hosted woff2, OFL 1.1.">
-          <div className="space-y-2 rounded-chunk-lg border-[var(--outline-chunk)] border-quest-locked bg-quest-paper p-6 shadow-chunk">
+          <div className="space-y-2 rounded-chunk-lg border-(length:--outline-chunk) border-quest-locked bg-quest-paper p-6 shadow-chunk">
             <p className="font-display text-4xl font-bold">Fredoka display 700</p>
             <p className="font-display text-2xl font-semibold">Fredoka display 600</p>
             <p className="font-body text-base">Nunito body 400 — the quick brown fox jumps over the lazy dog.</p>
@@ -115,7 +115,7 @@ export default function StyleGuide() {
               ["rounded-chunk-xl", "radius-chunk-xl"],
             ] as const).map(([cls, label]) => (
               <div key={label} className="text-center">
-                <div className={`h-24 w-24 border-[var(--outline-chunk)] border-quest-move-dark bg-quest-move shadow-chunk ${cls}`} />
+                <div className={`h-24 w-24 border-(length:--outline-chunk) border-quest-move-dark bg-quest-move shadow-chunk ${cls}`} />
                 <code className="mt-2 block text-xs text-quest-ink-soft">{label}</code>
               </div>
             ))}
@@ -127,7 +127,7 @@ export default function StyleGuide() {
               ["shadow-chunk-lg", "shadow-chunk-lg"],
             ] as const).map(([cls, label]) => (
               <div key={label} className="text-center">
-                <div className={`h-24 w-24 rounded-chunk border-[var(--outline-chunk)] border-quest-repeat-dark bg-quest-repeat ${cls}`} />
+                <div className={`h-24 w-24 rounded-chunk border-(length:--outline-chunk) border-quest-repeat-dark bg-quest-repeat ${cls}`} />
                 <code className="mt-2 block text-xs text-quest-ink-soft">{label}</code>
               </div>
             ))}
@@ -188,19 +188,19 @@ export default function StyleGuide() {
         <Section title="Level node states" note="Locked reads as 'not yet', never as failure. Nothing re-locks once unlocked.">
           <div className="flex flex-wrap items-center gap-6">
             <div className="text-center">
-              <div className="flex h-tap-lg w-tap-lg items-center justify-center rounded-full border-[var(--outline-chunk-thick)] border-quest-cond-dark bg-quest-cond font-display text-2xl font-bold text-white shadow-chunk">
+              <div className="flex h-tap-lg w-tap-lg items-center justify-center rounded-full border-(length:--outline-chunk-thick) border-quest-cond-dark bg-quest-cond font-display text-2xl font-bold text-white shadow-chunk">
                 <Icon name="check" size={28} />
               </div>
               <div className="mt-2 text-xs font-bold text-quest-ink-soft">Complete</div>
             </div>
             <div className="text-center">
-              <div className="flex h-tap-lg w-tap-lg items-center justify-center rounded-full border-[var(--outline-chunk-thick)] border-quest-gold-dark bg-quest-gold font-display text-2xl font-bold text-quest-ink shadow-chunk-lg ring-4 ring-quest-gold/40">
+              <div className="flex h-tap-lg w-tap-lg items-center justify-center rounded-full border-(length:--outline-chunk-thick) border-quest-gold-dark bg-quest-gold font-display text-2xl font-bold text-quest-ink shadow-chunk-lg ring-4 ring-quest-gold/40">
                 7
               </div>
               <div className="mt-2 text-xs font-bold text-quest-ink-soft">Current</div>
             </div>
             <div className="text-center">
-              <div className="flex h-tap-lg w-tap-lg items-center justify-center rounded-full border-[var(--outline-chunk-thick)] border-quest-locked-deep bg-quest-locked font-display text-2xl font-bold text-white/80 shadow-chunk-sm">
+              <div className="flex h-tap-lg w-tap-lg items-center justify-center rounded-full border-(length:--outline-chunk-thick) border-quest-locked-deep bg-quest-locked font-display text-2xl font-bold text-white/80 shadow-chunk-sm">
                 <Icon name="lock" size={24} />
               </div>
               <div className="mt-2 text-xs font-bold text-quest-ink-soft">Not yet</div>
@@ -223,9 +223,11 @@ export default function StyleGuide() {
         </Section>
 
         <Section title="Speech bubble">
-          <div className="flex items-end gap-3">
+          {/* The pet stands to the LEFT here, so the tail points that way -- in the app
+              the bubble hangs under the pet bar and points up instead. */}
+          <div className="flex items-start gap-4">
             <Pet mood="confused" name="Tom" />
-            <SpeechBubble text="This one's caught you before! Count up the steps your repeat blocks make." />
+            <SpeechBubble tail="left" text="This one's caught you before! Count up the steps your repeat blocks make." />
           </div>
         </Section>
 
@@ -233,7 +235,7 @@ export default function StyleGuide() {
           <div className="flex flex-wrap gap-8">
             {ANIMALS.map((a) => (
               <div key={a} className="text-center">
-                <div className="rounded-full border-[var(--outline-chunk)] border-quest-ink/10 bg-quest-paper p-2 shadow-chunk-sm">
+                <div className="rounded-full border-(length:--outline-chunk) border-quest-ink/10 bg-quest-paper p-2 shadow-chunk-sm">
                   <AnimalMascot kind={a} size={72} />
                 </div>
                 <div className="mt-1 text-xs font-bold text-quest-ink-soft">{a}</div>

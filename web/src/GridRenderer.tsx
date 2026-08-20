@@ -97,7 +97,7 @@ export default function GridRenderer({ grid, startPos, startDir, events, outcome
         height={(Math.min(grid.width * CELL_PX, MAX_BOARD_PX) * grid.height) / grid.width}
         // One-shot celebratory pop when the run ends solved; keyed so it re-fires per run.
         key={outcome === "solved" && atEnd ? `solved-${events.length}` : "board"}
-        className={`max-w-full rounded-chunk border-[var(--outline-chunk-thick)] border-white bg-quest-cream shadow-chunk ${
+        className={`max-w-full rounded-chunk border-(length:--outline-chunk-thick) border-white bg-quest-cream shadow-chunk ${
           outcome === "solved" && atEnd ? "quest-decorative quest-celebrate" : ""
         }`}
       >
