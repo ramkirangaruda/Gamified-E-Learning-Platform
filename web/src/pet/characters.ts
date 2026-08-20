@@ -65,6 +65,16 @@ export function characterById(id: string | undefined): CharacterDef {
   return CHARACTERS.find((c) => c.id === id) ?? CHARACTERS[0];
 }
 
-export function spriteUrlFor(id: string): string {
-  return `/pets/${id}/spritesheet.webp`;
+export function spriteUrlFor(id: string | undefined): string {
+  // Resolve through characterById rather than interpolating the raw id, so an id with no
+  // folder under /pets falls back to the roster default instead of requesting a sprite
+  // sheet that 404s and rendering an INVISIBLE pet -- the character silently disappears,
+  // taking the hunger badge's anchor with it, and nothing in the UI says why.
+  //
+  // Not hypothetical: a drive saved before the sprite roster existed still holds
+  // pet.species = "pip" (the original inline-SVG mascot, see DECISIONS.md), and every one
+  // of those children would open the app to an empty pet bar. characterById has always
+  // had this fallback; this function is simply catching up to it, which also means the
+  // caption and the sprite can no longer disagree about which character is on screen.
+  return `/pets/${characterById(id).id}/spritesheet.webp`;
 }
