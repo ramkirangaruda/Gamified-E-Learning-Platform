@@ -3,6 +3,7 @@ import AnimalMascot, { type AnimalKind } from "./animals/AnimalMascot";
 import BackgroundScene from "./BackgroundScene";
 import Icon from "./icons/Icon";
 import { fetchLevels, fetchState, type GameState, type LevelDef } from "./api";
+import { friendlyError } from "./friendlyError";
 
 // The landing screen (queue: "a dashboard with animal cartoon themes and different
 // sections to practice from"). One section per taught concept, one animal mascot per
@@ -40,7 +41,7 @@ export default function Dashboard({ onSelectLevel }: DashboardProps) {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    fetchLevels().then(setLevels).catch((e) => setError(String(e)));
+    fetchLevels().then(setLevels).catch((e) => setError(friendlyError("levels", e)));
     fetchState().then(setState).catch(() => setState(null));
   }, []);
 
