@@ -44,7 +44,8 @@ func DataDir() (string, error) {
 }
 
 type Store struct {
-	db *sql.DB
+	db     *sql.DB
+	dbPath string
 }
 
 // Open opens pet.db, recovering from a corrupt/truncated file rather than failing.
@@ -167,12 +168,24 @@ func openRaw(dbPath string) (*Store, error) {
 		return nil, fmt.Errorf("store: enabling foreign_keys: %w", err)
 	}
 
-	s := &Store{db: db}
+	s := &Store{db: db, dbPath: dbPath}
 	if err := s.migrate(); err != nil {
 		db.Close()
 		return nil, err
 	}
 	return s, nil
+}
+
+// refreshBackup re-snapshots pet.db to backup.db after a write that matters to a child's
+// progress, so a yank shortly afterward has something recent to recover from -- not just
+// whatever pet.db looked like when the process started. Best-effort, same as
+// snapshotBackup itself: a failed refresh is logged, never returned as an error, since a
+// missing safety net should not stop the game from continuing.
+func (s *Store) refreshBackup() {
+	if s.dbPath == "" {
+		return // zero-value Store in a test that never went through Open/openRaw
+	}
+	s.snapshotBackup(s.dbPath)
 }
 
 func (s *Store) Close() error {
@@ -326,6 +339,10 @@ func (s *Store) SaveState(state *State) error {
 	if err != nil {
 		return fmt.Errorf("store: saving pet: %w", err)
 	}
+	// AUDIT/handoff 02: refresh the recovery snapshot now, not just at process start --
+	// see refreshBackup's comment. Points/hunger/evolution stage are exactly the kind of
+	// progress a yank right after this call must not lose.
+	s.refreshBackup()
 	return nil
 }
 
@@ -518,6 +535,9 @@ func (s *Store) RecordLevelAttempt(levelID string, solved bool, ts int64) error 
 	if err != nil {
 		return fmt.Errorf("store: recording level attempt: %w", err)
 	}
+	// AUDIT/handoff 02: same reasoning as SaveState -- a solved level is exactly the
+	// progress a mid-session yank must not roll back to process-start.
+	s.refreshBackup()
 	return nil
 }
 
