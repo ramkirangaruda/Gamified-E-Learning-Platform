@@ -314,6 +314,43 @@ func TestIntegration_ClassroomDashboard_RendersRealRoster(t *testing.T) {
 	}
 }
 
+// A student who has only ever earned points from a non-Coding subject (Chemistry,
+// Physics, Math -- none of which write to store.SolvedLevels) must still show their real
+// Total XP on the dashboard, not read as "0 progress" just because their Coding-level
+// count is 0. Regression test for the dashboard undercounting multi-subject students.
+func TestIntegration_ClassroomDashboard_ShowsTotalXPForNonCodingProgress(t *testing.T) {
+	hub, _ := newHubServer(t, "")
+	student := newStudentServer(t, hub.URL, "")
+	setDisplayName(t, student, "Chem Only Kid")
+	setPointsAndXP(t, student, 42, 42)
+
+	resp, err := http.Post(student.URL+"/api/sync-to-classroom", "application/json", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	resp.Body.Close()
+
+	dashResp, err := http.Get(hub.URL + "/classroom")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer dashResp.Body.Close()
+	body, err := io.ReadAll(dashResp.Body)
+	if err != nil {
+		t.Fatal(err)
+	}
+	html := string(body)
+	if !strings.Contains(html, "Chem Only Kid") {
+		t.Fatalf("dashboard HTML did not contain the synced student's name:\n%s", html)
+	}
+	if !strings.Contains(html, "<td>42</td>") {
+		t.Fatalf("dashboard HTML did not show Total XP of 42 for a Coding-level-less student:\n%s", html)
+	}
+	if !strings.Contains(html, "0 / 25") {
+		t.Fatalf("dashboard HTML did not show 0 / 25 coding levels for a student who never played Coding:\n%s", html)
+	}
+}
+
 // --- test helpers ---
 
 func setDisplayName(t *testing.T, ts *httptest.Server, name string) {
@@ -329,6 +366,33 @@ func setDisplayName(t *testing.T, ts *httptest.Server, name string) {
 	}
 	learner := state["learner"].(map[string]any)
 	learner["display_name"] = name
+	body, err := json.Marshal(state)
+	if err != nil {
+		t.Fatal(err)
+	}
+	resp, err := http.Post(ts.URL+"/api/state", "application/json", bytes.NewReader(body))
+	if err != nil {
+		t.Fatal(err)
+	}
+	resp.Body.Close()
+}
+
+// setPointsAndXP simulates what commitState does for a subject (Chemistry, Physics, Math)
+// that never touches store.SolvedLevels -- it writes learner points/XP directly.
+func setPointsAndXP(t *testing.T, ts *httptest.Server, points, totalXP int) {
+	t.Helper()
+	stateResp, err := http.Get(ts.URL + "/api/state")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer stateResp.Body.Close()
+	var state map[string]any
+	if err := json.NewDecoder(stateResp.Body).Decode(&state); err != nil {
+		t.Fatal(err)
+	}
+	learner := state["learner"].(map[string]any)
+	learner["points"] = points
+	learner["total_xp"] = totalXP
 	body, err := json.Marshal(state)
 	if err != nil {
 		t.Fatal(err)

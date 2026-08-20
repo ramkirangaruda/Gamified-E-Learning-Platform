@@ -115,24 +115,33 @@ tr:last-child td { border-bottom: none; }
 </style></head>
 <body>
 <h1>Classroom roster</h1>
-<p class="sub">{{len .}} student{{if ne (len .) 1}}s{{end}} synced. Refresh this page any time -- it reads straight from the Hub's own record, not a cache.</p>
-{{if .}}
+<p class="sub">{{len .Rows}} student{{if ne (len .Rows) 1}}s{{end}} synced. Refresh this page any time -- it reads straight from the Hub's own record, not a cache.</p>
+{{if .Rows}}
 <table>
-<tr><th>Name</th><th>Points</th><th>Levels solved</th><th>Evolution stage</th><th>Last synced</th></tr>
-{{range .}}
+<tr><th>Name</th><th>Points</th><th>Total XP</th><th>Coding levels</th><th>Evolution stage</th><th>Last synced</th></tr>
+{{range .Rows}}
 <tr>
   <td>{{.DisplayName}}</td>
   <td>{{.Points}}</td>
-  <td>{{len .SolvedLevels}} / 25</td>
+  <td>{{.TotalXP}}</td>
+  <td>{{len .SolvedLevels}} / {{$.TotalLevels}}</td>
   <td>{{.EvolutionStage}}</td>
   <td>{{.LastSyncedRelative}}</td>
 </tr>
 {{end}}
 </table>
+<p class="empty">"Total XP" counts every subject -- Coding, Chemistry, Physics, and Math all feed the same points economy. "Coding levels" only counts the original 25-level trail, so a student who has only played Chemistry or Physics will show 0 there even with real XP.</p>
 {{else}}
 <p class="empty">Nobody has synced yet. Once a student presses "Sync to classroom" on their own machine, they'll show up here.</p>
 {{end}}
 </body></html>`))
+
+// dashboardData is what the template renders against: the roster rows plus the one piece
+// of server-side context (how many Coding levels exist) the template can't compute itself.
+type dashboardData struct {
+	Rows        []dashboardRow
+	TotalLevels int
+}
 
 // dashboardRow adds a human-readable relative sync time and a display-name fallback on
 // top of classroom.Snapshot -- template concerns, not something the store needs to know.
@@ -164,7 +173,8 @@ func (s *Server) handleClassroomDashboard(w http.ResponseWriter, r *http.Request
 	sort.Slice(rows, func(i, j int) bool { return rows[i].DisplayName < rows[j].DisplayName })
 
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	if err := classroomDashboardTmpl.Execute(w, rows); err != nil {
+	data := dashboardData{Rows: rows, TotalLevels: len(s.levelOrder)}
+	if err := classroomDashboardTmpl.Execute(w, data); err != nil {
 		log.Printf("api: rendering classroom dashboard: %v", err)
 	}
 }
