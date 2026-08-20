@@ -95,53 +95,49 @@ export default function PetBar() {
 
   return (
     <>
-      <div className="relative h-[var(--app-header-pet-h)] border-t-2 border-quest-ink/10" data-testid="pet-bar">
-        {/* The pet is a dedicated corner mascot now, not one flex item competing with the
-            hunger bar and points for space: absolutely positioned in the header's actual
-            top-left corner, poking up into the nav row above for a "big companion" feel,
-            and present on every page because this whole header is mounted exactly once
-            (see the file header comment). The rest of the row's content gets left padding
-            (pl-[168px] below) sized to the pet's own box (size 128 + the left-4 inset +
-            breathing room) so nothing ever sits under it. */}
-        <button
-          type="button"
-          onClick={() => {
-            // A tap on Tom is both "open the shop" (existing behavior) and a direct
-            // mascot click -- the brief's "make it feel like a pet" click interaction.
-            // The two don't conflict: the reaction plays immediately, the shop opens
-            // over it a beat later.
-            mascotClicked();
-            setShopOpen(true);
-          }}
-          aria-label={`${petName} — open the shop`}
-          title={`Treats and things to wear for ${petName}`}
-          className="absolute -top-4 left-4 z-10 rounded-chunk transition-transform duration-100 hover:-translate-y-0.5 active:translate-y-[2px]"
-        >
-          <Pet
-            state={mood}
-            name={petName}
-            species={petSpecies}
-            evolutionStage={state?.pet.evolution_stage ?? 0}
-            size={128}
-            feedTick={feedTick}
-            inventory={state?.inventory}
-          />
-          {hunger < 25 && (
-            <span className="absolute -right-1 top-1 flex h-6 w-6 items-center justify-center rounded-full border-2 border-white bg-quest-coral font-display text-sm font-bold text-white">
-              !
-            </span>
-          )}
-          {canBuySomething && (
-            <span
-              className="absolute -left-1 top-1 h-4 w-4 rounded-full border-2 border-white bg-quest-gold"
-              title="There's something new you can afford"
+      <div className="h-[var(--app-header-pet-h)] border-t-2 border-quest-ink/10" data-testid="pet-bar">
+        <div className="relative mx-auto flex h-full max-w-6xl items-center gap-4 px-4">
+          {/* The pet itself is the shop button. A child does not look for a "shop" label --
+              they click the animal. Sized and laid out as an inline row item (not a
+              corner mascot) to keep the header compact. */}
+          <button
+            type="button"
+            onClick={() => {
+              // A tap on Tom is both "open the shop" (existing behavior) and a direct
+              // mascot click -- the brief's "make it feel like a pet" click interaction.
+              // The two don't conflict: the reaction plays immediately, the shop opens
+              // over it a beat later.
+              mascotClicked();
+              setShopOpen(true);
+            }}
+            aria-label={`${petName} — open the shop`}
+            title={`Treats and things to wear for ${petName}`}
+            className="relative -my-2 shrink-0 rounded-chunk transition-transform duration-100 hover:-translate-y-0.5 active:translate-y-[2px]"
+          >
+            <Pet
+              state={mood}
+              name={petName}
+              species={petSpecies}
+              evolutionStage={state?.pet.evolution_stage ?? 0}
+              size={84}
+              feedTick={feedTick}
+              inventory={state?.inventory}
             />
-          )}
-        </button>
+            {hunger < 25 && (
+              <span className="absolute -right-1 top-1 flex h-5 w-5 items-center justify-center rounded-full border-2 border-white bg-quest-coral font-display text-[11px] font-bold text-white">
+                !
+              </span>
+            )}
+            {canBuySomething && (
+              <span
+                className="absolute -left-1 top-1 h-4 w-4 rounded-full border-2 border-white bg-quest-gold"
+                title="There's something new you can afford"
+              />
+            )}
+          </button>
 
-        <div className="mx-auto flex h-full max-w-6xl items-center gap-4 pl-[168px] pr-4">
           <div className="flex min-w-0 flex-col gap-1.5">
-            <span className="font-display text-lg font-bold leading-none text-quest-ink">{petName}</span>
+            <span className="font-display text-base font-bold leading-none text-quest-ink">{petName}</span>
             <HungerBar hunger={hunger} />
           </div>
 
@@ -165,16 +161,15 @@ export default function PetBar() {
               )}
             </div>
           </div>
-        </div>
 
-        {/* Anchored to the pet, overlaying whatever is below. pointer-events-none so it
-            can never intercept a click meant for the page underneath. left-4 matches the
-            pet button's own left-4, so the bubble's left edge and the pet line up. */}
-        {speech && (
-          <div className="pointer-events-none absolute left-4 top-[calc(var(--app-header-pet-h)+16px)] z-50">
-            <SpeechBubble text={speech} tail="up" />
-          </div>
-        )}
+          {/* Anchored to the pet, overlaying whatever is below. pointer-events-none so it
+              can never intercept a click meant for the page underneath. */}
+          {speech && (
+            <div className="pointer-events-none absolute left-0 top-full z-50 mt-2">
+              <SpeechBubble text={speech} tail="up" />
+            </div>
+          )}
+        </div>
       </div>
 
       {shopOpen && <PetShop onClose={() => setShopOpen(false)} />}

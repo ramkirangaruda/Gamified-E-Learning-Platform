@@ -121,8 +121,8 @@
      from the space the two rows have to sit in. Leave it out and the rows total 4px more
      than the box they are in -- the border paints across the bottom of the pet sprite --
      and every page below starts 4px too high, tucked under that same border. */
-  --app-header-nav-h: 68px;
-  --app-header-pet-h: 140px;
+  --app-header-nav-h: 56px;
+  --app-header-pet-h: 88px;
   --app-header-h: calc(var(--app-header-nav-h) + var(--app-header-pet-h) + var(--outline-chunk-thick));
 }
 

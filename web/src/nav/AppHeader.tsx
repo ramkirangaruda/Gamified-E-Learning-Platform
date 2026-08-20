@@ -48,12 +48,12 @@ function SubjectTab({
       onClick={onClick}
       aria-current={active ? "page" : undefined}
       title={subject.available ? subject.desc : `${subject.title} — coming soon`}
-      className={`inline-flex shrink-0 items-center gap-2 rounded-full border-b-[4px] px-4 py-2.5 font-display text-base font-bold shadow-chunk-sm transition-transform duration-100
+      className={`inline-flex shrink-0 items-center gap-1.5 rounded-full border-b-[3px] px-3 py-1.5 font-display text-[13px] font-bold shadow-chunk-sm transition-transform duration-100
         hover:-translate-y-0.5 active:translate-y-[2px]
         ${active ? `${t.bg} ${t.border} ${t.text}` : "border-quest-locked bg-quest-paper text-quest-ink"}`}
     >
       <span
-        className={`flex h-7 w-7 items-center justify-center rounded-full font-display text-xs font-bold
+        className={`flex h-5 w-5 items-center justify-center rounded-full font-display text-[10px] font-bold
           ${active ? "bg-white/25 text-inherit" : `${t.bg} ${t.text}`}`}
         aria-hidden="true"
       >
@@ -62,7 +62,7 @@ function SubjectTab({
       {subject.title}
       {!subject.available && (
         <span className={active ? "opacity-80" : "text-quest-locked-deep"} aria-hidden="true">
-          <Icon name="lock" size={14} />
+          <Icon name="lock" size={12} />
         </span>
       )}
     </button>
@@ -91,7 +91,7 @@ function NavAction({
       title={title}
       aria-current={active ? "page" : undefined}
       aria-pressed={pressed}
-      className={`shrink-0 rounded-full border-2 px-4 py-2.5 font-display text-base font-bold transition-transform duration-100
+      className={`shrink-0 rounded-full border-2 px-3 py-1.5 font-display text-[13px] font-bold transition-transform duration-100
         hover:-translate-y-0.5 active:translate-y-[2px]
         ${active ? "border-quest-gold-dark bg-quest-gold text-quest-ink" : "border-quest-ink/15 bg-quest-paper text-quest-ink-soft hover:text-quest-ink"}`}
     >
@@ -109,14 +109,14 @@ export default function AppHeader({ route, onNavigate, lite, onToggleLite }: App
       data-testid="app-header"
     >
       <nav
-        className="mx-auto flex h-[var(--app-header-nav-h)] max-w-6xl items-center gap-4 px-5"
+        className="mx-auto flex h-[var(--app-header-nav-h)] max-w-6xl items-center gap-3 px-4"
         aria-label="Subjects and sections"
       >
         <button
           type="button"
           onClick={() => onNavigate({ name: "home" })}
           aria-current={route.name === "home" ? "page" : undefined}
-          className="shrink-0 font-display text-2xl font-bold text-quest-ink transition-transform duration-100 hover:-translate-y-0.5"
+          className="shrink-0 font-display text-lg font-bold text-quest-ink transition-transform duration-100 hover:-translate-y-0.5"
         >
           Tessera Quest
         </button>
