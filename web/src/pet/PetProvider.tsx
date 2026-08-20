@@ -51,6 +51,11 @@ interface PetContextValue {
 
   /** Replaces game state and persists it (the reward write from PlayPage). */
   commitState: (next: GameState) => Promise<void>;
+  /** Re-fetches state from the server without writing anything -- for a write that
+   *  happened through a different endpoint entirely (classroom restore) and needs the
+   *  provider's copy to catch up, rather than the optimistic-then-echo shape
+   *  commitState uses for the reward path. */
+  refreshState: () => Promise<void>;
 
   shopOpen: boolean;
   setShopOpen: (open: boolean) => void;
@@ -179,6 +184,16 @@ export function PetProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
+  const refreshState = useCallback(async () => {
+    const [fresh] = await Promise.all([
+      fetchState(),
+      fetchSuggestion()
+        .then(setSuggestion)
+        .catch(() => {}),
+    ]);
+    setState(fresh);
+  }, []);
+
   const feed = useCallback(
     async (treat: Treat) => {
       if (!state) return false;
@@ -239,6 +254,7 @@ export function PetProvider({ children }: { children: ReactNode }) {
     say,
     reactToRun,
     commitState,
+    refreshState,
     shopOpen,
     setShopOpen,
     feed,

@@ -363,6 +363,33 @@ func TestAdvanceEvolutionStage_NeverRegresses(t *testing.T) {
 	}
 }
 
+// Regression pin: AdvanceEvolutionStage used to be a bare UPDATE with no WHERE clause,
+// which silently affects zero rows if called before the pet row exists -- fine in
+// production, where the frontend always fetches /api/state (creating the row) first,
+// but a real trap for any other caller (found by RestoreFromSnapshot's own test calling
+// this directly, with no such ordering guarantee). Calling it as the very first thing on
+// a brand-new store, before anything else has a chance to create the pet row, must still
+// work.
+func TestAdvanceEvolutionStage_WorksOnATrulyFreshStoreWithNoPriorGetState(t *testing.T) {
+	dbPath := filepath.Join(t.TempDir(), "pet.db")
+	s, err := Open(dbPath)
+	if err != nil {
+		t.Fatalf("Open: %v", err)
+	}
+	defer s.Close()
+
+	if err := s.AdvanceEvolutionStage(2); err != nil {
+		t.Fatalf("AdvanceEvolutionStage on a fresh store: %v", err)
+	}
+	state, err := s.GetState()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if state.Pet.EvolutionStage != 2 {
+		t.Fatalf("evolution stage = %d, want 2 -- AdvanceEvolutionStage must not silently no-op when called before the pet row exists", state.Pet.EvolutionStage)
+	}
+}
+
 // handoff: dynamic level suggestion. GetAllLevelProgress needed to expose
 // attempts_count and first_solved_at alongside stars -- all three already existed in
 // level_progress, this is a read, not a schema change.
@@ -406,6 +433,113 @@ func TestGetAllLevelProgress(t *testing.T) {
 	l2 := got["level-2"]
 	if l2.AttemptsCount != 1 || l2.FirstSolvedAt != 200 || l2.Stars != 3 {
 		t.Fatalf("level-2 progress = %+v, want {Stars:3 AttemptsCount:1 FirstSolvedAt:200}", l2)
+	}
+}
+
+// handoff: classroom Hub lost-USB recovery. A brand-new drive seeded from a snapshot
+// must end up with real, usable progress -- solved levels, stars, evolution stage, and
+// learner totals all land correctly from a single call.
+func TestRestoreFromSnapshot_FreshDrive(t *testing.T) {
+	dbPath := filepath.Join(t.TempDir(), "pet.db")
+	s, err := Open(dbPath)
+	if err != nil {
+		t.Fatalf("Open: %v", err)
+	}
+	defer s.Close()
+
+	err = s.RestoreFromSnapshot(
+		"Priya", 40, 40, 3,
+		[]string{"level-1", "level-2"},
+		map[string]int{"level-1": 3, "level-2": 2},
+		1, 5000,
+	)
+	if err != nil {
+		t.Fatalf("RestoreFromSnapshot: %v", err)
+	}
+
+	state, err := s.GetState()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if state.Learner.DisplayName != "Priya" || state.Learner.Points != 40 || state.Learner.TotalXP != 40 || state.Learner.HighestLevel != 3 {
+		t.Fatalf("learner after restore = %+v, want Priya/40/40/3", state.Learner)
+	}
+	if state.Pet.EvolutionStage != 1 {
+		t.Fatalf("evolution stage after restore = %d, want 1", state.Pet.EvolutionStage)
+	}
+
+	solved, err := s.GetSolvedLevelIDs()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(solved) != 2 {
+		t.Fatalf("solved levels after restore = %v, want 2", solved)
+	}
+	stars, err := s.GetStarsByLevel()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if stars["level-1"] != 3 || stars["level-2"] != 2 {
+		t.Fatalf("stars after restore = %v, want level-1:3 level-2:2", stars)
+	}
+}
+
+// The never-regress guarantee: restoring onto a drive that already has BETTER local
+// progress than the snapshot must not lower anything.
+func TestRestoreFromSnapshot_NeverRegressesExistingLocalProgress(t *testing.T) {
+	dbPath := filepath.Join(t.TempDir(), "pet.db")
+	s, err := Open(dbPath)
+	if err != nil {
+		t.Fatalf("Open: %v", err)
+	}
+	defer s.Close()
+
+	// Local progress is already ahead of the snapshot being restored.
+	if err := s.RecordLevelAttempt("level-1", true, 100); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.RecordStars("level-1", 3); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.AdvanceEvolutionStage(2); err != nil {
+		t.Fatal(err)
+	}
+	state, err := s.GetState()
+	if err != nil {
+		t.Fatal(err)
+	}
+	state.Learner.Points = 100
+	state.Learner.DisplayName = "AlreadyNamed"
+	if err := s.SaveState(state); err != nil {
+		t.Fatal(err)
+	}
+
+	// A worse, older snapshot (lower points, fewer stars, lower evolution stage, and a
+	// different name) must not overwrite any of it.
+	err = s.RestoreFromSnapshot("SomeoneElse", 10, 10, 1, []string{"level-1"}, map[string]int{"level-1": 1}, 0, 50)
+	if err != nil {
+		t.Fatalf("RestoreFromSnapshot: %v", err)
+	}
+
+	state, err = s.GetState()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if state.Learner.Points != 100 {
+		t.Errorf("points after a worse restore = %d, want still 100 (must never regress)", state.Learner.Points)
+	}
+	if state.Learner.DisplayName != "AlreadyNamed" {
+		t.Errorf("display name after restore = %q, want unchanged (a drive that already has an identity keeps it)", state.Learner.DisplayName)
+	}
+	if state.Pet.EvolutionStage != 2 {
+		t.Errorf("evolution stage after a worse restore = %d, want still 2", state.Pet.EvolutionStage)
+	}
+	stars, err := s.GetStarsByLevel()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if stars["level-1"] != 3 {
+		t.Errorf("stars after a worse restore = %v, want still 3 on level-1", stars)
 	}
 }
 

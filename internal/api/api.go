@@ -12,6 +12,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/ramkirangaruda/Gamified-E-Learning-Platform/internal/classroom"
 	"github.com/ramkirangaruda/Gamified-E-Learning-Platform/internal/executor"
 	"github.com/ramkirangaruda/Gamified-E-Learning-Platform/internal/hints"
 	"github.com/ramkirangaruda/Gamified-E-Learning-Platform/internal/levels"
@@ -44,6 +45,14 @@ type Server struct {
 	hintTimeout time.Duration
 	lite        bool
 	mux         *http.ServeMux
+
+	// Classroom Hub (handoff item): both nil/empty unless explicitly configured via
+	// SetClassroomHub/SetClassroomAddr, matching the engine's own nil-by-default pattern
+	// -- ordinary single-drive play must work identically whether or not either is set.
+	classroomStore  *classroom.Store // non-nil only on the one machine acting as the Hub
+	classroomAddr   string           // non-empty only on a machine that syncs TO a Hub
+	classroomSecret string           // shared HMAC secret; empty means signing is off
+	classroomHTTP   *http.Client
 }
 
 // New loads every level under levelsDir once at startup — content/levels/ is prep-time
@@ -83,6 +92,18 @@ func New(st *store.Store, levelsDir, hintsDir string, engine tutor.Engine, hintT
 	mux.HandleFunc("GET /api/compare", s.handleCompare)
 	mux.HandleFunc("GET /api/state", s.handleGetState)
 	mux.HandleFunc("POST /api/state", s.handlePostState)
+
+	// Classroom Hub routes. Registered unconditionally (like every other route above),
+	// gated inside each handler by whether SetClassroomHub/SetClassroomAddr was ever
+	// called -- same reasoning as handleHint tolerating a nil engine: the mux shape
+	// doesn't change based on configuration, only the behavior does.
+	mux.HandleFunc("POST /api/classroom/sync", s.handleClassroomSync)
+	mux.HandleFunc("GET /api/classroom/roster", s.handleClassroomRoster)
+	mux.HandleFunc("GET /api/classroom/restore", s.handleClassroomRestore)
+	mux.HandleFunc("GET /classroom", s.handleClassroomDashboard)
+	mux.HandleFunc("POST /api/sync-to-classroom", s.handleSyncToClassroom)
+	mux.HandleFunc("POST /api/restore-from-classroom", s.handleRestoreFromClassroom)
+
 	s.mux = mux
 	return s, nil
 }
@@ -101,6 +122,23 @@ func (s *Server) SetEngine(engine tutor.Engine) { s.engine = engine }
 // startup (before serving), read by the frontend via GET /api/tier so the Pi comes up in
 // lite mode without the child or the operator having to toggle anything.
 func (s *Server) SetLiteMode(v bool) { s.lite = v }
+
+// SetClassroomHub turns this server into the classroom's aggregator (cmd/server's
+// -classroom-hub flag) -- the one machine in the room, not every student's own laptop.
+// secret may be empty (signing off, accept any sync); see classroom.go's
+// verifyClassroomSignature for why that's an acceptable default rather than a hole.
+func (s *Server) SetClassroomHub(store *classroom.Store, secret string) {
+	s.classroomStore = store
+	s.classroomSecret = secret
+}
+
+// SetClassroomAddr points this (student's own) server at a Hub to sync to (cmd/server's
+// -classroom-addr flag) -- e.g. "http://192.168.1.50:8080". Empty (the default) means
+// classroom sync is simply not offered; nothing about ordinary offline play changes.
+func (s *Server) SetClassroomAddr(addr, secret string) {
+	s.classroomAddr = addr
+	s.classroomSecret = secret
+}
 
 // PrewarmHints implements queue item 5's startup pre-warm routine: generate and cache
 // every (level_id, error_signature) pair in the hint bank at history bucket 0 -- the

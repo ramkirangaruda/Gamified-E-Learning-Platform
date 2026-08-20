@@ -3,6 +3,7 @@ import BackgroundScene from "./BackgroundScene";
 import LevelGrid from "./trail/LevelGrid";
 import Trail from "./trail/Trail";
 import { ChunkyButton } from "./ui/Chunky";
+import ClassroomPanel from "./pet/ClassroomPanel";
 import { usePet } from "./pet/PetProvider";
 
 // The home screen. Trail is primary ("where am I, what's next"); the grid is secondary
@@ -27,6 +28,7 @@ interface HomePageProps {
 export default function HomePage({ onSelectLevel, onOpenSandbox, lite, onToggleLite }: HomePageProps) {
   const { state, levels, error, suggestion } = usePet();
   const [view, setView] = useState<View>("trail");
+  const [classroomOpen, setClassroomOpen] = useState(false);
 
   const solvedIds = state?.solved_levels ?? [];
   // handoff/04-stars.md: real, server-computed per-level star counts, persisted in
@@ -59,6 +61,13 @@ export default function HomePage({ onSelectLevel, onOpenSandbox, lite, onToggleL
           </ChunkyButton>
           <ChunkyButton tone="neutral" title="Fiddle with cards, no goal, just see what happens" onClick={onOpenSandbox}>
             Sandbox
+          </ChunkyButton>
+          <ChunkyButton
+            tone="neutral"
+            title="Sync your progress to a classroom computer, or recover a lost key"
+            onClick={() => setClassroomOpen(true)}
+          >
+            Classroom
           </ChunkyButton>
           <ChunkyButton
             tone="neutral"
@@ -114,6 +123,8 @@ export default function HomePage({ onSelectLevel, onOpenSandbox, lite, onToggleL
             <LevelGrid levels={levels} solvedIds={solvedIds} starsByLevel={starsByLevel} onSelectLevel={onSelectLevel} />
           ))}
       </main>
+
+      {classroomOpen && <ClassroomPanel onClose={() => setClassroomOpen(false)} />}
     </div>
   );
 }
