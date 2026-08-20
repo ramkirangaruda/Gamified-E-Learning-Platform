@@ -20,6 +20,11 @@ $tag = "b10430"
 $asset = "llama-$tag-bin-win-cpu-x64.zip"
 $url = "https://github.com/ggml-org/llama.cpp/releases/download/$tag/$asset"
 
+# SHA256 of the pinned asset -- see fetch-llama-server.sh for the full reasoning. Keep the
+# two scripts' hashes identical; they fetch the same archive, and a mismatch between them
+# means one was re-pinned without the other.
+$assetSha256 = "63988C0E4A2527CF9A90C229DE0199201F7BA5957C06C92DACC1C96E4C0851D7"
+
 $tmpZip = New-TemporaryFile
 $tmpZip = Rename-Item -Path $tmpZip -NewName ($tmpZip.Name + ".zip") -PassThru
 $tmpExtract = Join-Path $env:TEMP "llama-fetch-$tag"
@@ -27,6 +32,22 @@ Remove-Item -Recurse -Force $tmpExtract -ErrorAction SilentlyContinue
 
 Write-Output "downloading $url"
 Invoke-WebRequest -Uri $url -OutFile $tmpZip -UseBasicParsing
+
+Write-Output "verifying checksum"
+$gotSha256 = (Get-FileHash -Path $tmpZip -Algorithm SHA256).Hash
+if ($gotSha256 -ne $assetSha256) {
+    Remove-Item $tmpZip -Force -ErrorAction SilentlyContinue
+    Write-Error @"
+checksum mismatch -- refusing to install this binary.
+  expected: $assetSha256
+  got:      $gotSha256
+
+Either the upstream release asset changed, or the download was tampered with.
+Do not work around this by editing the hash unless you have independently
+confirmed why it changed -- this binary runs on every machine in a classroom.
+"@
+    exit 1
+}
 
 Write-Output "extracting"
 Expand-Archive -Path $tmpZip -DestinationPath $tmpExtract -Force

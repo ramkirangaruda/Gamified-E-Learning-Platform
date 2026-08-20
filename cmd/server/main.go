@@ -8,6 +8,7 @@ package main
 import (
 	"context"
 	"flag"
+	"fmt"
 	"log"
 	"net"
 	"net/http"
@@ -15,11 +16,13 @@ import (
 	"os/signal"
 	"path/filepath"
 	"runtime"
+	"strings"
 	"syscall"
 	"time"
 
 	"github.com/ramkirangaruda/Gamified-E-Learning-Platform/internal/api"
 	"github.com/ramkirangaruda/Gamified-E-Learning-Platform/internal/classroom"
+	"github.com/ramkirangaruda/Gamified-E-Learning-Platform/internal/integrity"
 	"github.com/ramkirangaruda/Gamified-E-Learning-Platform/internal/paths"
 	"github.com/ramkirangaruda/Gamified-E-Learning-Platform/internal/store"
 	"github.com/ramkirangaruda/Gamified-E-Learning-Platform/internal/sysmem"
@@ -32,14 +35,16 @@ import (
 const llamaServerPort = 8090
 
 func main() {
-	addr := flag.String("addr", ":8080", "listen address")
+	addr := flag.String("addr", "127.0.0.1:8080", "listen address. Loopback by default so a child's own save file is not exposed to the school network; -classroom-hub switches this to all interfaces automatically, since a hub that nothing can reach is useless.")
 	prewarmHints := flag.Bool("prewarm-hints", true, "pre-generate and cache every bank hint at startup (queue item 5) so a child's first hint is instant, not a wait for the first-ever generation on that machine")
 	hintTimeout := flag.Duration("hint-timeout", api.DefaultHintTimeout, "hard timeout on a single hint generation before falling back to the verified hint text verbatim")
 	lite := flag.Bool("lite", false, "disable all decorative animation (auto-enabled on the low RAM tier; the UI toggle can still override per session)")
 	openUI := flag.Bool("open", true, "open the game in the default browser once the server is listening; -open=false for a headless hub or when running as a service")
 	classroomHub := flag.Bool("classroom-hub", false, "run as the classroom's aggregator: the one machine in the room that keeps a roster of every student who has synced. Set on the Pi, never on a student's own laptop.")
 	classroomAddr := flag.String("classroom-addr", "", "address of the classroom hub to sync progress to, e.g. http://192.168.1.50:8080 (empty by default -- classroom sync is opt-in, ordinary offline play is unaffected)")
-	classroomSecret := flag.String("classroom-secret", "", "shared secret signing classroom sync/restore requests -- set the SAME value on the hub and every student machine in a room, or leave empty to accept any sync (fine for a low-stakes classroom LAN, not recommended if the network isn't trusted)")
+	classroomSecret := flag.String("classroom-secret", "", "shared secret signing classroom sync/restore requests -- set the SAME value on the hub and every student machine in a room. Required when -classroom-hub is set.")
+	writeManifest := flag.Bool("write-manifest", false, "hash app/, content/ and bin/ into "+integrity.ManifestName+" at the drive root, then exit. Run this at the END of drive prep, once everything else is in place -- it records what the drive should look like so a later launch can tell if it changed.")
+	skipIntegrity := flag.Bool("skip-integrity-check", false, "start even if the drive no longer matches "+integrity.ManifestName+". Intended for a dev machine mid-rebuild; on a real drive a mismatch means the contents changed since prep, which is worth understanding before playing.")
 	// Defaults on, but see the -classroom-hub interaction resolved just below: the
 	// aggregator has no reason to hold a 0.6B model in RAM.
 	tutorOn := flag.Bool("tutor", true, "run the local LLM tutor (llama-server) that rephrases verified hint text. Defaults on, but is turned OFF automatically when -classroom-hub is set unless you pass -tutor explicitly.")
@@ -58,12 +63,49 @@ func main() {
 	// elsewhere) while a bare `-classroom-hub` gets the sensible default. Comparing
 	// `*tutorOn == true` could not tell those two cases apart.
 	tutorExplicit := false
+	addrExplicit := false
 	flag.Visit(func(f *flag.Flag) {
 		if f.Name == "tutor" {
 			tutorExplicit = true
 		}
+		if f.Name == "addr" {
+			addrExplicit = true
+		}
 	})
 	runTutor := resolveTutor(*classroomHub, *tutorOn, tutorExplicit)
+
+	// A student's laptop serves its own save file with no authentication of any kind --
+	// GET /api/state reads it and POST /api/state overwrites it -- on the entirely
+	// reasonable assumption that only the child sitting at that machine can reach it. That
+	// assumption was false while the default bound every interface: on school WiFi, any
+	// other device in the building could read a child's name and points, or overwrite
+	// their progress, by addressing their laptop directly. Loopback by default makes the
+	// assumption true.
+	//
+	// The Hub is the one role that genuinely must accept connections from other machines,
+	// so it opts back in -- but only when the operator has not chosen an address
+	// themselves (same flag.Visit reasoning as -tutor just above: an explicit -addr,
+	// including an explicit loopback one, always wins). The teacher-facing endpoints do
+	// not rely on the listen address for their protection; they check the peer directly.
+	// See api.isLoopback.
+	if *classroomHub && !addrExplicit {
+		*addr = ":8080"
+	}
+
+	// Signing is what stops any device on the classroom LAN from forging a snapshot for
+	// another child or reading one back by name. It was optional, defaulted to off, and so
+	// in practice was off -- a "secure by configuration" default that nobody configures is
+	// just an insecure default with extra steps. A hub without one now refuses to start
+	// rather than coming up silently unauthenticated in a room full of children's data.
+	if *classroomHub && *classroomSecret == "" {
+		log.Fatalf("refusing to start a classroom hub with no -classroom-secret.\n\n" +
+			"Without it, any device on the same network can forge or read a child's progress.\n" +
+			"Generate one, then pass the SAME value here and on every student machine:\n\n" +
+			"    openssl rand -hex 16\n\n" +
+			"    hub:      launcher -classroom-hub -classroom-secret <value>\n" +
+			"    students: launcher -classroom-addr http://<hub-ip>:8080 -classroom-secret <value>\n\n" +
+			"scripts/pi-setup.sh --classroom-hub generates and prints one for you.")
+	}
 
 	// The DRIVE ROOT, not the binary's own directory: on a real key (brief §7) the
 	// launcher lives in bin/win or bin/linux and content/, app/, models/, profiles.json
@@ -73,6 +115,34 @@ func main() {
 	driveRoot, err := paths.DriveRoot()
 	if err != nil {
 		log.Fatalf("resolving drive root: %v", err)
+	}
+
+	manifestPath := filepath.Join(driveRoot, integrity.ManifestName)
+
+	// -write-manifest is a prep-time action, not a way of starting the game: record the
+	// drive's current state and exit, before any store is opened or port is bound.
+	if *writeManifest {
+		m, err := integrity.Generate(driveRoot, integrity.VerifiedDirs)
+		if err != nil {
+			log.Fatalf("generating manifest: %v", err)
+		}
+		if err := integrity.Write(manifestPath, m); err != nil {
+			log.Fatalf("writing manifest: %v", err)
+		}
+		log.Printf("wrote %s (%d files under %v)", manifestPath, len(m), integrity.VerifiedDirs)
+		return
+	}
+
+	// A drive carries this app between machines nobody here controls, and comes back from
+	// each one writable. If prep recorded a manifest, check it -- see internal/integrity
+	// for what this does and does not actually prove.
+	//
+	// No manifest is NOT a failure: a dev checkout has never had one, and demanding one
+	// would break every contributor's `go run ./cmd/server` for no security benefit (a
+	// missing manifest is trivially deleted by anything that could have edited the files
+	// in the first place, so its absence proves nothing either way).
+	if err := checkDriveIntegrity(manifestPath, driveRoot, *skipIntegrity); err != nil {
+		log.Fatalf("%v", err)
 	}
 
 	dataDir, err := store.DataDir()
@@ -229,6 +299,57 @@ func main() {
 		shutdownEverything(engine, st)
 		os.Exit(1)
 	}
+}
+
+// checkDriveIntegrity compares the drive against its recorded manifest, if it has one.
+//
+// Returns an error (rather than exiting) so the decision to stop stays in main, and so
+// this is testable without a subprocess.
+func checkDriveIntegrity(manifestPath, driveRoot string, skip bool) error {
+	m, ok, err := integrity.Load(manifestPath)
+	if err != nil {
+		return fmt.Errorf("reading %s: %w", manifestPath, err)
+	}
+	if !ok {
+		log.Printf("integrity: no %s on this drive -- skipping verification (run -write-manifest at the end of drive prep to create one)", integrity.ManifestName)
+		return nil
+	}
+
+	problems, err := integrity.Verify(driveRoot, m)
+	if err != nil {
+		return fmt.Errorf("verifying drive contents: %w", err)
+	}
+	if len(problems) == 0 {
+		log.Printf("integrity: drive matches %s (%d files verified)", integrity.ManifestName, len(m))
+		return nil
+	}
+
+	// Print the whole list either way. Whether this is refused or overridden, the operator
+	// needs to see WHAT changed -- "one level edited" and "forty bundle files rewritten"
+	// are the same status line and completely different situations.
+	var b strings.Builder
+	fmt.Fprintf(&b, "this drive no longer matches %s -- %d file(s) differ from what drive prep recorded:\n\n", integrity.ManifestName, len(problems))
+	const maxListed = 20
+	for i, p := range problems {
+		if i == maxListed {
+			fmt.Fprintf(&b, "    ... and %d more\n", len(problems)-maxListed)
+			break
+		}
+		fmt.Fprintf(&b, "    %s\n", p)
+	}
+
+	if skip {
+		log.Printf("integrity: %s", b.String())
+		log.Printf("integrity: starting anyway because -skip-integrity-check was passed.")
+		return nil
+	}
+
+	b.WriteString("\nIf you just rebuilt the frontend or edited content, this is expected --\n")
+	b.WriteString("re-run with -write-manifest to record the new state as correct.\n\n")
+	b.WriteString("If you did NOT change anything, treat this drive as suspect: it has been\n")
+	b.WriteString("modified on some machine it was plugged into. Do not pass it to anyone else.\n\n")
+	b.WriteString("To start anyway: -skip-integrity-check")
+	return fmt.Errorf("%s", b.String())
 }
 
 // shutdownEverything is the os.Exit(1) path's cleanup, in one place because there are now
