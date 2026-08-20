@@ -7,3 +7,26 @@
 body {
   margin: 0;
 }
+
+/* Indent guides (web/src/blocks/indentGuides.ts) -- decorative only, never on a card
+   block's own rendered shape. */
+.quest-indent-guide-line {
+  stroke: #94a3b8;
+  stroke-width: 3;
+  stroke-linecap: round;
+  pointer-events: none;
+}
+
+.quest-partner-highlight > .blocklyPath {
+  stroke: #fbbf24;
+  stroke-width: 3px;
+}
+
+/* Soft warning, not an error: an opener still waiting for its closer. Brief §6 --
+   unbalanced is a normal event / teaching moment, so this stays a gentle dashed halo,
+   not red. */
+.quest-unmatched-open > .blocklyPath {
+  stroke: #f59e0b;
+  stroke-width: 2px;
+  stroke-dasharray: 6 4;
+}

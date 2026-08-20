@@ -1,12 +1,9 @@
-// Game shell placeholder. M2 priority is the card visuals (see cards.html /
-// CardGallery.tsx) first, per print lead time — the Blockly workspace, grid renderer,
-// and pet go here next.
+import Editor from "./Editor";
+
+// Home Mode: the real Blockly workspace (brief §2/§12 M2). Grid renderer, levels, and
+// pet render alongside this next -- for now the editor is the whole shell.
 function App() {
-  return (
-    <div className="flex min-h-screen items-center justify-center bg-slate-50">
-      <p className="text-slate-400">Tessera Quest — under construction</p>
-    </div>
-  );
+  return <Editor />;
 }
 
 export default App;
