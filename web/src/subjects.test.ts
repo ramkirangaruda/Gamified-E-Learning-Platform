@@ -8,29 +8,32 @@ import { HOME, activeSubjectId, type Route } from "./routes";
 // both would be a lie told to a child rather than a crash someone would notice.
 
 describe("the subject registry", () => {
-  it("has exactly one available subject today, and it is the default", () => {
-    // Not a style preference: HomePage/ProgressPage hand `levels` (which is the CODING
-    // level list, the only one the API serves) to whichever subject says it is available.
-    // A second subject flipped to available=true without its own level source would
-    // silently show Coding's 25 levels under, say, Chemistry.
+  it("marks Coding available, and it stays the default", () => {
     const available = SUBJECTS.filter((s) => s.available);
-    expect(available.map((s) => s.id)).toEqual([DEFAULT_SUBJECT_ID]);
+    expect(available.map((s) => s.id)).toContain(DEFAULT_SUBJECT_ID);
+    expect(DEFAULT_SUBJECT_ID).toBe("coding");
   });
 
   it("gives every subject a distinct id and badge letter", () => {
     // ids key React lists and route values; letters are what a child actually tells the
-    // two locked science cards apart by, since neither has any progress to show.
+    // locked science cards apart by, since none of them has any progress to show.
     expect(new Set(SUBJECTS.map((s) => s.id)).size).toBe(SUBJECTS.length);
     expect(new Set(SUBJECTS.map((s) => s.letter)).size).toBe(SUBJECTS.length);
   });
 
-  it("hands levels only to a subject that actually has content", () => {
+  it("never lets a non-default subject silently inherit Coding's levels", () => {
+    // Not a style preference: HomePage/ProgressPage hand `levels` (which is the CODING
+    // level list, the only one levelsForSubject serves) to whichever subject reads it. A
+    // subject flipped to available=true without wiring its own content through -- or,
+    // like Physics, its own dedicated page (PhysicsQuest, via SubjectPage's isPhysics
+    // branch) entirely -- would otherwise silently show Coding's levels under, say,
+    // Chemistry. This holds for every subject but the default, available or not: an
+    // unavailable one gets the empty list that makes its card render "coming soon" rather
+    // than a 0% bar, and Physics gets the empty list because its real content never comes
+    // through this function at all.
     const levels = [{ id: "level-1" }, { id: "level-2" }];
     expect(levelsForSubject(DEFAULT_SUBJECT_ID, levels)).toHaveLength(2);
-    for (const s of SUBJECTS.filter((s) => !s.available)) {
-      // An empty list is what makes the card render "coming soon" rather than a 0%
-      // progress bar -- an empty meter reads as "you have done none of this", which is
-      // untrue of a subject that does not exist yet.
+    for (const s of SUBJECTS.filter((s) => s.id !== DEFAULT_SUBJECT_ID)) {
       expect(levelsForSubject(s.id, levels), s.id).toEqual([]);
     }
   });

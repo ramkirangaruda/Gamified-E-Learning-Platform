@@ -32,7 +32,11 @@ export interface Subject {
 export const SUBJECTS: Subject[] = [
   { id: "coding", letter: "Cd", title: "Coding", desc: "Programs & logic", tone: "move", available: true },
   { id: "chem", letter: "Ch", title: "Chemistry", desc: "Atoms to reactions", tone: "while", available: false },
-  { id: "phys", letter: "Ph", title: "Physics", desc: "Forces & energy", tone: "repeat", available: false },
+  // Physics doesn't run on the AST/executor the way Coding does -- it's a self-contained
+  // canvas mini-game (PhysicsQuest.tsx) with its own five levels and its own progress
+  // storage (localStorage, not pet.db). SubjectPage special-cases subjectId === "phys" to
+  // render it instead of the Trail/LevelGrid pair every other available subject gets.
+  { id: "phys", letter: "Ph", title: "Physics", desc: "Forces & energy", tone: "repeat", available: true },
   { id: "math", letter: "Mt", title: "Math", desc: "Numbers & patterns", tone: "coral", available: false },
   { id: "bio", letter: "Bi", title: "Biology", desc: "Life & living systems", tone: "cond", available: false },
 ];

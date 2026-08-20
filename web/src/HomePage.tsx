@@ -4,6 +4,7 @@ import Pet from "./pet/Pet";
 import { characterById } from "./pet/characters";
 import { usePet } from "./pet/PetProvider";
 import { mascotStateToLegacyMood } from "./mascot/state";
+import { loadPhysicsSolved, physicsRoundsSolved, PHYSICS_LEVEL_KEYS, PHYSICS_ROUNDS_PER_LEVEL } from "./physics/progress";
 import { SUBJECTS, type Subject } from "./subjects";
 import type { Route } from "./routes";
 import { StarRow } from "./ui/Chunky";
@@ -116,9 +117,16 @@ export default function HomePage({ onNavigate }: HomePageProps) {
   const solvedIds = state?.solved_levels ?? [];
   const solvedCount = solvedIds.length;
 
+  // Physics keeps its own progress (physics/progress.ts -- localStorage, not pet.db), so
+  // it can't be read off `levels`/`solvedIds` the way Coding is. Every other available
+  // subject still uses the shared AST levels array; every unavailable one stays
+  // deliberately empty, which is what makes its card render "coming soon" instead of an
+  // empty meter.
+  const physicsSolved = loadPhysicsSolved();
   const cards: CardData[] = SUBJECTS.map((subject) => {
-    // Only Coding has levels today; every other subject is deliberately empty, which is
-    // exactly what makes its card render "coming soon" instead of an empty meter.
+    if (subject.id === "phys") {
+      return { subject, total: PHYSICS_LEVEL_KEYS.length * PHYSICS_ROUNDS_PER_LEVEL, solved: physicsRoundsSolved(physicsSolved) };
+    }
     const subjectLevels = subject.available ? levels : [];
     return {
       subject,

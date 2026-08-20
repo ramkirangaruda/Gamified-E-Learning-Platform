@@ -3,6 +3,8 @@ import BackgroundScene from "./BackgroundScene";
 import Icon from "./icons/Icon";
 import Pet from "./pet/Pet";
 import { usePet } from "./pet/PetProvider";
+import { loadPhysicsSolved, physicsLevelsCleared, PHYSICS_LEVEL_KEYS } from "./physics/progress";
+import PhysicsQuest from "./PhysicsQuest";
 import { subjectById } from "./subjects";
 import type { Route } from "./routes";
 import LevelGrid from "./trail/LevelGrid";
@@ -37,11 +39,16 @@ export default function SubjectPage({ subjectId, onNavigate }: SubjectPageProps)
   const subject = subjectById(subjectId);
   const t = toneClasses(subject.tone);
 
+  // Physics doesn't run through pet.db -- see physics/progress.ts for why -- so its
+  // "solved" count and total come from its own localStorage rather than usePet().
+  const isPhysics = subject.id === "phys";
+
   const solvedIds = state?.solved_levels ?? [];
   // handoff/04-stars.md: real, server-computed per-level star counts, persisted in
   // level_progress.stars.
   const starsByLevel: Record<string, number> = state?.stars_by_level ?? {};
-  const solvedCount = solvedIds.length;
+  const solvedCount = isPhysics ? physicsLevelsCleared(loadPhysicsSolved()) : solvedIds.length;
+  const totalCount = isPhysics ? PHYSICS_LEVEL_KEYS.length : levels.length;
 
   const header = (
     <header className="relative mx-auto max-w-6xl px-6 pt-6">
@@ -61,7 +68,7 @@ export default function SubjectPage({ subjectId, onNavigate }: SubjectPageProps)
 
         {subject.available && (
           <span className={`rounded-chunk-sm border-2 ${t.border} ${t.soft} px-3 py-1.5 font-display text-sm font-bold ${t.ink}`}>
-            {solvedCount} of {levels.length} done
+            {solvedCount} of {totalCount} done
           </span>
         )}
       </div>
@@ -94,6 +101,21 @@ export default function SubjectPage({ subjectId, onNavigate }: SubjectPageProps)
             </ChunkyButton>
           </div>
         </div>
+      </div>
+    );
+  }
+
+  // ---- Physics: its own self-contained game, not the Trail/LevelGrid/Sandbox trio
+  // above (those are all AST/executor concepts Physics doesn't have -- see the isPhysics
+  // comment near the top of this component). ------------------------------------------
+  if (isPhysics) {
+    return (
+      <div className="relative min-h-[calc(100vh-var(--app-header-h))] w-full overflow-x-clip">
+        <BackgroundScene solvedCount={solvedCount} />
+        {header}
+        <main className="relative mt-6">
+          <PhysicsQuest />
+        </main>
       </div>
     );
   }
