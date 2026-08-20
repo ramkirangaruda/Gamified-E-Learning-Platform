@@ -14,7 +14,8 @@ import { friendlyError } from "./friendlyError";
 // The play screen. Everything about the pet -- its state, its mood, its speech, its
 // hunger, the points display -- now lives in the persistent bar above (pet/PetBar.tsx),
 // so this page is purely "build a program and run it". It reports events to the pet
-// (`react`, `setBusy`, `reactToRun`, `say`) and never owns any pet state itself.
+// (`react`, `setBusy`, `answerCorrect`/`answerIncorrect`/`levelCompleted`, `say`) and
+// never owns any pet state itself.
 
 interface PlayPageProps {
   /** Which level to open on -- set by HomePage when a child picks one. */
@@ -23,7 +24,8 @@ interface PlayPageProps {
 }
 
 export default function PlayPage({ initialLevelId, onBackToDashboard }: PlayPageProps) {
-  const { state, levels, commitState, setActiveLevelId, setBusy, react, say, reactToRun } = usePet();
+  const { state, levels, commitState, setActiveLevelId, setBusy, react, say, answerCorrect, answerIncorrect, levelCompleted } =
+    usePet();
 
   const [levelId, setLevelId] = useState<string | null>(initialLevelId ?? null);
   const [workspace, setWorkspace] = useState<Blockly.WorkspaceSvg | null>(null);
@@ -57,9 +59,11 @@ export default function PlayPage({ initialLevelId, onBackToDashboard }: PlayPage
     setWorkspace(ws);
   }, []);
 
-  // Every block drag or snap makes the pet look over -- the single most frequent thing a
-  // child does in this app, and previously the pet's only reaction was on submit.
-  const onBlockActivity = useCallback(() => react("curious"), [react]);
+  // Every block drag or snap makes the mascot look over -- the single most frequent thing
+  // a child does in this app, and previously its only reaction was on submit. Not one of
+  // the named mascot events (it's not in the brief's 11-method list) -- react() directly
+  // is the right tool here, same as before.
+  const onBlockActivity = useCallback(() => react("playful"), [react]);
 
   const level = levels.find((l) => l.id === levelId) ?? null;
   // Only this level's own concept group, not all 25 -- the trail is where a child
@@ -126,9 +130,20 @@ export default function PlayPage({ initialLevelId, onBackToDashboard }: PlayPage
         await commitState(next);
       }
 
-      // The trace drives the reaction, not just the outcome: a bump is `confused`, the
-      // goal is `celebrating`, and mood.ts's priorities settle it if a run did both.
-      reactToRun(execResult);
+      // Solving IS "the answer was correct" in this game's model (a whole program is
+      // submitted and either reaches the goal or doesn't -- there's no smaller per-step
+      // question/answer unit to react to separately). Firing both lets the celebration
+      // (priority 120) win the display over the plain correct-answer pulse (70) via
+      // mascot/state.ts's priority table, while still exercising both named events.
+      if (execResult.outcome === "solved") {
+        answerCorrect();
+        levelCompleted(level);
+      } else {
+        // Never disappointed/angry/crying -- confused, settling toward encouraging once
+        // the hint arrives just below. A failed run (bump or otherwise) is this game's
+        // "incorrect answer" moment.
+        answerIncorrect();
+      }
 
       // brief §11's pipeline fires here: a failed run with a recognized signature (or
       // even an unrecognized one -- /api/hint falls back to a generic encouraging line
