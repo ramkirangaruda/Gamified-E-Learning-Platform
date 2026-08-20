@@ -4,6 +4,7 @@
 package api
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -19,22 +20,37 @@ import (
 	"github.com/ramkirangaruda/Gamified-E-Learning-Platform/packages/ast"
 )
 
+// DefaultHintTimeout bounds how long a single /api/hint request waits on the model
+// before falling back to the verified hint text verbatim (queue item 5: "a hard timeout
+// on hint generation ... serve the verified hint text directly rather than leaving the
+// speech bubble empty"). Chosen from real measurements, not guessed: x64 generations
+// during M3 verification measured ~0.6-1.2s; the Pi 5 is CPU-only ARM with no GPU, and
+// the queue's own framing ("several seconds versus the ~1.1s you measured on x64")
+// expects several times slower. 8s covers a genuinely slow single generation with real
+// headroom while still keeping a demo from stalling for an uncomfortably long time if
+// something's gone wrong -- a bounded wait followed by the verified text is always a
+// better outcome for a child mid-game than an unbounded one. Applies to the whole
+// retry sequence (up to 2 attempts, see hints.GenerateVerifiedHint), not per attempt --
+// a slow first attempt should eat into the retry's budget, not double the total wait.
+const DefaultHintTimeout = 8 * time.Second
+
 type Server struct {
-	store      *store.Store
-	levels     map[string]levels.Level
-	levelOrder []string
-	hintsDir   string
-	engine     tutor.Engine // nil-able: tests and any hint-free path work without one
-	hintCache  *hints.Cache
-	mux        *http.ServeMux
+	store       *store.Store
+	levels      map[string]levels.Level
+	levelOrder  []string
+	hintsDir    string
+	engine      tutor.Engine // nil-able: tests and any hint-free path work without one
+	hintCache   *hints.Cache
+	hintTimeout time.Duration
+	mux         *http.ServeMux
 }
 
 // New loads every level under levelsDir once at startup — content/levels/ is prep-time
 // authored content, not something that changes while the server is running, so there's
 // no need to re-read it per request. engine may be nil (e.g. in tests, or if the tutor
 // failed to start) — hint requests still work in that case, just without LLM rephrasing
-// (see handleHint).
-func New(st *store.Store, levelsDir, hintsDir string, engine tutor.Engine) (*Server, error) {
+// (see handleHint). hintTimeout of 0 uses DefaultHintTimeout.
+func New(st *store.Store, levelsDir, hintsDir string, engine tutor.Engine, hintTimeout time.Duration) (*Server, error) {
 	loaded, err := levels.LoadAll(levelsDir)
 	if err != nil {
 		return nil, fmt.Errorf("api: loading levels: %w", err)
@@ -47,9 +63,14 @@ func New(st *store.Store, levelsDir, hintsDir string, engine tutor.Engine) (*Ser
 		order = append(order, lvl.ID)
 	}
 
+	if hintTimeout <= 0 {
+		hintTimeout = DefaultHintTimeout
+	}
+
 	s := &Server{
 		store: st, levels: byID, levelOrder: order,
 		hintsDir: hintsDir, engine: engine, hintCache: hints.NewCache(),
+		hintTimeout: hintTimeout,
 	}
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /api/levels", s.handleGetLevels)
@@ -64,6 +85,46 @@ func New(st *store.Store, levelsDir, hintsDir string, engine tutor.Engine) (*Ser
 }
 
 func (s *Server) Mux() *http.ServeMux { return s.mux }
+
+// PrewarmHints implements queue item 5's startup pre-warm routine: generate and cache
+// every (level_id, error_signature) pair in the hint bank at history bucket 0 -- the
+// bucket a first-time attempt always lands in, which is also the overwhelmingly common
+// case for a short demo where a child hasn't repeated the same mistake yet. Later
+// buckets (1, 2, 3+) aren't pre-warmed: they only matter once a specific child has
+// already made a specific mistake that many times, which can't be known ahead of time
+// and isn't the case this routine is protecting against -- it exists so the *first*
+// hint a child ever sees isn't the one that stalls.
+//
+// A no-op if there's no engine to warm (nothing to cache ahead of time -- handleHint
+// already returns the verified text instantly with no engine). Safe to call from a
+// goroutine: reuses the exact same hintCache and generation path a real request would
+// (hints.GenerateVerifiedHint), so a request racing the warm-up just regenerates that
+// one entry itself rather than seeing anything inconsistent.
+func (s *Server) PrewarmHints(ctx context.Context) {
+	if s.engine == nil {
+		return
+	}
+	start := time.Now()
+	warmed, skipped := 0, 0
+	for _, levelID := range s.levelOrder {
+		bank, err := hints.LoadBank(s.hintsDir, levelID)
+		if err != nil {
+			log.Printf("api: prewarm: loading bank for %s: %v", levelID, err)
+			continue
+		}
+		for signature := range bank {
+			bucket := hints.HistoryBucket(0)
+			if _, ok := s.hintCache.Get(levelID, signature, bucket); ok {
+				skipped++
+				continue
+			}
+			gen := hints.GenerateVerifiedHint(ctx, s.engine, bank.Lookup(signature), 0)
+			s.hintCache.Set(levelID, signature, bucket, gen.Text)
+			warmed++
+		}
+	}
+	log.Printf("api: prewarm: cached %d hints (%d already warm) in %s", warmed, skipped, time.Since(start))
+}
 
 // fallbackGrid is used only when a request doesn't name a level_id (quick manual
 // testing, e.g. curl without query params) — spacious and wall-free so any valid AST
@@ -238,34 +299,10 @@ func (s *Server) handleHint(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	finalText := hintText
-	var latencyMs int64
-	if s.engine != nil {
-		prompt := hints.BuildHintPrompt(hintText, priorCount)
-		// Perspective-drift layer 3 (layers 1/2 are BuildHintPrompt's instruction +
-		// few-shot examples): validate the completion and retry once before falling
-		// back. A drifting completion (Pip narrating the child's mistake as its own,
-		// e.g. "I forgot to close my repeat block...") must never reach a child even
-		// after the prompt-level fixes, since a 0.6B model can still roll one. Two
-		// attempts total, then the verified hint text verbatim -- the same fallback
-		// path already used for a hard engine error, per brief §11's rule that a
-		// generation failure (of any kind) is never a reason to show nothing or let
-		// anything free-generate.
-		for attempt := 1; attempt <= 2; attempt++ {
-			result, err := s.engine.Complete(r.Context(), tutor.CompletionRequest{Task: "hint", Prompt: prompt, MaxTokens: 60})
-			if err != nil {
-				log.Printf("api: hint completion failed (attempt %d), using verified text verbatim: %v", attempt, err)
-				break
-			}
-			latencyMs += result.LatencyMs
-			if hints.HasFirstPersonAuthorDrift(result.Text) {
-				log.Printf("api: hint completion rejected for first-person perspective drift (attempt %d): %q", attempt, result.Text)
-				continue
-			}
-			finalText = result.Text
-			break
-		}
-	}
+	hintCtx, cancel := context.WithTimeout(r.Context(), s.hintTimeout)
+	defer cancel()
+	gen := hints.GenerateVerifiedHint(hintCtx, s.engine, hintText, priorCount)
+	finalText, latencyMs := gen.Text, gen.LatencyMs
 
 	s.hintCache.Set(req.LevelID, req.ErrorSignature, bucket, finalText)
 
