@@ -3,11 +3,12 @@ import Icon from "./icons/Icon";
 import Pet from "./pet/Pet";
 import { characterById } from "./pet/characters";
 import { usePet } from "./pet/PetProvider";
-import { mascotStateToLegacyMood } from "./mascot/state";
-import { SUBJECTS, levelsForSubject, type Subject } from "./subjects";
+import { loadPhysicsSolved, physicsRoundsSolved, PHYSICS_LEVEL_KEYS, PHYSICS_ROUNDS_PER_LEVEL } from "./physics/progress";
+import { levelsForSubject, SUBJECTS, type Subject } from "./subjects";
 import type { Route } from "./routes";
 import { StarRow } from "./ui/Chunky";
 import { toneClasses } from "./ui/tone";
+import WelcomeIntro from "./pet/WelcomeIntro";
 
 // The home screen, rebuilt around the dashboard redesign: a hero panel that says where
 // you are and gives you one obvious thing to press, then the subject cards.
@@ -55,7 +56,7 @@ function SubjectCard({ card, onOpen }: { card: CardData; onOpen: () => void }) {
       }
       className={`flex flex-col gap-2 rounded-chunk-lg border-(length:--outline-chunk-thick) p-4 text-left shadow-chunk transition-transform duration-100
         hover:-translate-y-1 active:translate-y-[3px] active:shadow-chunk-sm
-        ${subject.available ? `${t.border} bg-quest-paper` : "border-quest-locked bg-quest-paper/85 backdrop-blur-sm"}`}
+        ${subject.available ? `${t.border} bg-quest-paper` : "border-quest-locked bg-quest-paper"}`}
     >
       <div className="flex items-center justify-between">
         <span
@@ -78,10 +79,11 @@ function SubjectCard({ card, onOpen }: { card: CardData; onOpen: () => void }) {
       <p className={`text-sm ${subject.available ? "text-quest-ink-soft" : "text-quest-ink/40"}`}>{subject.desc}</p>
 
       {subject.standalone ? (
-        // Real, playable content that just isn't levels-shaped (Math's mini-games): no
-        // numeric "0 of 0", which would read as "you've done nothing here" on a subject
-        // that has nothing to count in the first place, but not the locked "Coming soon"
-        // treatment either -- this one is genuinely ready to open.
+        // Real, playable content that just isn't levels-shaped (Chemistry's rounds,
+        // Math's mini-games): no numeric "0 of 0", which would read as "you've done
+        // nothing here" on a subject that has nothing to count in the first place, but
+        // not the locked "Coming soon" treatment either -- this one is genuinely ready
+        // to open.
         <span className={`mt-auto inline-flex w-fit items-center gap-1 rounded-chunk-sm border-2 ${t.border} ${t.soft} px-2.5 py-1 font-display text-[11px] font-bold ${t.ink}`}>
           <Icon name="play" size={11} />
           Play now
@@ -129,12 +131,25 @@ export default function HomePage({ onNavigate }: HomePageProps) {
   const solvedIds = state?.solved_levels ?? [];
   const solvedCount = solvedIds.length;
 
+  // Physics keeps its own progress (physics/progress.ts -- localStorage, not pet.db), so
+  // it can't be read off `levels`/`solvedIds` the way Coding is. Every other available
+  // subject still uses the shared AST levels array; every unavailable one stays
+  // deliberately empty, which is what makes its card render "coming soon" instead of an
+  // empty meter.
+  const physicsSolved = loadPhysicsSolved();
   const cards: CardData[] = SUBJECTS.map((subject) => {
+    // Physics keeps its own progress source entirely (localStorage, not pet.db), so it
+    // short-circuits before the shared levels lookup below -- it's deliberately NOT
+    // `standalone` (see subjects.ts), so its card needs a real total/solved pair rather
+    // than falling through to the empty-list case every other non-Coding subject gets.
+    if (subject.id === "phys") {
+      return { subject, total: PHYSICS_LEVEL_KEYS.length * PHYSICS_ROUNDS_PER_LEVEL, solved: physicsRoundsSolved(physicsSolved) };
+    }
     // levelsForSubject, not `subject.available ? levels : []`: the latter hands the
     // CODING level list to ANY available subject, which would misattribute Coding's 25
-    // levels to Math (or any future non-coding subject) the moment it's flipped on.
-    // levelsForSubject already only special-cases "coding", so Math correctly gets []
-    // here too -- its card renders via the `standalone` branch below instead.
+    // levels to Chemistry or Math the moment either is flipped on. levelsForSubject
+    // already only special-cases "coding", so both correctly get [] here too -- their
+    // cards render via the `standalone` branch in SubjectCard instead.
     const subjectLevels = levelsForSubject(subject.id, levels);
     return {
       subject,
@@ -157,7 +172,7 @@ export default function HomePage({ onNavigate }: HomePageProps) {
       <BackgroundScene solvedCount={solvedCount} />
 
       <div className="relative mx-auto max-w-6xl px-6 pb-24 pt-6">
-        <section className="relative mb-8 overflow-hidden rounded-chunk-xl border-(length:--outline-chunk-thick) border-white bg-quest-paper/85 px-6 py-7 shadow-chunk-lg backdrop-blur-sm">
+        <section className="relative mb-8 overflow-hidden rounded-chunk-xl border-(length:--outline-chunk-thick) border-white bg-quest-paper px-6 py-7 shadow-chunk-lg">
           {/* Decorative discs, echoing the wireframe's confetti corners. Static shapes,
               not motion, so they cost a Pi nothing. */}
           <div className="pointer-events-none absolute -right-10 -top-12 h-40 w-40 rounded-full bg-quest-gold/45" aria-hidden="true" />
@@ -199,10 +214,11 @@ export default function HomePage({ onNavigate }: HomePageProps) {
 
               <div className="text-center">
                 <Pet
-                  mood={mascotStateToLegacyMood(mood)}
+                  state={mood}
                   species={state?.pet.species}
                   evolutionStage={state?.pet.evolution_stage ?? 0}
                   size={96}
+                  inventory={state?.inventory}
                 />
                 <div className="font-display text-base font-bold text-quest-ink">{petName}</div>
               </div>
@@ -227,6 +243,8 @@ export default function HomePage({ onNavigate }: HomePageProps) {
           ))}
         </div>
       </div>
+
+      <WelcomeIntro />
     </div>
   );
 }

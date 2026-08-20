@@ -24,6 +24,11 @@ export const LOCKED_LINES: readonly string[] = ["Almost there!", "Not yet — ke
 
 export const UNLOCK_LINES: readonly string[] = ["New level!", "Ooh, a new one!"];
 
+// Said when something new goes on the pet. Like a treat's own line (items.ts), this
+// bypasses the throttle at the call site -- the child just spent points they saved, and
+// the reaction to that must never be swallowed by an anti-spam gap.
+export const WEARABLE_LINES: readonly string[] = ["Look at me!", "Ooh, how do I look?", "I love it!"];
+
 const MIN_GAP_MS = 4_000;
 const MIN_GAP_MS_CALM = 8_000;
 

@@ -36,10 +36,21 @@ export interface PetState {
   session_started_at: number;
 }
 
+/** One row of §7's `inventory` table. `qty` is a LIFETIME COUNT, not a stock level --
+ *  how many of this item have ever been bought -- so it only ever grows and nothing in
+ *  the game consumes it (see pet/items.ts, and internal/store's saveInventory, which
+ *  enforces the same rule server-side). `equipped` is what the pet is wearing right now
+ *  and moves freely in both directions. */
+export interface InventoryItem {
+  item_id: string;
+  qty: number;
+  equipped: boolean;
+}
+
 export interface GameState {
   learner: Learner;
   pet: PetState;
-  inventory: unknown[];
+  inventory: InventoryItem[];
   // Derived from level_progress -- every level_id ever solved, regardless of order.
   // The correct, order-independent replacement for a "highest_level index" check now
   // that levels are reachable via independent dashboard sections rather than one
@@ -186,4 +197,49 @@ export function fetchTierInfo(): Promise<TierInfo> {
 
 export function fetchCompare(): Promise<TierHintRecord[]> {
   return fetch("/api/compare").then((r) => json<TierHintRecord[]>(r));
+}
+
+/** One of the five lab tests the Chem Lab design fixes -- matches internal/chemistry's
+ *  TestKind exactly, a closed set rather than an open string. */
+export type ChemistryTest = "flame" | "ph" | "solubility" | "reactivity" | "smell";
+
+export interface ChemistryClue {
+  test: ChemistryTest;
+  text: string;
+}
+
+export interface ChemistryChoice {
+  id: string;
+  name: string;
+  formula: string;
+}
+
+// Deliberately has no field for the correct answer -- /api/chemistry/samples never sends
+// it (see internal/api's chemistrySampleResponse). Grading happens server-side, the same
+// "server is authoritative" rule /api/program already applies to a coding level's goal.
+export interface ChemistrySample {
+  id: string;
+  name: string;
+  formula: string;
+  description: string;
+  tags: string[];
+  clues: ChemistryClue[];
+  choices: ChemistryChoice[];
+}
+
+export function fetchChemistrySamples(): Promise<ChemistrySample[]> {
+  return fetch("/api/chemistry/samples").then((r) => json<ChemistrySample[]>(r));
+}
+
+export interface ChemistryGuessResult {
+  correct: boolean;
+  answer: ChemistryChoice;
+}
+
+export function guessChemistrySample(sampleId: string, choiceId: string): Promise<ChemistryGuessResult> {
+  return fetch("/api/chemistry/guess", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ sample_id: sampleId, choice_id: choiceId }),
+  }).then((r) => json<ChemistryGuessResult>(r));
 }

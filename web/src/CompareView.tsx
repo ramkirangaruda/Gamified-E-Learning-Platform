@@ -23,7 +23,7 @@ function TierCard({ tier }: { tier: TierHintRecord | undefined }) {
       {tier ? (
         <>
           <div className="flex items-start gap-3">
-            <Pet mood="idle" size={72} />
+            <Pet state="idle" size={72} />
             <div className="rounded-2xl border border-slate-300 bg-slate-50 px-4 py-3 text-sm text-slate-700">
               {tier.hint_text}
             </div>

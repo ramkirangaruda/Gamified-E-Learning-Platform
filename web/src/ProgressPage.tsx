@@ -1,6 +1,7 @@
 import Icon from "./icons/Icon";
 import { usePet } from "./pet/PetProvider";
-import { SUBJECTS, levelsForSubject } from "./subjects";
+import { loadPhysicsSolved, physicsRoundsSolved, physicsStarsSum, PHYSICS_LEVEL_KEYS, PHYSICS_ROUNDS_PER_LEVEL } from "./physics/progress";
+import { levelsForSubject, SUBJECTS } from "./subjects";
 import { CONCEPT_GROUPS } from "./trail/concepts";
 import { StarRow } from "./ui/Chunky";
 import { toneClasses, type ChunkyTone } from "./ui/tone";
@@ -33,9 +34,11 @@ interface ProgressRow {
   stars: number;
   /** False for a subject with no content yet -- renders "coming soon", never "0 of 0". */
   available: boolean;
-  /** True for a subject whose real content isn't levels-shaped (Math's mini-games) --
-   *  renders "Play now" instead of a numeric 0-of-0. Absent/false for everything else,
-   *  including every topic row (concept groups are always levels-shaped). */
+  /** True for a subject whose real content isn't levels-shaped (Chemistry's rounds,
+   *  Math's mini-games) -- renders "Play now" instead of a numeric 0-of-0. Absent/false
+   *  for everything else, including every topic row (concept groups are always
+   *  levels-shaped) and Physics (available and real, but deliberately not standalone --
+   *  it has its own genuine total/solved, computed below). */
   standalone?: boolean;
 }
 
@@ -120,7 +123,23 @@ export default function ProgressPage() {
   const starsByLevel = state?.stars_by_level ?? {};
   const totalStars = Object.values(starsByLevel).reduce((a, b) => a + b, 0);
 
+  // Physics keeps its own progress (physics/progress.ts) rather than pet.db's
+  // solved_levels/stars_by_level -- see HomePage's identical special-case for why.
+  const physicsSolved = loadPhysicsSolved();
   const subjectRows: ProgressRow[] = SUBJECTS.map((s) => {
+    // Physics keeps its own progress source entirely (localStorage, not pet.db), so it
+    // short-circuits before the shared levels lookup below -- same reasoning as
+    // HomePage's identical special-case. Explicitly NOT standalone: it has a real total.
+    if (s.id === "phys") {
+      return {
+        key: s.id, title: s.title, blurb: s.desc, tone: s.tone,
+        solved: physicsRoundsSolved(physicsSolved),
+        total: PHYSICS_LEVEL_KEYS.length * PHYSICS_ROUNDS_PER_LEVEL,
+        stars: physicsStarsSum(physicsSolved),
+        available: s.available,
+        standalone: false,
+      };
+    }
     // levelsForSubject, not `s.available ? levels : []` -- see HomePage's identical fix:
     // the latter would misattribute Coding's levels to any other available subject.
     const subjectLevels = levelsForSubject(s.id, levels);

@@ -6,7 +6,7 @@ import { restoreFromClassroom, syncToClassroom } from "../api";
 
 // Classroom Hub (handoff item): sync this drive's progress to the one machine in the
 // room, and -- the reason this exists at all -- let a brand-new drive recover a lost
-// one's progress by typing the same name. Same modal convention as TreatShop: reached
+// one's progress by typing the same name. Same modal convention as PetShop: reached
 // by a button, closed by Escape or clicking outside, nothing here participates in the
 // page layout underneath it -- both now get that chrome from the one ui/Modal.tsx shell
 // rather than each re-typing an overlay. This panel is the taller of the two (two forms

@@ -16,6 +16,7 @@ import (
 	"time"
 
 	"github.com/ramkirangaruda/Gamified-E-Learning-Platform/internal/classroom"
+	"github.com/ramkirangaruda/Gamified-E-Learning-Platform/internal/store"
 )
 
 // classroomSyncTimeout bounds a single outbound call to the Hub (sync or restore). The
@@ -202,10 +203,15 @@ func (s *Server) currentSnapshot() (classroom.Snapshot, error) {
 	if err != nil {
 		return classroom.Snapshot{}, err
 	}
+	items := make([]classroom.SnapshotItem, 0, len(state.Inventory))
+	for _, it := range state.Inventory {
+		items = append(items, classroom.SnapshotItem{ItemID: it.ItemID, Qty: it.Qty, Equipped: it.Equipped})
+	}
 	return classroom.Snapshot{
 		LearnerID: state.Learner.ID, DisplayName: state.Learner.DisplayName,
 		Points: state.Learner.Points, TotalXP: state.Learner.TotalXP, HighestLevel: state.Learner.HighestLevel,
 		SolvedLevels: solved, StarsByLevel: stars, EvolutionStage: state.Pet.EvolutionStage,
+		Inventory: items,
 	}, nil
 }
 
@@ -307,8 +313,12 @@ func (s *Server) handleRestoreFromClassroom(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
+	restored := make([]store.InventoryItem, 0, len(snap.Inventory))
+	for _, it := range snap.Inventory {
+		restored = append(restored, store.InventoryItem{ItemID: it.ItemID, Qty: it.Qty, Equipped: it.Equipped})
+	}
 	err = s.store.RestoreFromSnapshot(snap.DisplayName, snap.Points, snap.TotalXP, snap.HighestLevel,
-		snap.SolvedLevels, snap.StarsByLevel, snap.EvolutionStage, time.Now().Unix())
+		snap.SolvedLevels, snap.StarsByLevel, snap.EvolutionStage, restored, time.Now().Unix())
 	if err != nil {
 		writeJSON(w, http.StatusOK, syncResult{OK: false, Error: err.Error()})
 		return
