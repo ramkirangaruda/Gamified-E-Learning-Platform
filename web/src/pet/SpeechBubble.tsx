@@ -11,7 +11,7 @@ interface SpeechBubbleProps {
   text?: string;
 }
 
-const IDLE_LINE = "Hi! I'm Pip. Build your program, hit Run, and I'll help if you get stuck!";
+export const IDLE_LINE = "Hi! I'm Pip. Build your program, hit Run, and I'll help if you get stuck!";
 
 export default function SpeechBubble({ text = IDLE_LINE }: SpeechBubbleProps) {
   return (
