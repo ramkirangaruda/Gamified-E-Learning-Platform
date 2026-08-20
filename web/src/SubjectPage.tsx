@@ -1,6 +1,7 @@
 import { useState } from "react";
 import BackgroundScene from "./BackgroundScene";
 import Icon from "./icons/Icon";
+import MathPage from "./MathPage";
 import Pet from "./pet/Pet";
 import { usePet } from "./pet/PetProvider";
 import { subjectById } from "./subjects";
@@ -59,7 +60,10 @@ export default function SubjectPage({ subjectId, onNavigate }: SubjectPageProps)
           <p className="font-medium text-quest-ink-soft">{subject.desc}</p>
         </div>
 
-        {subject.available && (
+        {/* Not for a standalone subject (Math): `levels`/`solvedCount` here are always
+            Coding's, so this badge would show Coding's numbers mislabeled under a
+            different subject's header -- see subjects.ts's `standalone` doc comment. */}
+        {subject.available && !subject.standalone && (
           <span className={`rounded-chunk-sm border-2 ${t.border} ${t.soft} px-3 py-1.5 font-display text-sm font-bold ${t.ink}`}>
             {solvedCount} of {levels.length} done
           </span>
@@ -67,6 +71,19 @@ export default function SubjectPage({ subjectId, onNavigate }: SubjectPageProps)
       </div>
     </header>
   );
+
+  // ---- A standalone subject: real content, but not levels-shaped (Math) -------
+  // Checked before the "no content yet" branch since `available` is true here too --
+  // this is a distinct third case, not a variant of either of the other two.
+  if (subject.standalone) {
+    return (
+      <div className="relative min-h-[calc(100vh-var(--app-header-h))] w-full overflow-x-clip">
+        <BackgroundScene solvedCount={solvedCount} />
+        {header}
+        <MathPage />
+      </div>
+    );
+  }
 
   // ---- A subject with no content yet ------------------------------------
   if (!subject.available) {

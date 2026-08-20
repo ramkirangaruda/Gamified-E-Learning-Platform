@@ -1,6 +1,6 @@
 import Icon from "./icons/Icon";
 import { usePet } from "./pet/PetProvider";
-import { SUBJECTS } from "./subjects";
+import { SUBJECTS, levelsForSubject } from "./subjects";
 import { CONCEPT_GROUPS } from "./trail/concepts";
 import { StarRow } from "./ui/Chunky";
 import { toneClasses, type ChunkyTone } from "./ui/tone";
@@ -33,6 +33,10 @@ interface ProgressRow {
   stars: number;
   /** False for a subject with no content yet -- renders "coming soon", never "0 of 0". */
   available: boolean;
+  /** True for a subject whose real content isn't levels-shaped (Math's mini-games) --
+   *  renders "Play now" instead of a numeric 0-of-0. Absent/false for everything else,
+   *  including every topic row (concept groups are always levels-shaped). */
+  standalone?: boolean;
 }
 
 function StatTile({ label, value, icon }: { label: string; value: string | number; icon: React.ReactNode }) {
@@ -66,7 +70,14 @@ function RowList({ title, rows }: { title: string; rows: ProgressRow[] }) {
                 <div className="text-xs font-medium text-quest-ink-soft">{row.blurb}</div>
               </div>
 
-              {row.available ? (
+              {row.standalone ? (
+                // Real, playable content that isn't levels-shaped -- no numeric 0/0,
+                // same reasoning as HomePage's subject card.
+                <span className={`inline-flex items-center gap-1.5 rounded-chunk-sm border-2 ${t.border} ${t.soft} px-2.5 py-1 font-display text-[11px] font-bold ${t.ink}`}>
+                  <Icon name="play" size={12} />
+                  Play now
+                </span>
+              ) : row.available ? (
                 <>
                   <div className="min-w-[8rem] flex-[2]">
                     <div
@@ -110,7 +121,9 @@ export default function ProgressPage() {
   const totalStars = Object.values(starsByLevel).reduce((a, b) => a + b, 0);
 
   const subjectRows: ProgressRow[] = SUBJECTS.map((s) => {
-    const subjectLevels = s.available ? levels : [];
+    // levelsForSubject, not `s.available ? levels : []` -- see HomePage's identical fix:
+    // the latter would misattribute Coding's levels to any other available subject.
+    const subjectLevels = levelsForSubject(s.id, levels);
     return {
       key: s.id,
       title: s.title,
@@ -120,6 +133,7 @@ export default function ProgressPage() {
       total: subjectLevels.length,
       stars: subjectLevels.reduce((a, l) => a + (starsByLevel[l.id] ?? 0), 0),
       available: s.available,
+      standalone: s.standalone,
     };
   });
 

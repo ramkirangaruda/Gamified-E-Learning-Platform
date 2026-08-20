@@ -8,13 +8,18 @@ import { HOME, activeSubjectId, type Route } from "./routes";
 // both would be a lie told to a child rather than a crash someone would notice.
 
 describe("the subject registry", () => {
-  it("has exactly one available subject today, and it is the default", () => {
-    // Not a style preference: HomePage/ProgressPage hand `levels` (which is the CODING
-    // level list, the only one the API serves) to whichever subject says it is available.
-    // A second subject flipped to available=true without its own level source would
-    // silently show Coding's 25 levels under, say, Chemistry.
+  it("has exactly the available subjects it means to today: Coding (levels) and Math (standalone)", () => {
+    // Not a style preference: HomePage/ProgressPage hand `levelsForSubject(id, levels)`
+    // to whichever subject is available, and that function only special-cases "coding" --
+    // any OTHER available subject must either be `standalone` (skips the levels/stars UI
+    // entirely, e.g. Math's mini-games) or it would silently render Coding's levels under
+    // its own header, or (once levelsForSubject is doing its job) an empty "0 of 0" that
+    // lies about a subject with real, playable content having nothing to show.
     const available = SUBJECTS.filter((s) => s.available);
-    expect(available.map((s) => s.id)).toEqual([DEFAULT_SUBJECT_ID]);
+    expect(available.map((s) => s.id).sort()).toEqual(["coding", "math"]);
+    for (const s of available) {
+      if (s.id !== DEFAULT_SUBJECT_ID) expect(s.standalone, s.id).toBe(true);
+    }
   });
 
   it("gives every subject a distinct id and badge letter", () => {
@@ -24,13 +29,14 @@ describe("the subject registry", () => {
     expect(new Set(SUBJECTS.map((s) => s.letter)).size).toBe(SUBJECTS.length);
   });
 
-  it("hands levels only to a subject that actually has content", () => {
+  it("hands levels only to Coding -- every other subject, available or not, gets none", () => {
     const levels = [{ id: "level-1" }, { id: "level-2" }];
     expect(levelsForSubject(DEFAULT_SUBJECT_ID, levels)).toHaveLength(2);
-    for (const s of SUBJECTS.filter((s) => !s.available)) {
-      // An empty list is what makes the card render "coming soon" rather than a 0%
-      // progress bar -- an empty meter reads as "you have done none of this", which is
-      // untrue of a subject that does not exist yet.
+    for (const s of SUBJECTS.filter((s) => s.id !== DEFAULT_SUBJECT_ID)) {
+      // An empty list is what makes a non-available card render "coming soon" rather
+      // than a 0% progress bar (untrue of a subject that doesn't exist yet), and what
+      // makes an available-but-standalone card render "Play now" rather than a literal
+      // "0 of 0" (untrue of a subject with real, playable content).
       expect(levelsForSubject(s.id, levels), s.id).toEqual([]);
     }
   });
