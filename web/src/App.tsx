@@ -3,6 +3,7 @@ import CompareView from "./CompareView";
 import HomePage from "./HomePage";
 import { applyLite, setOverride, storedOverride } from "./lite";
 import { fetchTierInfo } from "./api";
+import MathPage from "./MathPage";
 import PetBar from "./pet/PetBar";
 import { PetProvider } from "./pet/PetProvider";
 import StyleGuide from "./StyleGuide";
@@ -23,6 +24,7 @@ function App() {
   const isStyleGuide = params.get("styleguide") === "1";
   const [selectedLevelId, setSelectedLevelId] = useState<string | null>(null);
   const [sandboxOpen, setSandboxOpen] = useState(false);
+  const [mathOpen, setMathOpen] = useState(false);
   // App owns lite state because App is what resolves it. HomePage used to keep its own
   // copy seeded from the DOM attribute, which raced: a component initializer runs before
   // any effect has applied the server's decision, so the toggle rendered "off" on a
@@ -69,7 +71,9 @@ function App() {
     <PetProvider lite={lite}>
       <PetBar />
       <main className="pt-[var(--pet-bar-h)]">
-        {sandboxOpen ? (
+        {mathOpen ? (
+          <MathPage onBackToDashboard={() => setMathOpen(false)} />
+        ) : sandboxOpen ? (
           <SandboxPage onBackToDashboard={() => setSandboxOpen(false)} />
         ) : selectedLevelId ? (
           <PlayPage initialLevelId={selectedLevelId} onBackToDashboard={() => setSelectedLevelId(null)} />
@@ -77,6 +81,7 @@ function App() {
           <HomePage
             onSelectLevel={setSelectedLevelId}
             onOpenSandbox={() => setSandboxOpen(true)}
+            onOpenMath={() => setMathOpen(true)}
             lite={lite}
             onToggleLite={toggleLite}
           />
