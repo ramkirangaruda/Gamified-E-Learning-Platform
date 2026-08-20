@@ -9,6 +9,7 @@ import (
 	"context"
 	"flag"
 	"log"
+	"net"
 	"net/http"
 	"os"
 	"os/signal"
@@ -34,6 +35,7 @@ func main() {
 	prewarmHints := flag.Bool("prewarm-hints", true, "pre-generate and cache every bank hint at startup (queue item 5) so a child's first hint is instant, not a wait for the first-ever generation on that machine")
 	hintTimeout := flag.Duration("hint-timeout", api.DefaultHintTimeout, "hard timeout on a single hint generation before falling back to the verified hint text verbatim")
 	lite := flag.Bool("lite", false, "disable all decorative animation (auto-enabled on the low RAM tier; the UI toggle can still override per session)")
+	openUI := flag.Bool("open", true, "open the game in the default browser once the server is listening; -open=false for a headless hub or when running as a service")
 	flag.Parse()
 
 	exeDir, err := paths.ExeDir()
@@ -137,22 +139,48 @@ func main() {
 		}
 	}()
 
-	log.Printf("tessera quest listening on %s (data: %s, app: %s, levels: %s)", *addr, dbPath, appDir, levelsDir)
-	if err := httpServer.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-		// AUDIT P0-2: NOT log.Fatalf. The realistic trigger here is "port already in
-		// use" -- someone launches twice, or relaunches after a crash left the old
-		// instance bound. os.Exit would skip every defer, orphaning llama-server with
-		// the model resident *and* leaving port 8090 held, so the next launch fails too.
-		// Kill the child explicitly, then exit with the same non-zero status.
-		log.Printf("http server: %v", err)
-		if engine != nil {
-			if cerr := engine.Close(); cerr != nil {
-				log.Printf("stopping tutor engine: %v", cerr)
-			}
-		}
-		st.Close()
+	// Bind explicitly instead of letting ListenAndServe do it, for two reasons. The
+	// browser must not be opened until the port is actually accepting connections, or a
+	// child's first sight of the game is a connection-refused page and a race they lose
+	// on a slow machine. And "port already in use" -- by far the most likely failure here
+	// -- is now caught before we announce that we are listening, rather than after.
+	ln, err := net.Listen("tcp", *addr)
+	if err != nil {
+		log.Printf("cannot listen on %s: %v", *addr, err)
+		shutdownEverything(engine, st)
 		os.Exit(1)
 	}
+
+	log.Printf("tessera quest listening on %s (data: %s, app: %s, levels: %s)", *addr, dbPath, appDir, levelsDir)
+	if *openUI {
+		// Asynchronously: on Windows rundll32 returns immediately, but xdg-open on a
+		// loaded Pi can take a moment, and nothing about serving the game should wait
+		// for a browser to finish starting.
+		go openBrowser(browserURL(*addr))
+	}
+
+	if err := httpServer.Serve(ln); err != nil && err != http.ErrServerClosed {
+		// AUDIT P0-2: NOT log.Fatalf. os.Exit would skip every defer, orphaning
+		// llama-server with the model resident *and* leaving port 8090 held, so the next
+		// launch fails too. Kill the child explicitly, then exit with the same non-zero
+		// status. (The "port already in use" case that used to surface here is now caught
+		// earlier, at net.Listen, but everything else Serve can return still lands here.)
+		log.Printf("http server: %v", err)
+		shutdownEverything(engine, st)
+		os.Exit(1)
+	}
+}
+
+// shutdownEverything is the os.Exit(1) path's cleanup, in one place because there are now
+// two callers and the whole point of AUDIT P0-2 is that skipping it orphans a process
+// holding a multi-hundred-megabyte model in RAM.
+func shutdownEverything(engine tutor.Engine, st *store.Store) {
+	if engine != nil {
+		if cerr := engine.Close(); cerr != nil {
+			log.Printf("stopping tutor engine: %v", cerr)
+		}
+	}
+	st.Close()
 }
 
 // startTutorEngine implements brief §8's launch sequence: detect RAM, pick a tier from
