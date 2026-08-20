@@ -1,0 +1,128 @@
+[
+  {
+    "id": "baking-soda",
+    "name": "Sodium Bicarbonate",
+    "formula": "NaHCO3",
+    "description": "Fine white powder, softer and finer than salt. Also known as baking soda.",
+    "tags": ["Solid (powder)", "Fine & powdery"],
+    "clues": [
+      { "test": "flame", "text": "Doesn't catch fire, and barely changes the flame's color at all." },
+      { "test": "ph", "text": "Mildly basic -- turns the litmus paper faintly blue, around pH 8-9." },
+      { "test": "solubility", "text": "Dissolves completely in water, leaving a clear liquid." },
+      { "test": "reactivity", "text": "Fizzes and bubbles the moment vinegar touches it -- that's carbon dioxide gas escaping!" },
+      { "test": "smell", "text": "No smell at all." }
+    ],
+    "choices": [
+      { "id": "A", "name": "Sodium Bicarbonate", "formula": "NaHCO3" },
+      { "id": "B", "name": "Sodium Chloride", "formula": "NaCl" },
+      { "id": "C", "name": "Calcium Carbonate", "formula": "CaCO3" },
+      { "id": "D", "name": "Citric Acid", "formula": "C6H8O7" }
+    ],
+    "answer_id": "A"
+  },
+  {
+    "id": "table-salt",
+    "name": "Sodium Chloride",
+    "formula": "NaCl",
+    "description": "Small clear-white crystals, coarser than baking soda. The stuff sprinkled on fries.",
+    "tags": ["Solid (crystals)", "Coarse grains"],
+    "clues": [
+      { "test": "flame", "text": "Burns with a bright, intense yellow-orange flame -- that's the sodium inside it." },
+      { "test": "ph", "text": "Neutral -- doesn't change the litmus paper at all, right around pH 7." },
+      { "test": "solubility", "text": "Dissolves completely in water, leaving a clear liquid." },
+      { "test": "reactivity", "text": "No reaction with vinegar -- it stays exactly the same." },
+      { "test": "smell", "text": "No smell at all." }
+    ],
+    "choices": [
+      { "id": "A", "name": "Sodium Bicarbonate", "formula": "NaHCO3" },
+      { "id": "B", "name": "Epsom Salt", "formula": "MgSO4" },
+      { "id": "C", "name": "Sodium Chloride", "formula": "NaCl" },
+      { "id": "D", "name": "Sugar", "formula": "C12H22O11" }
+    ],
+    "answer_id": "C"
+  },
+  {
+    "id": "chalk",
+    "name": "Calcium Carbonate",
+    "formula": "CaCO3",
+    "description": "A chalky white solid that doesn't dissolve easily -- the same mineral found in seashells and limestone.",
+    "tags": ["Solid (chunky)", "Chalky texture"],
+    "clues": [
+      { "test": "flame", "text": "Burns with a faint brick-red-orange tint -- that's the calcium inside it." },
+      { "test": "ph", "text": "Mildly basic -- turns the litmus paper faintly blue." },
+      { "test": "solubility", "text": "Barely dissolves in water -- most of it sinks and stays solid." },
+      { "test": "reactivity", "text": "Fizzes and bubbles with vinegar, just like baking soda does." },
+      { "test": "smell", "text": "No smell at all." }
+    ],
+    "choices": [
+      { "id": "A", "name": "Sodium Bicarbonate", "formula": "NaHCO3" },
+      { "id": "B", "name": "Calcium Carbonate", "formula": "CaCO3" },
+      { "id": "C", "name": "Sodium Chloride", "formula": "NaCl" },
+      { "id": "D", "name": "Epsom Salt", "formula": "MgSO4" }
+    ],
+    "answer_id": "B"
+  },
+  {
+    "id": "citric-acid",
+    "name": "Citric Acid",
+    "formula": "C6H8O7",
+    "description": "Small, sharp-looking white crystals -- the sour taste behind lemons and lemonade powder.",
+    "tags": ["Solid (crystals)", "Sharp crystals"],
+    "clues": [
+      { "test": "flame", "text": "Chars and blackens instead of burning cleanly -- a sign it's built from carbon, like sugar." },
+      { "test": "ph", "text": "Strongly acidic -- turns the litmus paper red, down around pH 2-3." },
+      { "test": "solubility", "text": "Dissolves completely in water, leaving a clear, sour-tasting liquid." },
+      { "test": "reactivity", "text": "No fizzing with vinegar -- two acids meeting doesn't make gas. It's the OTHER acid that makes baking soda fizz." },
+      { "test": "smell", "text": "No strong smell, but unmistakably sour to taste." }
+    ],
+    "choices": [
+      { "id": "A", "name": "Sugar", "formula": "C12H22O11" },
+      { "id": "B", "name": "Sodium Chloride", "formula": "NaCl" },
+      { "id": "C", "name": "Sodium Bicarbonate", "formula": "NaHCO3" },
+      { "id": "D", "name": "Citric Acid", "formula": "C6H8O7" }
+    ],
+    "answer_id": "D"
+  },
+  {
+    "id": "sugar",
+    "name": "Sugar",
+    "formula": "C12H22O11",
+    "description": "Small clear-white crystals that taste sweet -- the same stuff in a kitchen sugar bowl.",
+    "tags": ["Solid (crystals)", "Sweet crystals"],
+    "clues": [
+      { "test": "flame", "text": "Melts, browns, and chars -- caramelizing before it ever really catches fire." },
+      { "test": "ph", "text": "Neutral -- doesn't change the litmus paper at all." },
+      { "test": "solubility", "text": "Dissolves completely in water, leaving a clear, sweet-tasting liquid." },
+      { "test": "reactivity", "text": "No reaction with vinegar -- it stays exactly the same." },
+      { "test": "smell", "text": "No smell at all, but unmistakably sweet to taste." }
+    ],
+    "choices": [
+      { "id": "A", "name": "Sugar", "formula": "C12H22O11" },
+      { "id": "B", "name": "Citric Acid", "formula": "C6H8O7" },
+      { "id": "C", "name": "Sodium Chloride", "formula": "NaCl" },
+      { "id": "D", "name": "Epsom Salt", "formula": "MgSO4" }
+    ],
+    "answer_id": "A"
+  },
+  {
+    "id": "epsom-salt",
+    "name": "Epsom Salt",
+    "formula": "MgSO4",
+    "description": "Small colorless crystals, often dissolved in warm baths to soothe sore muscles.",
+    "tags": ["Solid (crystals)", "Glassy crystals"],
+    "clues": [
+      { "test": "flame", "text": "Burns with almost no change to the flame's color." },
+      { "test": "ph", "text": "Close to neutral, maybe just a touch acidic -- right around pH 6-7." },
+      { "test": "solubility", "text": "Dissolves completely in water, leaving a clear liquid." },
+      { "test": "reactivity", "text": "No fizzing or bubbling with vinegar." },
+      { "test": "smell", "text": "No smell at all." }
+    ],
+    "choices": [
+      { "id": "A", "name": "Sodium Chloride", "formula": "NaCl" },
+      { "id": "B", "name": "Sugar", "formula": "C12H22O11" },
+      { "id": "C", "name": "Epsom Salt", "formula": "MgSO4" },
+      { "id": "D", "name": "Calcium Carbonate", "formula": "CaCO3" }
+    ],
+    "answer_id": "C"
+  }
+]
