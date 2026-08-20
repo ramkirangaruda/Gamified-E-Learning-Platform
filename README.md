@@ -31,18 +31,35 @@ including every non-obvious design call, in [`PLAN.md`](PLAN.md) and
 
 ## Running it
 
-**Dev mode** (two processes, hot-reloading):
+**Simplest path — one process, no hot-reload** (this is what a clean `git clone` needs;
+verified end to end against a fresh clone with no prior build artifacts):
 
 ```
-go run ./cmd/server            # API + serves whatever's already built in app/
-cd web && npm run dev          # Vite dev server with a proxy to the Go API
+cd web && npm install && npm run build   # builds the frontend into ../app
+cd ..
+go run ./cmd/server                      # serves the API and app/ on :8080
 ```
 
-`go run ./cmd/server` accepts `-addr` (default `:8080`), `-open=false` (skip
-auto-opening a browser tab — useful on a headless hub), `-lite` (disable decorative
-animation), `-prewarm-hints=false`, `-hint-timeout`, and `-tutor=false` (skip
-`llama-server` entirely; hints fall back to their verified text, which is what the
-classroom hub below runs with).
+Then open <http://localhost:8080>. `go run ./cmd/server` accepts `-addr` (default
+`:8080`), `-open=false` (skip auto-opening a browser tab — useful on a headless hub),
+`-lite` (disable decorative animation), `-prewarm-hints=false`, `-hint-timeout`, and
+`-tutor=false` (skip `llama-server` entirely; hints fall back to their verified text,
+which is what the classroom hub below runs with, and what a machine with no
+`models/*.gguf` weights on it falls back to automatically either way).
+
+**Dev mode** (two processes, hot-reloading — for active frontend work, not for a
+first-time run): the Go server and the Vite dev server must agree on a port, since
+`web/vite.config.ts`'s dev proxy is hardcoded to `http://localhost:8099`, not the Go
+server's own `:8080` default. Running both commands with no flags, as a first instinct
+might, silently breaks the proxy (Vite serves the page, then every `/api` call fails).
+
+```
+go run ./cmd/server -addr :8099   # API only, port matches the proxy below
+cd web && npm run dev             # Vite dev server + hot reload, proxies /api to :8099
+```
+
+Then open the URL Vite prints (`http://localhost:5173` by default) — not `:8099`, which
+only serves the API in this mode, not the page.
 
 **Assembled drive** (what actually ships): `scripts/build-launchers.{ps1,sh}`
 cross-compiles the launcher for both drive targets, `cd web && npm run build` builds the
