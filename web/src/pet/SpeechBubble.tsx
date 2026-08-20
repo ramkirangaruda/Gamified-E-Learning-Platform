@@ -4,7 +4,7 @@
 // AUDIT P1-2: the default used to read "I'll have real hints for you soon — M3
 // territory." That was an M2 placeholder that survived M3 shipping, and because it is the
 // default it was on screen for every level load -- a judge's first impression of the game
-// screen was Pip announcing the tutor wasn't built yet. The idle line is now in-character
+// screen was the pet announcing the tutor wasn't built yet. The idle line is now in-character
 // and says nothing about milestones.
 
 interface SpeechBubbleProps {

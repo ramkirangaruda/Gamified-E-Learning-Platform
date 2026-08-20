@@ -132,7 +132,7 @@ export interface Suggestion {
   message: string;
 }
 
-// "Pip suggests" (dynamic level suggestion, handoff item). Deterministic server-side
+// "<pet> suggests" (dynamic level suggestion, handoff item). Deterministic server-side
 // logic over real progress data; the model is never involved in deciding this -- see
 // internal/api/suggestion.go's own comment for why that boundary matters here.
 export function fetchSuggestion(): Promise<Suggestion> {

@@ -92,11 +92,12 @@ describe("the idle animation budget", () => {
     // SVG child repaints its subtree every frame, because SVG content gets no compositor
     // layer. Measured at +41 points of one CPU core when Pip's old breathing lived on a
     // <g>; ~1 point on the wrapping div. Same motion, two orders of magnitude apart.
-    // Tom Lizard's idle frame-stepping is a `transform` on a plain <div>
-    // (.tom-lizard-anim-idle) rather than Pip's `quest-pet-breathe`, but the property
-    // this test actually cares about -- does it live where the browser can composite
-    // it, not repaint it -- is unchanged by the character swap.
-    const idleLoop = infiniteRules.filter((r) => /tom-lizard-anim-idle/.test(r.selector));
+    // Every roster character's idle frame-stepping is a `transform` on a plain <div>
+    // (.pet-anim-idle -- one shared class, not per-character) rather than the old
+    // `quest-pet-breathe`, but the property this test actually cares about -- does it
+    // live where the browser can composite it, not repaint it -- is unchanged by the
+    // character swap, and is the same for all seven.
+    const idleLoop = infiniteRules.filter((r) => /pet-anim-idle/.test(r.selector));
     expect(idleLoop.length).toBeGreaterThan(0);
     for (const r of idleLoop) {
       expect(r.selector, "the idle loop must sit on .quest-pet-shell, the HTML wrapper").toContain(
@@ -123,8 +124,8 @@ describe("the idle animation budget", () => {
     // core; the same breath stepped measured +0.0. Any new looping animation here must be
     // stepped, or it silently reintroduces that cost. A sprite-frame animation is stepped
     // by nature -- there is nothing to ease between two different frames of art -- so this
-    // is not a budget concession for Tom Lizard the way it was for Pip's breathing, just
-    // the same rule holding for a different reason.
+    // is not a budget concession for the sprite characters the way it was for the old
+    // mascot's breathing, just the same rule holding for a different reason.
     expect(infiniteRules.length).toBeGreaterThan(0);
     for (const r of infiniteRules) {
       expect(r.body, `${r.selector} loops forever and must use steps(), not an easing curve`).toMatch(/steps\(/);
@@ -155,8 +156,8 @@ describe("the idle animation budget", () => {
     // or painting. Anything else here would mean real CPU work every frame, forever.
     const keyframeBlocks = [...css.matchAll(/@keyframes\s+([\w-]+)\s*\{([\s\S]*?)\n\}/g)];
     const idleLoops = [
-      "tom-lizard-anim-idle",
-      "tom-lizard-anim-waiting",
+      "pet-anim-idle",
+      "pet-anim-waiting",
       "mascot-breathe",
       "mascot-tilt",
       "quest-cloud-drift",
