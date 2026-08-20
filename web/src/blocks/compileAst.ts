@@ -24,9 +24,12 @@ export type AstNode =
 
 export type AstCond = { check: "wall_ahead" | "on_goal" | "item_here" } | { check: "not"; of: AstCond };
 
+// "cards" was always a real value on the wire (hub/ast_builder.py has sent it since
+// M5) -- this type just didn't need to say so until compileCardIds.ts produced one
+// from inside the browser too.
 export interface AstProgram {
   version: 1;
-  source: "blocks";
+  source: "blocks" | "cards";
   program: AstNode[];
 }
 

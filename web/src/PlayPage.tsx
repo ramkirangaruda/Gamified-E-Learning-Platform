@@ -1,15 +1,19 @@
 import { useCallback, useEffect, useState } from "react";
 import type * as Blockly from "blockly/core";
 import Editor from "./Editor";
+import CameraScan from "./CameraScan";
 import GridRenderer from "./GridRenderer";
 import Icon from "./icons/Icon";
 import TierHUD from "./TierHUD";
-import { compileWorkspaceToAst } from "./blocks/compileAst";
+import { compileWorkspaceToAst, type AstProgram } from "./blocks/compileAst";
+import type { CardCompileResult } from "./blocks/compileCardIds";
 import { computeAttemptReward, clampHunger } from "./pet/reward";
 import { usePet } from "./pet/PetProvider";
 import { fetchHint, fetchTierInfo, runProgram, type GameState, type TierInfo } from "./api";
 import type { ExecResult } from "./executorTypes";
 import { friendlyError } from "./friendlyError";
+
+type InputMode = "blocks" | "cards";
 
 // The play screen. Everything about the pet -- its state, its mood, its speech, its
 // hunger, the points display -- now lives in the persistent bar above (pet/PetBar.tsx),
@@ -28,6 +32,7 @@ export default function PlayPage({ initialLevelId, onBackToDashboard }: PlayPage
     usePet();
 
   const [levelId, setLevelId] = useState<string | null>(initialLevelId ?? null);
+  const [inputMode, setInputMode] = useState<InputMode>("blocks");
   const [workspace, setWorkspace] = useState<Blockly.WorkspaceSvg | null>(null);
   const [result, setResult] = useState<ExecResult | null>(null);
   const [running, setRunning] = useState(false);
@@ -70,17 +75,18 @@ export default function PlayPage({ initialLevelId, onBackToDashboard }: PlayPage
   // switches groups; within a group this reads as a level picker rather than a wall.
   const sectionLevels = level ? levels.filter((l) => l.teaches === level.teaches) : [];
 
-  async function handleRun() {
-    if (!workspace || !level) return;
+  // Shared by both input surfaces (Blockly cards on screen, or physical cards read by
+  // CameraScan) -- everything past "here is a compiled AST" (run it, score it, react,
+  // fetch a hint) is identical regardless of which one produced the program, brief
+  // §6's "cards and blocks are two different physical inputs that must produce the
+  // same AST shape" carried all the way through to this page's own submission path.
+  async function submitAttempt(program: AstProgram, clientProblems: string[], unitsUsed: number) {
+    if (!level) return;
     setRunning(true);
     setBusy(true); // -> thinking, for as long as the run and any hint take
     setRunError(null);
     say(null);
     try {
-      const { program, problems } = compileWorkspaceToAst(workspace);
-      const blocksUsed = workspace.getAllBlocks(false).length;
-      // The server matches on `code`, not prose -- see compileAst.ts's ProblemCode.
-      const clientProblems = problems.map((p) => p.code);
       const execResult = await runProgram(level.id, program, clientProblems);
       setResult(execResult);
 
@@ -100,7 +106,7 @@ export default function PlayPage({ initialLevelId, onBackToDashboard }: PlayPage
         outcome: execResult.outcome,
         firstTry,
         hard: level.hard,
-        blocksUsed,
+        blocksUsed: unitsUsed,
         parBlocks: level.parBlocks,
         alreadySolved,
       });
@@ -169,6 +175,21 @@ export default function PlayPage({ initialLevelId, onBackToDashboard }: PlayPage
     }
   }
 
+  function handleRun() {
+    if (!workspace) return;
+    const { program, problems } = compileWorkspaceToAst(workspace);
+    const blocksUsed = workspace.getAllBlocks(false).length;
+    // The server matches on `code`, not prose -- see compileAst.ts's ProblemCode.
+    submitAttempt(program, problems.map((p) => p.code), blocksUsed);
+  }
+
+  // CameraScan already did its own burst-and-vote + compile before calling this --
+  // one card ~= one block, so the count of cards actually read stands in for
+  // `blocksUsed` in the same par-comparison reward math the Blockly path uses.
+  function handleCameraCaptured(result: CardCompileResult, cardLabels: string[]) {
+    submitAttempt(result.program, result.problems.map((p) => p.code), cardLabels.length);
+  }
+
   const LEVEL_COLOR = [
     { bg: "bg-quest-sky", border: "border-quest-sky-dark" },
     { bg: "bg-quest-coral", border: "border-quest-coral-dark" },
@@ -178,8 +199,37 @@ export default function PlayPage({ initialLevelId, onBackToDashboard }: PlayPage
   return (
     <div className="flex h-[calc(100vh-var(--app-header-h))] w-full bg-quest-cream">
       <div className="flex-1 p-3">
-        <div className="h-full overflow-hidden rounded-3xl border-4 border-white bg-white shadow-lg">
-          <Editor onWorkspaceReady={onWorkspaceReady} onBlockActivity={onBlockActivity} />
+        <div className="relative h-full overflow-hidden rounded-3xl border-4 border-white bg-white shadow-lg">
+          {/* Editor stays mounted (not conditionally rendered) so a child's in-progress
+              block layout survives switching to the camera and back -- only its
+              visibility toggles. CameraScan, by contrast, owns a live camera stream
+              that should actually start/stop with the toggle, so it's unmount-driven. */}
+          <div className={inputMode === "blocks" ? "h-full" : "hidden"}>
+            <Editor onWorkspaceReady={onWorkspaceReady} onBlockActivity={onBlockActivity} />
+          </div>
+          {inputMode === "cards" && <CameraScan onCaptured={handleCameraCaptured} disabled={running} />}
+
+          <div className="absolute right-3 top-3 flex gap-1 rounded-full bg-white/90 p-1 shadow-md">
+            <button
+              type="button"
+              onClick={() => setInputMode("blocks")}
+              className={`rounded-full px-3 py-1.5 font-display text-xs font-bold transition-colors ${
+                inputMode === "blocks" ? "bg-quest-sky text-white" : "text-quest-ink/60"
+              }`}
+            >
+              Cards on screen
+            </button>
+            <button
+              type="button"
+              onClick={() => setInputMode("cards")}
+              className={`flex items-center gap-1 rounded-full px-3 py-1.5 font-display text-xs font-bold transition-colors ${
+                inputMode === "cards" ? "bg-quest-sky text-white" : "text-quest-ink/60"
+              }`}
+            >
+              <Icon name="camera" size={14} />
+              Scan real cards
+            </button>
+          </div>
         </div>
       </div>
 
@@ -232,8 +282,10 @@ export default function PlayPage({ initialLevelId, onBackToDashboard }: PlayPage
         <button
           type="button"
           onClick={handleRun}
-          disabled={!workspace || !level || running}
-          className="flex items-center justify-center gap-2 rounded-2xl border-b-4 border-quest-grass-dark bg-quest-grass px-5 py-3 font-display text-lg font-bold text-white shadow-md transition-transform hover:-translate-y-0.5 hover:brightness-105 active:translate-y-0 active:border-b-2 disabled:translate-y-0 disabled:opacity-40"
+          disabled={inputMode !== "blocks" || !workspace || !level || running}
+          className={`flex items-center justify-center gap-2 rounded-2xl border-b-4 border-quest-grass-dark bg-quest-grass px-5 py-3 font-display text-lg font-bold text-white shadow-md transition-transform hover:-translate-y-0.5 hover:brightness-105 active:translate-y-0 active:border-b-2 disabled:translate-y-0 disabled:opacity-40 ${
+            inputMode !== "blocks" ? "hidden" : ""
+          }`}
         >
           {running ? (
             "Running…"
