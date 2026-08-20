@@ -1,0 +1,168 @@
+import Icon from "../icons/Icon";
+import PetBar from "../pet/PetBar";
+import { SUBJECTS } from "../subjects";
+import { activeSubjectId, type Route } from "../routes";
+import { toneClasses } from "../ui/tone";
+
+// The one persistent header, and the backbone of the redesigned dashboard.
+//
+// Two stacked rows inside a single fixed shell:
+//   1. NAVIGATION -- brand, the subject tabs, and the three whole-app destinations
+//      (Progress, Classroom, Settings) plus the Calm Mode switch.
+//   2. THE PET     -- pet/PetBar.tsx, unchanged in behaviour.
+//
+// Why they are one element and not two stacked fixed bars: the pet row must be mounted
+// exactly once for the whole session (PetProvider's contract -- unmounting it resets the
+// pet's mood, speech and animation phase), and the nav has the same requirement for a
+// different reason (a nav that remounts per page re-runs its enter transition on every
+// click). Making the shell the single fixed thing means pages below pad past ONE value,
+// --app-header-h, which is derived from the two row heights rather than typed again.
+//
+// The nav row scrolls horizontally rather than wrapping: a wrapping nav changes the
+// header's height, which would silently break every page's `pt-[var(--app-header-h)]`.
+
+interface AppHeaderProps {
+  route: Route;
+  onNavigate: (route: Route) => void;
+  /** Owned by App, which resolves it from the server/session -- see App.tsx. */
+  lite: boolean;
+  onToggleLite: () => void;
+}
+
+/** A subject tab. Locked subjects stay visible and clickable -- clicking one opens its
+ *  "coming soon" page rather than doing nothing, because a tab that silently ignores a
+ *  click reads as broken to a child, and §10's "never punish" applies to dead ends too. */
+function SubjectTab({
+  subject,
+  active,
+  onClick,
+}: {
+  subject: (typeof SUBJECTS)[number];
+  active: boolean;
+  onClick: () => void;
+}) {
+  const t = toneClasses(subject.tone);
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-current={active ? "page" : undefined}
+      title={subject.available ? subject.desc : `${subject.title} — coming soon`}
+      className={`inline-flex shrink-0 items-center gap-1.5 rounded-full border-b-[3px] px-3 py-1.5 font-display text-[13px] font-bold shadow-chunk-sm transition-transform duration-100
+        hover:-translate-y-0.5 active:translate-y-[2px]
+        ${active ? `${t.bg} ${t.border} ${t.text}` : "border-quest-locked bg-quest-paper text-quest-ink"}`}
+    >
+      <span
+        className={`flex h-5 w-5 items-center justify-center rounded-full font-display text-[10px] font-bold
+          ${active ? "bg-white/25 text-inherit" : `${t.bg} ${t.text}`}`}
+        aria-hidden="true"
+      >
+        {subject.letter}
+      </span>
+      {subject.title}
+      {!subject.available && (
+        <span className={active ? "opacity-80" : "text-quest-locked-deep"} aria-hidden="true">
+          <Icon name="lock" size={12} />
+        </span>
+      )}
+    </button>
+  );
+}
+
+/** A right-hand nav destination. Smaller and quieter than a subject tab on purpose --
+ *  these are for the adult-ish corners of the app, not the thing a child came here for. */
+function NavAction({
+  label,
+  active,
+  onClick,
+  title,
+  pressed,
+}: {
+  label: string;
+  active?: boolean;
+  onClick: () => void;
+  title?: string;
+  pressed?: boolean;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      title={title}
+      aria-current={active ? "page" : undefined}
+      aria-pressed={pressed}
+      className={`shrink-0 rounded-full border-2 px-3 py-1.5 font-display text-[13px] font-bold transition-transform duration-100
+        hover:-translate-y-0.5 active:translate-y-[2px]
+        ${active ? "border-quest-gold-dark bg-quest-gold text-quest-ink" : "border-quest-ink/15 bg-quest-paper text-quest-ink-soft hover:text-quest-ink"}`}
+    >
+      {label}
+    </button>
+  );
+}
+
+export default function AppHeader({ route, onNavigate, lite, onToggleLite }: AppHeaderProps) {
+  const currentSubject = activeSubjectId(route);
+
+  return (
+    <header
+      className="fixed inset-x-0 top-0 z-40 h-[var(--app-header-h)] border-b-[var(--outline-chunk-thick)] border-quest-ink/15 bg-quest-paper/95 backdrop-blur-sm"
+      data-testid="app-header"
+    >
+      <nav
+        className="mx-auto flex h-[var(--app-header-nav-h)] max-w-6xl items-center gap-3 px-4"
+        aria-label="Subjects and sections"
+      >
+        <button
+          type="button"
+          onClick={() => onNavigate({ name: "home" })}
+          aria-current={route.name === "home" ? "page" : undefined}
+          className="shrink-0 font-display text-lg font-bold text-quest-ink transition-transform duration-100 hover:-translate-y-0.5"
+        >
+          Tessera Quest
+        </button>
+
+        {/* min-w-0 lets this flex child actually shrink, which is what allows the tab
+            strip to scroll instead of pushing the actions off the right edge. */}
+        <div className="flex min-w-0 flex-1 gap-2 overflow-x-auto py-1">
+          {SUBJECTS.map((s) => (
+            <SubjectTab
+              key={s.id}
+              subject={s}
+              active={currentSubject === s.id}
+              onClick={() => onNavigate({ name: "subject", subjectId: s.id })}
+            />
+          ))}
+        </div>
+
+        <div className="flex shrink-0 items-center gap-2">
+          <NavAction
+            label="Progress"
+            active={route.name === "progress"}
+            title="Everything you've done so far"
+            onClick={() => onNavigate({ name: "progress" })}
+          />
+          <NavAction
+            label="Classroom"
+            active={route.name === "classroom"}
+            title="Sync your progress to a classroom computer, or recover a lost key"
+            onClick={() => onNavigate({ name: "classroom" })}
+          />
+          <NavAction
+            label="Settings"
+            active={route.name === "settings"}
+            title="Pick which pet keeps you company"
+            onClick={() => onNavigate({ name: "settings" })}
+          />
+          <NavAction
+            label={lite ? "Calm: on" : "Calm: off"}
+            pressed={lite}
+            title="Turn decoration off for slower machines"
+            onClick={onToggleLite}
+          />
+        </div>
+      </nav>
+
+      <PetBar />
+    </header>
+  );
+}

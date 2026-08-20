@@ -32,6 +32,14 @@ describe("characters", () => {
     expect(spriteUrlFor("rex")).toBe("/pets/rex/spritesheet.webp");
   });
 
+  it("falls back to the roster default for an id with no sprite folder", () => {
+    // A drive saved before the sprite roster existed still holds pet.species = "pip".
+    // Interpolating that straight into the URL 404s and renders an invisible pet, so
+    // spriteUrlFor resolves through characterById exactly like every caption does.
+    expect(spriteUrlFor("pip")).toBe(`/pets/${CHARACTERS[0].id}/spritesheet.webp`);
+    expect(spriteUrlFor(undefined)).toBe(`/pets/${CHARACTERS[0].id}/spritesheet.webp`);
+  });
+
   // The roster and the art on disk must agree. This is not hypothetical: the roster
   // carried an entry whose folder sat outside web/public/pets/ until every character was
   // consolidated there, and a mismatch is invisible in code review -- it shows up as a
