@@ -45,6 +45,11 @@ export interface GameState {
   // that levels are reachable via independent dashboard sections rather than one
   // strictly linear sequence -- see internal/api's stateResponse and DECISIONS.md.
   solved_levels: string[];
+  // Real per-level star counts (handoff/04-stars.md), computed and persisted
+  // server-side in handleProgram -- solved + under-par + first-try, 1-3, never
+  // regresses. Only levels with at least 1 star are present; an absent key means 0,
+  // same convention as solved_levels omitting anything never solved.
+  stars_by_level: Record<string, number>;
 }
 
 export interface TierInfo {

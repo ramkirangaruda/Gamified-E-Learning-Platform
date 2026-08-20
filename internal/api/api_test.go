@@ -314,6 +314,80 @@ func TestIntegration_SolvedLevelsTracksRealSolvesOutOfOrder(t *testing.T) {
 	}
 }
 
+// handoff/04-stars.md, end to end over real HTTP: level-1 is par 5 (6-cell straight
+// line, move-only). A first-try, under-par solve earns 3 stars (solved + under par +
+// first try); a later, worse re-solve on the same level must not erase that.
+func TestIntegration_StarsEarnedAndNeverRegress(t *testing.T) {
+	ts := newTestServer(t)
+
+	getStars := func() map[string]int {
+		resp, err := http.Get(ts.URL + "/api/state")
+		if err != nil {
+			t.Fatalf("GET /api/state: %v", err)
+		}
+		defer resp.Body.Close()
+		var got struct {
+			StarsByLevel map[string]int `json:"stars_by_level"`
+		}
+		if err := json.NewDecoder(resp.Body).Decode(&got); err != nil {
+			t.Fatalf("decoding response: %v", err)
+		}
+		return got.StarsByLevel
+	}
+
+	if got := getStars(); len(got) != 0 {
+		t.Fatalf("stars before any attempt = %v, want empty", got)
+	}
+
+	// First attempt: repeat(4){move} + move = 4 cards, strictly under level-1's par of
+	// 5, and it's the first attempt on this level -- solved + under par + first try = 3.
+	underParFirstTry := `{"ast":{"version":1,"source":"blocks","program":[
+		{"op":"repeat","times":4,"body":[{"op":"move","steps":1}]},
+		{"op":"move","steps":1}
+	]},"client_problems":[]}`
+	resp, err := http.Post(ts.URL+"/api/program?level_id=level-1", "application/json", strings.NewReader(underParFirstTry))
+	if err != nil {
+		t.Fatalf("POST /api/program: %v", err)
+	}
+	resp.Body.Close()
+
+	stars := getStars()
+	if stars["level-1"] != 3 {
+		t.Fatalf("stars[level-1] after an under-par first-try solve = %d, want 3", stars["level-1"])
+	}
+
+	// Second attempt, same level: 5 plain moves -- exactly at par (not strictly under),
+	// and not a first try anymore. Solved but worse: 1 star. Must not erase the 3
+	// already earned (§10: progress never regresses).
+	atParSecondTry := `{"ast":{"version":1,"source":"blocks","program":[
+		{"op":"move","steps":1},{"op":"move","steps":1},{"op":"move","steps":1},
+		{"op":"move","steps":1},{"op":"move","steps":1}
+	]},"client_problems":[]}`
+	resp, err = http.Post(ts.URL+"/api/program?level_id=level-1", "application/json", strings.NewReader(atParSecondTry))
+	if err != nil {
+		t.Fatalf("POST /api/program: %v", err)
+	}
+	resp.Body.Close()
+
+	stars = getStars()
+	if stars["level-1"] != 3 {
+		t.Fatalf("stars[level-1] after a worse re-solve = %d, want still 3 (must never regress)", stars["level-1"])
+	}
+
+	// A failed attempt must not record any stars at all.
+	failed := `{"ast":{"version":1,"source":"blocks","program":[{"op":"wait","ticks":1}]},"client_problems":[]}`
+	resp, err = http.Post(ts.URL+"/api/program?level_id=level-2", "application/json", strings.NewReader(failed))
+	if err != nil {
+		t.Fatalf("POST /api/program: %v", err)
+	}
+	resp.Body.Close()
+
+	stars = getStars()
+	if _, ok := stars["level-2"]; ok {
+		t.Fatalf("stars = %v, level-2 (never solved) must not appear", stars)
+	}
+}
+
 func TestIntegration_UnknownLevelIs404(t *testing.T) {
 	ts := newTestServer(t)
 

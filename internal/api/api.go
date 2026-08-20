@@ -178,6 +178,29 @@ type programResponse struct {
 	ErrorSignature string           `json:"error_signature,omitempty"`
 }
 
+// computeStars mirrors web/src/trail/concepts.ts's starsFor: 1 point for solving
+// (implied here -- only ever called when the outcome is "solved"), +1 for landing
+// strictly under par, +1 for a first try.
+//
+// handoff/04-stars.md flagged a real inconsistency to resolve, not silently pick a side
+// of: concepts.ts's starsFor used `blocksUsed <= parBlocks` for its bonus star, while
+// web/src/pet/reward.ts's already-shipped, already-tested points bonus used the stricter
+// `blocksUsed < parBlocks`. Landing exactly at par is common (par is often the intended
+// solution's exact card count), so the two would disagree on the single most frequent
+// case. Standardized on `<`, matching reward.ts, since that's the rule already live and
+// tested in the points economy -- concepts.ts's starsFor is updated to match rather than
+// left to quietly disagree with the server's own calculation (see DECISIONS.md).
+func computeStars(blocksUsed, parBlocks int, firstTry bool) int {
+	stars := 1
+	if blocksUsed < parBlocks {
+		stars++
+	}
+	if firstTry {
+		stars++
+	}
+	return stars
+}
+
 func (s *Server) handleGetLevels(w http.ResponseWriter, r *http.Request) {
 	ordered := make([]levels.Level, 0, len(s.levelOrder))
 	for _, id := range s.levelOrder {
@@ -249,6 +272,16 @@ func (s *Server) handleProgram(w http.ResponseWriter, r *http.Request) {
 
 	signature := ""
 	if haveLevel {
+		// handoff/04-stars.md: read the attempts-so-far count BEFORE RecordLevelAttempt's
+		// upsert increments it, so "was this a first try" is answered from real,
+		// cross-session persisted history rather than PlayPage's client-side counter
+		// (which resets on every page reload -- a known, separately-logged gap).
+		priorAttempts, err := s.store.GetLevelAttemptsCount(levelID)
+		if err != nil {
+			log.Printf("api: reading attempts count: %v", err)
+		}
+		firstTry := priorAttempts == 0
+
 		signature = hints.Classify(hints.ClassifyInput{
 			Level:          hints.LevelFor(lvl),
 			Program:        program.Program,
@@ -266,6 +299,12 @@ func (s *Server) handleProgram(w http.ResponseWriter, r *http.Request) {
 		}
 		if err := s.store.RecordLevelAttempt(levelID, result.Outcome == "solved", time.Now().Unix()); err != nil {
 			log.Printf("api: recording level progress: %v", err)
+		}
+		if result.Outcome == "solved" {
+			stars := computeStars(ast.CountCards(program.Program), lvl.ParBlocks, firstTry)
+			if err := s.store.RecordStars(levelID, stars); err != nil {
+				log.Printf("api: recording stars: %v", err)
+			}
 		}
 	}
 
@@ -399,13 +438,14 @@ func (s *Server) handleCompare(w http.ResponseWriter, r *http.Request) {
 }
 
 // stateResponse adds solved_levels (from level_progress -- see
-// store.RecordLevelAttempt) on top of store.State's own persisted fields. Computed
-// fresh on every response rather than stored on State itself: it's derived,
-// order-independent truth about which levels have ever been solved, not something a
-// caller should be trusted to round-trip back unmodified the way learner/pet fields are.
+// store.RecordLevelAttempt) and stars_by_level (handoff/04-stars.md) on top of
+// store.State's own persisted fields. Both computed fresh on every response rather than
+// stored on State itself: derived, order-independent truth about progress, not something
+// a caller should be trusted to round-trip back unmodified the way learner/pet fields are.
 type stateResponse struct {
 	store.State
-	SolvedLevels []string `json:"solved_levels"`
+	SolvedLevels []string       `json:"solved_levels"`
+	StarsByLevel map[string]int `json:"stars_by_level"`
 }
 
 func (s *Server) withSolvedLevels(w http.ResponseWriter, state *store.State) {
@@ -414,7 +454,12 @@ func (s *Server) withSolvedLevels(w http.ResponseWriter, state *store.State) {
 		writeError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
-	writeJSON(w, http.StatusOK, stateResponse{State: *state, SolvedLevels: solved})
+	stars, err := s.store.GetStarsByLevel()
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	writeJSON(w, http.StatusOK, stateResponse{State: *state, SolvedLevels: solved, StarsByLevel: stars})
 }
 
 func (s *Server) handleGetState(w http.ResponseWriter, r *http.Request) {

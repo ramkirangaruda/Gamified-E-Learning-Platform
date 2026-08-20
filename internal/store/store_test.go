@@ -248,6 +248,76 @@ func TestLevelProgressTracksSolvedIndependentOfOrder(t *testing.T) {
 	}
 }
 
+// handoff/04-stars.md: level_progress.stars existed since M1 and was never given a
+// writer. GetLevelAttemptsCount is the server-side replacement for PlayPage's
+// page-reload-resetting client firstTry tracking; RecordStars/GetStarsByLevel are the
+// write/read pair stars needed the same way solved levels had GetSolvedLevelIDs.
+func TestStars_NeverRegressAndAttemptsCountReadsBeforeIncrement(t *testing.T) {
+	dbPath := filepath.Join(t.TempDir(), "pet.db")
+	s, err := Open(dbPath)
+	if err != nil {
+		t.Fatalf("Open: %v", err)
+	}
+	defer s.Close()
+
+	// A level nobody has touched yet: 0 attempts so far, i.e. the next one is a first try.
+	n, err := s.GetLevelAttemptsCount("level-1")
+	if err != nil {
+		t.Fatalf("GetLevelAttemptsCount (untouched level): %v", err)
+	}
+	if n != 0 {
+		t.Fatalf("attempts count for an untouched level = %d, want 0", n)
+	}
+
+	// First real attempt: RecordLevelAttempt bumps attempts_count to 1. A caller that
+	// read the count *before* this call (as handleProgram does) correctly saw 0 -- the
+	// count read here, after, must not retroactively look like a first try too.
+	if err := s.RecordLevelAttempt("level-1", true, 100); err != nil {
+		t.Fatalf("RecordLevelAttempt: %v", err)
+	}
+	n, err = s.GetLevelAttemptsCount("level-1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if n != 1 {
+		t.Fatalf("attempts count after one attempt = %d, want 1", n)
+	}
+
+	// A strong first-try, under-par solve: 3 stars, recorded.
+	if err := s.RecordStars("level-1", 3); err != nil {
+		t.Fatalf("RecordStars: %v", err)
+	}
+	stars, err := s.GetStarsByLevel()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if stars["level-1"] != 3 {
+		t.Fatalf("stars[level-1] = %d, want 3", stars["level-1"])
+	}
+
+	// A later, worse re-solve (over par, not first try -- 1 star) must not erase the
+	// earlier 3-star result. Progress never regresses (§10).
+	if err := s.RecordLevelAttempt("level-1", true, 200); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.RecordStars("level-1", 1); err != nil {
+		t.Fatalf("RecordStars (worse re-solve): %v", err)
+	}
+	stars, err = s.GetStarsByLevel()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if stars["level-1"] != 3 {
+		t.Fatalf("stars[level-1] after a worse re-solve = %d, want still 3 (must never regress)", stars["level-1"])
+	}
+
+	// A level with zero stars must not appear in the map at all (the frontend treats
+	// absence the same as GetSolvedLevelIDs treats an unsolved level).
+	if _, ok := stars["level-99-never-touched"]; ok {
+		t.Fatal("an untouched level appeared in GetStarsByLevel's result")
+	}
+}
+
 // Hunger is session-scoped (brief §10), and StartSession is what makes that true --
 // before it existed, hunger was cumulative for the life of the key (AUDIT.md P2).
 func TestStartSessionResetsHungerButNotProgress(t *testing.T) {

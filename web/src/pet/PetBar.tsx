@@ -66,7 +66,8 @@ export default function PetBar() {
   const petName = state?.pet.name ?? "Pip";
   const solved = state?.solved_levels ?? [];
   const levelNumber = activeLevel ? levels.findIndex((l) => l.id === activeLevel.id) + 1 : null;
-  const stars = activeLevel && solved.includes(activeLevel.id) ? 1 : 0;
+  // handoff/04-stars.md: real per-level star count instead of a hardcoded solved-or-not.
+  const stars = activeLevel ? (state?.stars_by_level?.[activeLevel.id] ?? 0) : 0;
 
   return (
     <>

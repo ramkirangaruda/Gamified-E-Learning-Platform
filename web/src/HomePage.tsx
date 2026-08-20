@@ -28,12 +28,10 @@ export default function HomePage({ onSelectLevel, lite, onToggleLite }: HomePage
   const [view, setView] = useState<View>("trail");
 
   const solvedIds = state?.solved_levels ?? [];
-  // Stars are not persisted per level yet (the store keeps solved/attempts, not a star
-  // count) -- a solved level shows one star until that lands. Deliberately conservative:
-  // §10 says progress never moves backwards, so under-reporting is safe where
-  // over-reporting would mean taking a star away later.
-  const starsByLevel: Record<string, number> = {};
-  for (const id of solvedIds) starsByLevel[id] = 1;
+  // handoff/04-stars.md: real, server-computed per-level star counts, persisted in
+  // level_progress.stars. Previously hardcoded to 1 per solved level -- that
+  // under-reporting was the deliberate, safe placeholder until this landed.
+  const starsByLevel: Record<string, number> = state?.stars_by_level ?? {};
 
   const solvedCount = solvedIds.length;
 

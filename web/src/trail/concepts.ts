@@ -39,13 +39,3 @@ export const EVOLUTION_MARKERS: { afterSolved: number; label: string }[] = [
   { afterSolved: 13, label: "Pip grew again!" },
   { afterSolved: 22, label: "Pip is fully grown!" },
 ];
-
-/** Stars for a finished level: 1 for solving, +1 for at-or-under par, +1 for a first-try
- *  solve. Never removed once earned -- §10, progress never moves backwards. */
-export function starsFor(solved: boolean, blocksUsed?: number, parBlocks?: number, firstTry?: boolean): number {
-  if (!solved) return 0;
-  let stars = 1;
-  if (blocksUsed !== undefined && parBlocks !== undefined && blocksUsed <= parBlocks) stars++;
-  if (firstTry) stars++;
-  return stars;
-}
