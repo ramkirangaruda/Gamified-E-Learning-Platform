@@ -506,8 +506,8 @@ func (s *Store) StartSession() error {
 func (s *Store) createDefaultPet() (*Pet, error) {
 	p := &Pet{
 		ID:               newID(),
-		Species:          "pip",
-		Name:             "Pip",
+		Species:          "tom-lizard",
+		Name:             "Tom",
 		EvolutionStage:   0,
 		Hunger:           DefaultHunger,
 		SessionStartedAt: time.Now().Unix(),

@@ -158,7 +158,7 @@ export default function Trail({ levels, solvedIds, starsByLevel, onSelectLevel, 
       })}
 
       <p className="mt-10 text-center text-sm font-medium text-quest-ink-soft">
-        {petName ?? "Pip"} is waiting at level {current + 1}. Nothing here ever locks again — come back whenever you like.
+        {petName ?? "Tom"} is waiting at level {current + 1}. Nothing here ever locks again — come back whenever you like.
       </p>
     </div>
   );

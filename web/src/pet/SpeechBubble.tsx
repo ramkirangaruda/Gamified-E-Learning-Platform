@@ -11,7 +11,7 @@ interface SpeechBubbleProps {
   text?: string;
 }
 
-export const IDLE_LINE = "Hi! I'm Pip. Build your program, hit Run, and I'll help if you get stuck!";
+export const IDLE_LINE = "Hi! I'm Tom. Build your program, hit Run, and I'll help if you get stuck!";
 
 export default function SpeechBubble({ text = IDLE_LINE }: SpeechBubbleProps) {
   // key on the text so React remounts the node when a new hint arrives -- that restart

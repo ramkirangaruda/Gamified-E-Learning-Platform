@@ -80,7 +80,7 @@ export default function HomePage({ onSelectLevel, onOpenSandbox, lite, onToggleL
           </ChunkyButton>
         </div>
 
-        {/* "Pip suggests" -- a deterministic recommendation (internal/api/suggestion.go),
+        {/* "Tom suggests" -- a deterministic recommendation (internal/api/suggestion.go),
             never the model's call. Only rendered once a real suggestion has loaded, and
             silently absent if the fetch failed -- this is a nice-to-have on top of the
             trail, not something worth showing an error state for. */}
@@ -88,11 +88,11 @@ export default function HomePage({ onSelectLevel, onOpenSandbox, lite, onToggleL
           <button
             type="button"
             onClick={() => (suggestion.level_id ? onSelectLevel(suggestion.level_id) : onOpenSandbox())}
-            aria-label={`Pip suggests: ${suggestion.message}`}
+            aria-label={`Tom suggests: ${suggestion.message}`}
             className="mt-4 flex w-full items-center gap-3 rounded-chunk-lg border-[var(--outline-chunk)] border-quest-gold bg-quest-gold/15 px-5 py-3 text-left shadow-chunk transition-transform hover:-translate-y-0.5"
           >
             <span className="font-display text-sm font-bold uppercase tracking-wide text-quest-gold-dark">
-              Pip suggests
+              Tom suggests
             </span>
             <span className="font-medium text-quest-ink">{suggestion.message}</span>
           </button>

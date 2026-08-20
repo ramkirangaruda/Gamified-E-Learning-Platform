@@ -1,27 +1,26 @@
 import type { PetMood } from "./mood";
+import { FRAME, MOOD_ANIMATION, SHEET, SPRITE_URL } from "./tomLizard";
 
-// Pip. One inline SVG, every part named and individually addressable, mood expressed as
-// a data attribute on the root -- no second file, no image swap, no per-mood component.
+// Tom Lizard. A sprite-sheet character (tom-lizard/spritesheet.webp), replacing Pip's
+// inline SVG at explicit product direction -- see DECISIONS.md for why this is a
+// deliberate, logged reversal of "every illustration here is inline SVG", not an
+// oversight. The prop contract is unchanged from Pip on purpose: PetBar/Trail/
+// CompareView/StyleGuide all render <Pet mood=... name=... evolutionStage=...
+// size=... feedTick=... showName=... /> and none of them needed to change.
 //
-// Why every part is always in the DOM, with visibility done in CSS rather than by
-// conditionally rendering it:
-//
-//   * Mood changes become pure CSS transitions on transform/opacity/fill, so they ease
-//     rather than snap.
-//   * A mood change mid-transition just re-targets the same properties. There is no
-//     mount/unmount race and therefore no way to leave the SVG half-transitioned -- the
-//     thing item 4 asks for is a property of the structure here, not of the timing.
-//   * The whole character is one rasterised layer the compositor can reuse; nothing
-//     below re-lays-out when the mood changes.
-//
-// Mood-specific styling lives in index.css under `.quest-pet[data-mood="..."]`, keyed off
-// the class names below. Adding a mood means adding CSS, not markup.
+// Frame-stepping is done with CSS `transform: translate(...)` in PERCENTAGES of the
+// sheet image's own box (see index.css) rather than fixed pixel values, so the exact
+// same keyframes work at every `size` this component is ever rendered at (52px in the
+// trail, 84px in the pet bar, 96px by default) with no per-instance CSS needed. Only
+// `idle` and `thinking` loop -- every other mood is a one-shot reaction that holds its
+// final frame -- mirroring Pip's own "idle animation is a rare, budgeted exception"
+// rule (pet/idleAnimation.test.ts polices this for whichever character is here).
 
 interface PetProps {
   mood: PetMood;
   name?: string;
   evolutionStage?: number;
-  /** Rendered pixel size. The viewBox does the scaling -- no layout maths, no listener. */
+  /** Rendered pixel size (height-constrained; the frame's own aspect ratio sets width). */
   size?: number;
   /** Bumped by the provider on every feed; re-keys the treat so its one-shot eat
    *  animation replays. Never read as a number, only compared for change. */
@@ -32,173 +31,82 @@ interface PetProps {
 
 export default function Pet({
   mood,
-  name = "Pip",
+  name = "Tom",
   evolutionStage = 0,
   size = 96,
   feedTick = 0,
   showName = false,
 }: PetProps) {
+  const scale = size / FRAME.height;
+  const frameW = FRAME.width * scale;
+  const frameH = FRAME.height * scale;
+  const sheetW = SHEET.width * scale;
+  const sheetH = SHEET.height * scale;
+
+  // null = a static resting pose (hungry, sleepy) -- no animation class at all, so the
+  // sheet just sits at its default (idle frame 0) position. See tomLizard.ts.
+  const animName = MOOD_ANIMATION[mood];
+
   return (
-    // The breathing animation lives on THIS element, not inside the SVG, and that is a
-    // measured decision rather than a stylistic one: a transform animation on an SVG
-    // child repaints the subtree every frame (SVG content is not promoted to its own
-    // compositor layer), while the same animation on an HTML element is composited and
-    // costs essentially nothing. Measured on this machine: breathing the <g> cost +41
-    // points of one CPU core; breathing this div costs ~1. See DECISIONS.md.
     <div className="quest-pet-shell quest-decorative flex flex-col items-center" data-pet-mood={mood}>
-      <svg
-        className="quest-pet"
+      <div
+        className="quest-pet relative"
         data-mood={mood}
         data-stage={evolutionStage}
-        viewBox="-60 -66 120 126"
-        width={size}
-        height={size}
+        style={{ width: frameW, height: frameH }}
         role="img"
         aria-label={`${name} looks ${MOOD_WORD[mood]}`}
       >
-        {/* Ground shadow. Outside the breathing group so the pet moves against it
-            rather than dragging it along, which is what sells the motion as breath. */}
-        <ellipse className="pet-shadow" cx={0} cy={49} rx={30} ry={6} />
+        {/* Evolution stage aura -- deliberately outside the frame-clipping box below, so
+            it can bleed past the sprite's own bounds (index.css: inset < 0). */}
+        <div className="pet-stage-aura" />
 
-        <g className="pet-breathe">
-          {/* --- Antennae ------------------------------------------------------ */}
-          <g className="pet-antenna pet-antenna-l">
-            <path className="pet-antenna-stalk" d="M -16 -26 Q -24 -42 -20 -50" />
-            <circle className="pet-antenna-tip" cx={-20} cy={-52} r={5} />
+        {/* The only element that clips: the sheet image is far larger than one frame,
+            and this is what turns it into a window onto exactly one cell of it. */}
+        <div className="relative overflow-hidden" style={{ width: frameW, height: frameH }}>
+          <div
+            className={`tom-lizard-sheet${animName ? ` tom-lizard-anim-${animName}` : ""}`}
+            style={{
+              position: "absolute",
+              top: 0,
+              left: 0,
+              width: sheetW,
+              height: sheetH,
+              backgroundImage: `url(${SPRITE_URL})`,
+              backgroundSize: `${sheetW}px ${sheetH}px`,
+            }}
+          />
+        </div>
+
+        {/* Evolution stage art (§13 step 2): same additive hat/badge language Pip used,
+            now a small overlay above the sprite instead of a recolor -- stage 1 adds the
+            hat, stage 2 adds the badge, stage 3 (via .pet-stage-aura above) adds the
+            glow. See index.css's [data-stage] rules. */}
+        <svg
+          className="pet-hat"
+          viewBox="0 0 40 40"
+          style={{ position: "absolute", top: "4%", left: "50%", transform: "translateX(-50%)", width: frameW * 0.34, height: frameW * 0.34 }}
+          aria-hidden="true"
+        >
+          <path className="pet-hat-brim" d="M 8 27 Q 20 23 32 27 L 30 31 Q 20 28 10 31 Z" />
+          <path className="pet-hat-cone" d="M 10 28 L 30 28 L 20 5 Z" />
+          <circle className="pet-hat-pompom" cx={20} cy={5} r={3} />
+          <g className="pet-hat-badge">
+            <path d="M 33 12 l 1.8 4 l 4 1.8 l -4 1.8 l -1.8 4 l -1.8 -4 l -4 -1.8 l 4 -1.8 Z" />
           </g>
-          <g className="pet-antenna pet-antenna-r">
-            <path className="pet-antenna-stalk" d="M 16 -26 Q 24 -42 20 -50" />
-            <circle className="pet-antenna-tip" cx={20} cy={-52} r={5} />
-          </g>
+        </svg>
 
-          {/* --- Limbs --------------------------------------------------------- */}
-          <g className="pet-limb pet-limb-l">
-            <ellipse cx={-38} cy={16} rx={9} ry={13} />
-          </g>
-          <g className="pet-limb pet-limb-r">
-            <ellipse cx={38} cy={16} rx={9} ry={13} />
-          </g>
-          <ellipse className="pet-foot pet-foot-l" cx={-15} cy={44} rx={12} ry={7} />
-          <ellipse className="pet-foot pet-foot-r" cx={15} cy={44} rx={12} ry={7} />
-
-          {/* --- Body ---------------------------------------------------------- */}
-          <ellipse className="pet-body" cx={0} cy={6} rx={40} ry={38} />
-          <ellipse className="pet-belly" cx={0} cy={16} rx={24} ry={21} />
-
-          {/* --- Evolution stage art (§13 step 2, handoff/05-pet-evolution-art.md) ----
-              Additive across stages, same rule §10 uses for progress -- nothing already
-              earned is ever taken away, each stage only adds one more thing on top of the
-              last:
-                stage 1 ("Pip grew!"): body/belly/limbs recolor warm orange, a hat appears
-                  -- this is §13 step 2's own example ("level 4, orange, wearing a hat").
-                stage 2 ("Pip grew again!"): the hat gains a gold star badge.
-                stage 3 ("Pip is fully grown!"): a soft gold aura ring appears behind the
-                  body -- the one piece that used to be shown at every stage 1+ as a cheap
-                  stand-in, which made stage 2 and stage 3 render identically. Reserving it
-                  for stage 3 alone is what actually fixes that. */}
-          <ellipse className="pet-stage-aura" cx={0} cy={6} rx={46} ry={44} />
-
-          <g className="pet-hat">
-            <path className="pet-hat-brim" d="M -13 -30 Q 0 -35 13 -30 L 11 -27 Q 0 -31 -11 -27 Z" />
-            <path className="pet-hat-cone" d="M -11 -29 L 11 -29 L 0 -58 Z" />
-            <circle className="pet-hat-pompom" cx={0} cy={-58} r={5} />
-            <g className="pet-hat-badge">
-              <path d="M 16 -42 l 2.4 5.4 l 5.4 2.4 l -5.4 2.4 l -2.4 5.4 l -2.4 -5.4 l -5.4 -2.4 l 5.4 -2.4 Z" />
-            </g>
-          </g>
-
-          {/* --- Eyes ----------------------------------------------------------
-              Both eyes share a wrapper so the blink is ONE animation rather than two.
-              That halves the idle animation count and, more importantly, makes it
-              impossible for the two eyes to drift out of sync -- two independent
-              animations on the same keyframes start together but are not guaranteed to
-              stay together. Per-eye transforms (the curious widen, the confused
-              asymmetry) still apply inside it. */}
-          <g className="pet-eyes">
-          <g className="pet-eye pet-eye-l">
-            <ellipse className="pet-eye-white" cx={-14} cy={0} rx={9} ry={10} />
-            <circle className="pet-pupil" cx={-14} cy={1} r={5} />
-            <circle className="pet-glint" cx={-16} cy={-3} r={2.2} />
-          </g>
-          <g className="pet-eye pet-eye-r">
-            <ellipse className="pet-eye-white" cx={14} cy={0} rx={9} ry={10} />
-            <circle className="pet-pupil" cx={14} cy={1} r={5} />
-            <circle className="pet-glint" cx={12} cy={-3} r={2.2} />
-          </g>
-          </g>
-          {/* Happy/celebrating arcs -- drawn over the eyes rather than replacing them,
-              so the swap is an opacity crossfade with nothing to remount. */}
-          <path className="pet-eye-arc pet-eye-arc-l" d="M -22 2 Q -14 -9 -6 2" />
-          <path className="pet-eye-arc pet-eye-arc-r" d="M 6 2 Q 14 -9 22 2" />
-
-          <ellipse className="pet-cheek pet-cheek-l" cx={-27} cy={13} rx={7} ry={5} />
-          <ellipse className="pet-cheek pet-cheek-r" cx={27} cy={13} rx={7} ry={5} />
-
-          {/* --- Mouths -------------------------------------------------------- */}
-          {/* Five variants, all present, one opaque at a time. Cross-fading two paths is
-              reliable everywhere; animating a single path's `d` between different command
-              structures is not. */}
-          <g key={`mouth-${feedTick}`} className={feedTick > 0 ? "pet-mouth quest-pet-chewing" : "pet-mouth"}>
-            <path className="pet-mouth-smile" d="M -11 20 Q 0 28 11 20" />
-            <path className="pet-mouth-grin" d="M -14 18 Q 0 34 14 18 Q 0 26 -14 18 Z" />
-            <path className="pet-mouth-wobble" d="M -13 22 Q -6.5 16 0 22 Q 6.5 28 13 22" />
-            <path className="pet-mouth-flat" d="M -9 22 L 9 22" />
-            <ellipse className="pet-mouth-small" cx={0} cy={22} rx={4.5} ry={5.5} />
-          </g>
-        </g>
-
-        {/* --- Accents ---------------------------------------------------------
-            Outside the breathing group: these are speech, not anatomy, and should not
-            inherit the body's motion. */}
-        <g className="pet-accent pet-accent-sparkle">
-          <path d="M 34 -34 l 3 7 l 7 3 l -7 3 l -3 7 l -3 -7 l -7 -3 l 7 -3 Z" />
-          <path d="M -40 -22 l 2.2 5 l 5 2.2 l -5 2.2 l -2.2 5 l -2.2 -5 l -5 -2.2 l 5 -2.2 Z" />
-          <path d="M 44 4 l 1.8 4 l 4 1.8 l -4 1.8 l -1.8 4 l -1.8 -4 l -4 -1.8 l 4 -1.8 Z" />
-        </g>
-
-        <g className="pet-accent pet-accent-question">
-          <text x={30} y={-30} className="pet-glyph">
-            ?
-          </text>
-        </g>
-
-        <g className="pet-accent pet-accent-zzz">
-          <text x={26} y={-34} className="pet-glyph pet-glyph-z1">
-            z
-          </text>
-          <text x={38} y={-46} className="pet-glyph pet-glyph-z2">
-            z
-          </text>
-        </g>
-
-        {/* Thinking: three dots, no motion of their own -- the mood's own animation
-            carries it. */}
-        <g className="pet-accent pet-accent-think">
-          <circle cx={30} cy={-30} r={3} />
-          <circle cx={40} cy={-36} r={4} />
-          <circle cx={51} cy={-43} r={5} />
-        </g>
-
-        {/* Hungry: the pet visibly wants something, rather than merely looking sad. */}
-        <g className="pet-accent pet-accent-want">
-          <circle className="pet-want-bowl" cx={40} cy={-32} r={11} />
-          <path className="pet-want-mark" d="M 34 -32 h 12 M 40 -38 v 12" />
-        </g>
-
-        {/* Eat animation target. Re-keyed on every feed so the one-shot replays; parked
-            invisible otherwise. */}
-        <g key={feedTick} className={feedTick > 0 ? "pet-treat quest-pet-eat" : "pet-treat"}>
-          <circle cx={0} cy={-46} r={9} />
-          <path className="pet-treat-leaf" d="M 4 -54 q 8 -5 10 2 q -7 4 -10 -2 Z" />
-        </g>
-      </svg>
+        {/* Treat drop target, re-keyed on every feed so the one-shot eat animation
+            replays; parked invisible (index.css) otherwise. */}
+        <div key={feedTick} className={`pet-treat ${feedTick > 0 ? "quest-pet-eat" : ""}`} />
+      </div>
 
       {showName && <div className="mt-1 font-display text-sm font-bold text-quest-ink">{name}</div>}
     </div>
   );
 }
 
-/** Only used for the accessible label -- the visual is entirely CSS. */
+/** Only used for the accessible label -- the visual is entirely CSS/sprite driven. */
 const MOOD_WORD: Record<PetMood, string> = {
   idle: "content",
   curious: "curious",

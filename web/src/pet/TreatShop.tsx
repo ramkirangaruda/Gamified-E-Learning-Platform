@@ -65,7 +65,7 @@ export default function TreatShop({ onClose }: { onClose: () => void }) {
       className="fixed inset-0 z-50 flex items-center justify-center bg-quest-ink/35 p-4"
       role="dialog"
       aria-modal="true"
-      aria-label="Treats for Pip"
+      aria-label="Treats for Tom"
       onClick={onClose}
     >
       <div
@@ -74,7 +74,7 @@ export default function TreatShop({ onClose }: { onClose: () => void }) {
       >
         <div className="mb-5 flex items-center justify-between gap-4">
           <div>
-            <h2 className="font-display text-2xl font-bold text-quest-ink">Treats for Pip</h2>
+            <h2 className="font-display text-2xl font-bold text-quest-ink">Treats for Tom</h2>
             <p className="text-sm font-medium text-quest-ink-soft">
               Points come from every attempt — trying counts, not just getting it right.
             </p>
