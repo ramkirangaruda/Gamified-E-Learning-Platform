@@ -8,32 +8,43 @@ import { HOME, activeSubjectId, type Route } from "./routes";
 // both would be a lie told to a child rather than a crash someone would notice.
 
 describe("the subject registry", () => {
-  it("has Coding and Chemistry available today, and Coding is the default", () => {
-    // Chem Lab (ChemLabPage.tsx) is real, playable content -- but it isn't level-based,
-    // so it deliberately does NOT appear in this list's levelsForSubject expectations
-    // below: available and "has levels" are two different questions now, which is why
-    // HomePage/ProgressPage derive a separate hasLevels flag rather than reusing
-    // `available` for both (see their own comments for the bug that distinction fixed).
+  it("has Coding, Chemistry and Physics available today, and Coding is the default", () => {
+    // Chem Lab (ChemLabPage.tsx) and Physics Quest (PhysicsQuest.tsx) are both real,
+    // playable content -- but neither is level-based, so neither appears in this list's
+    // levelsForSubject expectations below: available and "has levels" are different
+    // questions now, which is why HomePage/ProgressPage derive each subject's own
+    // total/solved instead of reusing `available` for both.
     const available = SUBJECTS.filter((s) => s.available);
-    expect(available.map((s) => s.id).sort()).toEqual(["chem", DEFAULT_SUBJECT_ID].sort());
+    expect(available.map((s) => s.id).sort()).toEqual(["chem", DEFAULT_SUBJECT_ID, "phys"].sort());
+    expect(DEFAULT_SUBJECT_ID).toBe("coding");
   });
 
   it("gives every subject a distinct id and badge letter", () => {
     // ids key React lists and route values; letters are what a child actually tells the
-    // two locked science cards apart by, since neither has any progress to show.
+    // locked science cards apart by, since none of them has any progress to show.
     expect(new Set(SUBJECTS.map((s) => s.id)).size).toBe(SUBJECTS.length);
     expect(new Set(SUBJECTS.map((s) => s.letter)).size).toBe(SUBJECTS.length);
   });
 
-  it("hands levels only to a subject that actually has content", () => {
+  it("never lets a non-default subject silently inherit Coding's levels", () => {
+    // Not a style preference: HomePage/ProgressPage hand `levels` (which is the CODING
+    // level list, the only one levelsForSubject serves) to whichever subject reads it. A
+    // subject flipped to available=true without wiring its own content through -- or,
+    // like Physics, its own dedicated page (PhysicsQuest, via SubjectPage's isPhysics
+    // branch) entirely -- would otherwise silently show Coding's levels under, say,
+    // Chemistry. This holds for every subject but the default, available or not: an
+    // unavailable one gets the empty list that makes its card render "coming soon" rather
+    // than a 0% bar, and Physics gets the empty list because its real content never comes
+    // through this function at all.
     const levels = [{ id: "level-1" }, { id: "level-2" }];
     expect(levelsForSubject(DEFAULT_SUBJECT_ID, levels)).toHaveLength(2);
-    // Every OTHER subject gets none -- including Chemistry, which is available but plays
-    // through ChemLabPage's own /api/chemistry/samples, never through this level list.
+    // Every OTHER subject gets none -- including Chemistry and Physics, both available
+    // but each playing through its own content/progress source, never through this
+    // level list. An empty list is what makes the card render "coming soon" (unavailable)
+    // or a real bar sourced elsewhere (available, not level-tracked) rather than a false
+    // 0% progress bar -- an empty meter reads as "you have done none of this", untrue
+    // either way.
     for (const s of SUBJECTS.filter((s) => s.id !== DEFAULT_SUBJECT_ID)) {
-      // An empty list is what makes the card render "coming soon" (unavailable) or
-      // "ready to play" (available, not level-tracked) rather than a 0% progress bar --
-      // an empty meter reads as "you have done none of this", untrue either way.
       expect(levelsForSubject(s.id, levels), s.id).toEqual([]);
     }
   });

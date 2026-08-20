@@ -1,5 +1,6 @@
 import Icon from "./icons/Icon";
 import { usePet } from "./pet/PetProvider";
+import { loadPhysicsSolved, physicsRoundsSolved, physicsStarsSum, PHYSICS_LEVEL_KEYS, PHYSICS_ROUNDS_PER_LEVEL } from "./physics/progress";
 import { levelsForSubject, SUBJECTS } from "./subjects";
 import { CONCEPT_GROUPS } from "./trail/concepts";
 import { StarRow } from "./ui/Chunky";
@@ -117,7 +118,23 @@ export default function ProgressPage() {
   const starsByLevel = state?.stars_by_level ?? {};
   const totalStars = Object.values(starsByLevel).reduce((a, b) => a + b, 0);
 
+  // Physics keeps its own progress (physics/progress.ts) rather than pet.db's
+  // solved_levels/stars_by_level -- see HomePage's identical special-case for why.
+  const physicsSolved = loadPhysicsSolved();
   const subjectRows: ProgressRow[] = SUBJECTS.map((s) => {
+    // Physics keeps its own progress source entirely (localStorage, not pet.db), so it
+    // short-circuits before the shared levels lookup below -- same reasoning as
+    // HomePage's identical special-case.
+    if (s.id === "phys") {
+      return {
+        key: s.id, title: s.title, blurb: s.desc, tone: s.tone,
+        solved: physicsRoundsSolved(physicsSolved),
+        total: PHYSICS_LEVEL_KEYS.length * PHYSICS_ROUNDS_PER_LEVEL,
+        stars: physicsStarsSum(physicsSolved),
+        available: s.available,
+        hasLevels: true,
+      };
+    }
     const subjectLevels = levelsForSubject(s.id, levels);
     return {
       key: s.id,

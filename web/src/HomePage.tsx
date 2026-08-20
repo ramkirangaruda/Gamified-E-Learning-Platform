@@ -3,6 +3,7 @@ import Icon from "./icons/Icon";
 import Pet from "./pet/Pet";
 import { characterById } from "./pet/characters";
 import { usePet } from "./pet/PetProvider";
+import { loadPhysicsSolved, physicsRoundsSolved, PHYSICS_LEVEL_KEYS, PHYSICS_ROUNDS_PER_LEVEL } from "./physics/progress";
 import { levelsForSubject, SUBJECTS, type Subject } from "./subjects";
 import type { Route } from "./routes";
 import { StarRow } from "./ui/Chunky";
@@ -128,12 +129,24 @@ export default function HomePage({ onNavigate }: HomePageProps) {
   const solvedIds = state?.solved_levels ?? [];
   const solvedCount = solvedIds.length;
 
+  // Physics keeps its own progress (physics/progress.ts -- localStorage, not pet.db), so
+  // it can't be read off `levels`/`solvedIds` the way Coding is. Every other available
+  // subject still uses the shared AST levels array; every unavailable one stays
+  // deliberately empty, which is what makes its card render "coming soon" instead of an
+  // empty meter.
+  const physicsSolved = loadPhysicsSolved();
   const cards: CardData[] = SUBJECTS.map((subject) => {
-    // Only Coding has levels today; every other subject is deliberately empty. Reading
-    // this from levelsForSubject (subject.id === "coding"), not subject.available, is
-    // what keeps an available-but-not-level-tracked subject like Chem Lab from
-    // inheriting Coding's own level list -- that bug is exactly why this file has both
-    // concepts as separate fields on Subject, not one flag standing in for both.
+    // Physics keeps its own progress source entirely (localStorage, not pet.db), so it
+    // short-circuits before the shared levels lookup below.
+    if (subject.id === "phys") {
+      return { subject, total: PHYSICS_LEVEL_KEYS.length * PHYSICS_ROUNDS_PER_LEVEL, solved: physicsRoundsSolved(physicsSolved) };
+    }
+    // Only Coding has levels in the shared array today; every other subject (including
+    // Chemistry, which has its own /api/chemistry/samples source) is deliberately empty.
+    // Reading this from levelsForSubject (subject.id === "coding"), not subject.available,
+    // is what keeps an available-but-not-level-tracked subject from inheriting Coding's
+    // own level list -- that bug is exactly why this file has both concepts as separate
+    // fields on Subject, not one flag standing in for both.
     const subjectLevels = levelsForSubject(subject.id, levels);
     return {
       subject,

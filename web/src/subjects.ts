@@ -4,28 +4,29 @@ import type { ChunkyTone } from "./ui/Chunky";
 // the one place the set of subjects lives. The nav tabs, the home cards, and the progress
 // table all read this list, so none of them can disagree about what exists.
 //
-// WHY MOST OF THESE ARE `available: false`
+// WHY MATH AND BIOLOGY ARE STILL `available: false`
 //
 // Tessera Quest started as a coding platform (README): 25 levels, one executor, one AST.
 // The four science subjects below were originally sketched as real product intent, not
-// decoration, but with no content built for any of them yet -- so they rendered (and
-// still render, for physics/math/biology) as honest "coming soon" cards with no progress
-// bar, no stars and no fake counts. Nothing on screen claims progress a child has not
-// made, which is the same rule §10 applies to levels.
+// decoration, but with no content built for any of them yet -- so they all rendered as
+// honest "coming soon" cards with no progress bar, no stars and no fake counts. Nothing
+// on screen claims progress a child has not made, which is the same rule §10 applies to
+// levels. Math and Biology still render that way, for the same reason.
 //
-// Chemistry (Chem Lab, ChemLabPage.tsx) is the first of the four to actually ship: a
-// mystery-sample deduction game, not a level trail, built against a design the user
-// supplied. `available: true` here does NOT mean "has levels" -- it never did for
-// Coding-shaped content, but it's worth saying explicitly now that a second subject uses
-// it: `levelsForSubject` still returns [] for "chem", and HomePage/ProgressPage derive
-// their own `hasLevels` (available && has a level list) rather than reusing `available`
-// for both questions, specifically so a subject that's real but not level-based doesn't
-// inherit Coding's level count or render a false "0 of 0" bar.
+// Chemistry (Chem Lab, ChemLabPage.tsx) and Physics (PhysicsQuest.tsx) are the first two
+// to actually ship, and neither is a level trail -- Chemistry is a mystery-sample
+// deduction game, Physics a five-round canvas simulation, and each keeps progress its own
+// way (Chemistry: session-only React state, no persistence; Physics: localStorage, not
+// pet.db). `available: true` here does NOT mean "has levels" -- it never did for
+// Coding-shaped content, but it's worth saying explicitly now that three subjects use it
+// three different ways: `levelsForSubject` returns [] for both "chem" and "phys", and
+// HomePage/ProgressPage derive their own per-subject total/solved (reading each subject's
+// own progress source) rather than assuming everything available shares Coding's model.
 //
-// Turning phys/math/bio on later is the same one-line change here, but each will need
-// its OWN case in whatever it plays through -- there is no longer a single `levelsFor`
-// case that covers "every available subject", because Chemistry already proved that
-// assumption wrong.
+// Turning math/bio on later is the same one-line change here, but each will need its OWN
+// case in whatever it plays through and its own progress source -- there is no single
+// case that covers "every available subject" anymore, because Chemistry and Physics
+// already proved that assumption wrong in two different directions.
 
 export interface Subject {
   id: string;
@@ -44,7 +45,11 @@ export interface Subject {
 export const SUBJECTS: Subject[] = [
   { id: "coding", letter: "Cd", title: "Coding", desc: "Programs & logic", tone: "move", available: true },
   { id: "chem", letter: "Ch", title: "Chemistry", desc: "Atoms to reactions", tone: "while", available: true },
-  { id: "phys", letter: "Ph", title: "Physics", desc: "Forces & energy", tone: "repeat", available: false },
+  // Physics doesn't run on the AST/executor the way Coding does -- it's a self-contained
+  // canvas mini-game (PhysicsQuest.tsx) with its own five levels and its own progress
+  // storage (localStorage, not pet.db). SubjectPage special-cases subjectId === "phys" to
+  // render it instead of the Trail/LevelGrid pair every other available subject gets.
+  { id: "phys", letter: "Ph", title: "Physics", desc: "Forces & energy", tone: "repeat", available: true },
   { id: "math", letter: "Mt", title: "Math", desc: "Numbers & patterns", tone: "coral", available: false },
   { id: "bio", letter: "Bi", title: "Biology", desc: "Life & living systems", tone: "cond", available: false },
 ];
@@ -57,9 +62,10 @@ export function subjectById(id: string | null | undefined): Subject {
 }
 
 /** Which levels belong to a subject. Only `coding` has any today -- every other subject
- *  returns [], including Chemistry, which is available but plays through its own
- *  /api/chemistry/samples content, not this level list. HomePage/ProgressPage read this
- *  (not `available`) to decide whether to show a real progress bar. */
+ *  returns [], including Chemistry and Physics, both available but each playing through
+ *  its own content/progress source instead of this level list. HomePage/ProgressPage read
+ *  each subject's own progress (not `available`, and not this alone) to decide what to
+ *  show. */
 export function levelsForSubject<T>(subjectId: string, codingLevels: T[]): T[] {
   return subjectId === DEFAULT_SUBJECT_ID ? codingLevels : [];
 }
