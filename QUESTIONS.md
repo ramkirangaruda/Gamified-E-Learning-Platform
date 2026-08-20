@@ -122,6 +122,21 @@ Everything below this line is the original log, oldest first.
   the hard-level bonus (+15) and under-par bonus (+5) do stack on top of whichever tier
   applies. Flag either if it doesn't match what you had in mind.
 
+## M3 (Tessera engine + tutor) — in progress
+
+- **Couldn't literally disable the network adapter for the offline acceptance test** —
+  no admin rights in this sandbox (a Windows Firewall rule attempt failed with Access
+  Denied), and disabling the adapter directly felt too risky to gamble on blind, since I
+  don't know what channel this session's own connectivity depends on. Substituted a
+  more targeted verification instead: captured live network connections for both
+  processes *during* an actual in-flight hint request, confirmed the only established
+  connection was loopback (`127.0.0.1` on both ends) — direct evidence of zero external
+  calls, not a weaker stand-in (loopback traffic never reaches a physical adapter
+  regardless of its state, so this is airtight for the property that actually matters).
+  Full reasoning in `DECISIONS.md`. If you have hardware access and want the literal
+  adapter-off test done too, say so and I'll do it the first chance I'm on real
+  hardware rather than this sandboxed environment.
+
 ## Item 6 (integration tests)
 
 - **Added `vitest` as a TS dev dependency** — item 6 explicitly asked for tests on the

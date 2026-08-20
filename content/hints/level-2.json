@@ -1,0 +1,8 @@
+{
+  "empty_program": "Your workspace is empty! Try dragging a few 'move forward' cards - or a repeat block - onto the canvas.",
+  "unbalanced_block": "It looks like you opened a repeat block but forgot the 'end repeat' card that closes it. Every repeat needs its own end repeat right after the cards you want repeated.",
+  "infinite_loop": "Your program is looping and never stops! Double-check any while blocks - the loop needs a way to eventually finish.",
+  "hardcoded_no_loop": "This road is long! Instead of placing lots of 'move forward' cards one by one, try using a 'repeat' block to move several times at once - it's faster to build and easier to fix.",
+  "off_by_one_repeat": "So close! Add up how many steps your repeat blocks make in total - you're just one step short (or one too many). Try changing a repeat 3 to a repeat 4, or the other way around.",
+  "overshot_goal": "You've got more repeat blocks than you need! Add up how many total moves they make - it's more than the road is long. Try removing one of the repeat blocks."
+}

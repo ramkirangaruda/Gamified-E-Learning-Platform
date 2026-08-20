@@ -1,0 +1,23 @@
+{
+  "tiers": {
+    "low": {
+      "trigger": { "max_ram_mb": 4096 },
+      "model": "models/qwen3-0.6b-q4_k_m.gguf",
+      "ctx": 2048,
+      "threads": 4,
+      "tensor_overrides": {}
+    },
+    "high": {
+      "trigger": { "min_ram_mb": 6144 },
+      "model": "models/qwen3-1.7b-q5_k_m.gguf",
+      "ctx": 4096,
+      "threads": 8,
+      "tensor_overrides": {}
+    }
+  },
+  "tasks": {
+    "hint": { "tier_pref": "low", "max_tokens": 60 },
+    "diagnose": { "tier_pref": "high", "max_tokens": 40 },
+    "narrate": { "tier_pref": "low", "max_tokens": 80 }
+  }
+}
