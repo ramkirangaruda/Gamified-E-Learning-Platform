@@ -183,7 +183,10 @@ export default function PlayPage({ initialLevelId, onBackToDashboard }: PlayPage
         </div>
       </div>
 
-      <div className="flex w-[440px] flex-col gap-5 overflow-y-auto p-5">
+      {/* overscroll-contain: once this panel hits its end, the wheel stops there instead
+          of handing the scroll on to the page behind it. Without it, scrolling past the
+          bottom of the level list quietly drags the whole play screen. */}
+      <div className="flex w-[440px] flex-col gap-5 overflow-y-auto overscroll-contain p-5">
         <div className="flex items-center justify-between">
           <button
             type="button"

@@ -73,7 +73,7 @@ export default function LevelGrid({ levels, solvedIds, starsByLevel, onSelectLev
                 levelSelected(level);
                 onSelectLevel(level.id);
               }}
-              className={`flex min-h-tap-lg flex-col gap-1 rounded-chunk-lg border-[var(--outline-chunk)] p-4 text-left shadow-chunk transition-transform
+              className={`flex min-h-tap-lg flex-col gap-1 rounded-chunk-lg border-(length:--outline-chunk) p-4 text-left shadow-chunk transition-transform
                 ${
                   locked
                     ? "cursor-not-allowed border-quest-locked-deep bg-quest-locked/40"

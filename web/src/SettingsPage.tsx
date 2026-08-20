@@ -71,7 +71,7 @@ export default function SettingsPage({ onBack }: SettingsPageProps) {
               onClick={() => setPreviewId(c.id)}
               aria-pressed={isPreviewed}
               aria-label={`Preview ${c.displayName}${isCurrent ? ", your current pet" : ""}`}
-              className={`flex flex-col items-center gap-2 rounded-chunk-lg border-[var(--outline-chunk)] p-4 text-center shadow-chunk transition-transform hover:-translate-y-0.5
+              className={`flex flex-col items-center gap-2 rounded-chunk-lg border-(length:--outline-chunk) p-4 text-center shadow-chunk transition-transform hover:-translate-y-0.5
                 ${isPreviewed ? "border-quest-gold-dark bg-quest-gold/20 ring-4 ring-quest-gold/40" : "border-quest-locked bg-white/80"}`}
             >
               <Pet mood="idle" species={c.id} size={72} />

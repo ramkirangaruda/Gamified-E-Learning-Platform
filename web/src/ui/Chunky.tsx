@@ -31,7 +31,7 @@ export function ChunkyButton({ tone = "move", size = "md", className = "", child
   return (
     <button
       {...rest}
-      className={`inline-flex items-center justify-center gap-2 rounded-chunk border-b-[var(--outline-chunk-thick)] font-display font-bold
+      className={`inline-flex items-center justify-center gap-2 rounded-chunk border-b-(length:--outline-chunk-thick) font-display font-bold
         ${t.bg} ${t.border} ${t.text} ${sizing}
         shadow-chunk transition-transform duration-100
         hover:-translate-y-0.5 active:translate-y-[3px] active:shadow-chunk-sm
@@ -51,7 +51,7 @@ interface ChunkyCardProps {
 export function ChunkyCard({ tone = "neutral", className = "", children }: ChunkyCardProps) {
   const t = TONE[tone];
   return (
-    <div className={`rounded-chunk-lg border-[var(--outline-chunk)] ${t.bg} ${t.border} ${t.text} shadow-chunk ${className}`}>
+    <div className={`rounded-chunk-lg border-(length:--outline-chunk) ${t.bg} ${t.border} ${t.text} shadow-chunk ${className}`}>
       {children}
     </div>
   );
