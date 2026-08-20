@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import type * as Blockly from "blockly/core";
 import Editor from "./Editor";
 import GridRenderer from "./GridRenderer";
+import Icon from "./icons/Icon";
 import Pet from "./pet/Pet";
 import SpeechBubble from "./pet/SpeechBubble";
 import TierHUD from "./TierHUD";
@@ -216,9 +217,16 @@ export default function PlayPage({ initialLevelId, onBackToDashboard }: PlayPage
           type="button"
           onClick={handleRun}
           disabled={!workspace || !level || running}
-          className="rounded-2xl border-b-4 border-quest-grass-dark bg-quest-grass px-5 py-3 font-display text-lg font-bold text-white shadow-md transition-transform hover:-translate-y-0.5 hover:brightness-105 active:translate-y-0 active:border-b-2 disabled:translate-y-0 disabled:opacity-40"
+          className="flex items-center justify-center gap-2 rounded-2xl border-b-4 border-quest-grass-dark bg-quest-grass px-5 py-3 font-display text-lg font-bold text-white shadow-md transition-transform hover:-translate-y-0.5 hover:brightness-105 active:translate-y-0 active:border-b-2 disabled:translate-y-0 disabled:opacity-40"
         >
-          {running ? "Running…" : "▶ Run program"}
+          {running ? (
+            "Running…"
+          ) : (
+            <>
+              <Icon name="play" size={22} />
+              Run program
+            </>
+          )}
         </button>
         {runError && <p className="text-sm font-medium text-quest-coral-dark">{runError}</p>}
 
@@ -239,9 +247,18 @@ export default function PlayPage({ initialLevelId, onBackToDashboard }: PlayPage
 
         {state && (
           <div className="flex justify-between rounded-2xl bg-white/70 px-4 py-2 font-display text-sm font-bold text-quest-ink shadow-sm">
-            <span>⭐ {state.learner.points} pts</span>
-            <span>🍎 {state.pet.hunger}</span>
-            <span>🏆 {state.solved_levels.length} solved</span>
+            <span className="flex items-center gap-1.5">
+              <Icon name="star" size={16} />
+              {state.learner.points}
+            </span>
+            <span className="flex items-center gap-1.5">
+              <Icon name="apple" size={16} />
+              {state.pet.hunger}
+            </span>
+            <span className="flex items-center gap-1.5">
+              <Icon name="trophy" size={16} />
+              {state.solved_levels.length} solved
+            </span>
           </div>
         )}
       </div>
