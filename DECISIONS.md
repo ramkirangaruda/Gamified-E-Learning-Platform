@@ -271,3 +271,35 @@ One line per non-obvious choice, and why. Newest at the bottom.
   - **Accessible names, not an afterthought**: the character cards initially rendered with no distinguishing accessible name at all (just "button", no text/aria-label) since their content is an image plus styled text a screen reader doesn't reliably compose into a name -- caught during live verification (browser automation couldn't distinguish cards by anything but source order either, the same problem a screen reader user would hit), fixed with an explicit `aria-label` per card before shipping, not left as a known gap.
   - Verified: `go build/vet/test` clean, `tsc --noEmit` clean, `vitest` 133/133 (added `characters.test.ts`: unique ids, Tom present, `xiaoxin-static` absent, `characterById` fallback, `spriteUrlFor` shape), plus a full live run against a real server -- all 7 sprites confirmed loading (200 OK each), preview-vs-save behavior confirmed via direct `GET /api/state` checks between clicks, the pet bar and trail correctly picked up the new species and name immediately after saving with no reload needed.
 - **2026-08-20 — `tsc --noEmit` alone has been checking nothing this whole session; the root tsconfig is reference-only (`"files": []`).** Discovered while rebuilding the frontend to actually check the settings screen worked (`npm run build`, i.e. `tsc -b && vite build`): it failed where every prior `npx tsc --noEmit` this session had reported clean, because `tsconfig.json` at the web root has an empty `files` array and only `references` to `tsconfig.app.json`/`tsconfig.node.json` -- bare `tsc --noEmit` against that config type-checks zero files and exits 0 no matter what's broken. `tsc -b` (or `tsc -p tsconfig.app.json --noEmit`) actually walks the references. The real bug it caught: `SandboxPage.tsx` still called `react("curious")` and `react(... ? "happy" : "curious")`, left over from `hub-mode-frontend`'s merge -- that branch predated Sandbox mode entirely, so its rewrite of `react()`'s signature from the old 8-mood `PetMood` to the new 14-state `MascotState` (which folds `curious` into `playful`) never touched this file, and Sandbox wasn't part of that merge's own conflict set to catch it by hand either. Fixed both call sites to `"playful"`, matching how the branch's own `PlayPage.tsx` diff had already updated the equivalent call. Every earlier "`tsc --noEmit` clean" claim logged in this file today was accurate about what it actually ran, just running the wrong command -- worth remembering for whoever reviews this file later, not silently corrected in place (this file is append-only). `npm run build` now succeeds; `go build/vet/test` and `vitest` (133/133) still clean.
+
+
+## DEMO.md corrected: two beats re-graded from "cut" to built (2026-08-20)
+
+- **The demo script was stale and *under-reporting* the build.** `DEMO.md` is dated
+  2026-08-18 and was written before `handoff/02-key-hot-swap.md` and
+  `handoff/05-pet-evolution-art.md` merged on 2026-08-19. Confirmed mechanically rather
+  than by reading the prose and trusting it: `git merge-base --is-ancestor 13e8f0e
+  80f426a` returns false, so the evolution-art commit is not an ancestor of this file's
+  last edit. The risk here is asymmetric and worth naming -- a script that *over*-claims
+  gets caught in rehearsal, but a script that *under*-claims makes a presenter cut a
+  feature that actually works, and no amount of rehearsal recovers that.
+- **Step 2 (pet evolution art): "cut" -> real.** It was graded "never built" while the art
+  had in fact shipped (`13e8f0e`) and been verified live in a browser. The step's original
+  wording was also rewritten: it named "Pip", who no longer exists, and promised a
+  specific colour, which is meaningless now that the roster is seven selectable
+  characters. It now tells the presenter to name whichever character is actually on
+  screen.
+- **Step 6 (key hot-swap): "cut" -> half.** `backup.db` re-snapshots after every
+  progress-bearing write (`30a95f0`), so the mechanism is real and pinned by a test that
+  was confirmed to fail on the pre-fix code. But nobody has physically pulled a drive
+  mid-session. "Don't pull the drive on stage" therefore still stands -- for a different
+  reason than before, and the file now says which reason, because "not built" and "built,
+  untested on hardware" are very different distances to close.
+- **Step 5 re-checked, original grade holds.** `internal/api/api.go` still drives
+  evolution solely off `AdvanceEvolutionStage(evolutionStageFor(len(solvedIDs)))`, so
+  feeding the pet genuinely does not evolve it. Re-verified against the code rather than
+  assumed to have changed alongside step 2.
+- **Step 3 annotated with a hardware fact, not a code one.** There is no camera on hand as
+  of 2026-08-20, so the open "nobody has pointed a real webcam at the real printed cards"
+  gap cannot be closed by rehearsal. Recorded in the file so the documented fallback gets
+  budgeted for rather than discovered on the day.
