@@ -1,5 +1,6 @@
 {
   "empty_program": "Nothing here yet! This road goes straight and then bends. Start with the straight part -- add 'move forward' cards first.",
   "unbalanced_block": "Every block card you open needs its matching end card underneath it. Look down your stack for one that never got closed.",
-  "infinite_loop": "Your program went round and round and never stopped. A 'while not at goal' only ends when you actually reach the goal -- check yours can get there."
+  "infinite_loop": "Your program went round and round and never stopped. A 'while not at goal' only ends when you actually reach the goal -- check yours can get there.",
+  "wrong_order": "All the right cards, just not quite in order! Walk the road in your head, step by step -- when exactly does it bend?"
 }

@@ -28,7 +28,7 @@ OUT = os.path.join(REPO, "content", "hints")
 # Which signatures internal/hints.Classify can actually produce per concept group.
 # Anything not listed here falls back to GenericFallback, per §11's absolute rule.
 GROUP_SIGNATURES = {
-    "move": ["empty_program", "unbalanced_block", "infinite_loop"],
+    "move": ["empty_program", "unbalanced_block", "infinite_loop", "wrong_order"],
     "repeat": ["empty_program", "unbalanced_block", "infinite_loop",
                "hardcoded_no_loop", "off_by_one_repeat", "overshot_goal"],
     "nested_repeat": ["empty_program", "unbalanced_block", "infinite_loop",
@@ -78,13 +78,17 @@ INFINITE = {
 LEVELS = {
     # ---- 1-4 sequences ----
     "level-1": {"group": "move", "unbalanced": "none",
-        "empty_program": "Your workspace is empty! Drag a 'move forward' card in to take your first step, then add more until you reach the flag."},
+        "empty_program": "Your workspace is empty! Drag a 'move forward' card in to take your first step, then add more until you reach the flag.",
+        "wrong_order": "You've got the right cards! Try reading your stack from the top -- does each card happen in the same order you'd actually walk it?"},
     "level-2": {"group": "move", "unbalanced": "none",
-        "empty_program": "Nothing here yet! This road goes straight and then bends. Start with the straight part -- add 'move forward' cards first."},
+        "empty_program": "Nothing here yet! This road goes straight and then bends. Start with the straight part -- add 'move forward' cards first.",
+        "wrong_order": "All the right cards, just not quite in order! Walk the road in your head, step by step -- when exactly does it bend?"},
     "level-3": {"group": "move", "unbalanced": "none",
-        "empty_program": "Empty workspace! This path zigzags, so you'll need to swap between moving and turning. Start with one 'move forward'."},
+        "empty_program": "Empty workspace! This path zigzags, so you'll need to swap between moving and turning. Start with one 'move forward'.",
+        "wrong_order": "You've got every card this path needs! Check where each turn happens -- a zigzag changes direction at a very specific spot each time."},
     "level-4": {"group": "move", "unbalanced": "none",
-        "empty_program": "Nothing to run yet! This is a long winding path -- take it one corner at a time. Add the steps for the first straight bit."},
+        "empty_program": "Nothing to run yet! This is a long winding path -- take it one corner at a time. Add the steps for the first straight bit.",
+        "wrong_order": "Right cards, wrong order! This path has several corners -- try tracing it one straight bit and one turn at a time, in the order you'd actually walk it."},
 
     # ---- 5-9 single repeat ----
     "level-5": {"group": "repeat", "unbalanced": "repeat",

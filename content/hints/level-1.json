@@ -1,5 +1,6 @@
 {
   "empty_program": "Your workspace is empty! Drag a 'move forward' card in to take your first step, then add more until you reach the flag.",
   "unbalanced_block": "Every block card you open needs its matching end card underneath it. Look down your stack for one that never got closed.",
-  "infinite_loop": "Your program went round and round and never stopped. A 'while not at goal' only ends when you actually reach the goal -- check yours can get there."
+  "infinite_loop": "Your program went round and round and never stopped. A 'while not at goal' only ends when you actually reach the goal -- check yours can get there.",
+  "wrong_order": "You've got the right cards! Try reading your stack from the top -- does each card happen in the same order you'd actually walk it?"
 }

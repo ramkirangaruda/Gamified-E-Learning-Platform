@@ -23,10 +23,16 @@ const (
 	SigOffByOneRepeat  = "off_by_one_repeat"
 	SigOvershotGoal    = "overshot_goal"
 	SigNeverPickedUp   = "never_picked_up"
-	// SigWrongOrder is the one signature from brief §11 still without a detector: it
-	// would need diffing a child's program against a canonical per-level solution, and
-	// nothing in this system tracks one. A real gap, not an oversight; logged in
-	// DECISIONS.md and in content/hints/README.md's coverage table.
+	// SigWrongOrder (handoff item, closed 2026-08-19): the child used the right cards --
+	// the same total move-steps and the same number of each turn direction as the
+	// level's canonical solution (levels.Solutions) -- but still didn't reach the goal.
+	// Scoped to the "move" concept group only: that's the one group with zero
+	// non-universal detectors, and it's the only place "the right pieces in the wrong
+	// order" is unambiguous -- move levels have no branching, so a same-multiset
+	// mismatch can only mean the sequence itself is wrong, not a different valid path.
+	// See DECISIONS.md for the full reasoning and why this wasn't extended to any other
+	// group.
+	SigWrongOrder = "wrong_order"
 )
 
 // clientProblemCode mirrors web/src/blocks/compileAst.ts's ProblemCode -- a closed set,
@@ -76,15 +82,42 @@ type level struct {
 	// HasItems drives the never_picked_up check. Only whether the level has any
 	// collectibles matters here, not where they are.
 	HasItems bool
+	// WrongOrder is the canonical solution's move-step/turn tally, precomputed once by
+	// LevelFor from levels.Solutions rather than looked up by Classify at runtime -- this
+	// keeps Classify pure and testable without a hidden dependency on package-global
+	// solution data, the same reason HasItems is precomputed here rather than re-derived
+	// from a raw Grid inside Classify. Nil means "don't run the wrong_order check": not a
+	// move-teaching level, or (defensively) a level id with no Solutions entry.
+	WrongOrder *solutionOpCounts
+}
+
+// solutionOpCounts is SigWrongOrder's comparison target: a program with this exact
+// move-step total and this exact number of each turn direction, that still failed, used
+// the right cards in the wrong order.
+type solutionOpCounts struct {
+	moveSteps, turnLeft, turnRight int
 }
 
 func LevelFor(l levels.Level) level {
-	return level{
+	lv := level{
 		Teaches:  l.Teaches,
 		StartPos: l.StartExecPos(),
 		Goal:     l.Grid.Goal,
 		HasItems: len(l.Grid.Items) > 0,
 	}
+	// Scoped to "move": the one concept group with zero non-universal detectors, and the
+	// only group where a same-op-multiset mismatch unambiguously means "wrong sequence"
+	// rather than "a different valid path" -- move levels' canonical solutions have no
+	// branching (see levels.Solutions), so there's exactly one intended sequence.
+	if l.Teaches == "move" {
+		if solutionJSON, ok := levels.Solutions[l.ID]; ok {
+			if program, err := ast.Validate([]byte(solutionJSON)); err == nil {
+				moveSteps, turnLeft, turnRight := tallyMoveAndTurns(program.Program)
+				lv.WrongOrder = &solutionOpCounts{moveSteps: moveSteps, turnLeft: turnLeft, turnRight: turnRight}
+			}
+		}
+	}
+	return lv
 }
 
 // Classify returns one of the Sig* constants, or "" if nothing here recognizes the
@@ -121,6 +154,21 @@ func Classify(in ClassifyInput) string {
 	}
 
 	switch in.Level.Teaches {
+	case "move":
+		// The flat, non-recursive tally below only counts top-level move/turn nodes --
+		// deliberately. A move level's canonical solution never contains a repeat/if/
+		// while (levels.Solutions), so any program that wraps its moves/turns in one
+		// will under-count against the flat tally and simply fail to match, falling
+		// through to "" rather than risk a wrong wrong_order claim on a program this
+		// check was never designed to reason about.
+		if in.Level.WrongOrder != nil {
+			moveSteps, turnLeft, turnRight := tallyMoveAndTurns(in.Program)
+			w := in.Level.WrongOrder
+			if moveSteps == w.moveSteps && turnLeft == w.turnLeft && turnRight == w.turnRight {
+				return SigWrongOrder
+			}
+		}
+
 	case "repeat", "nested_repeat":
 		if !usesOp(in.Program, "repeat") && !usesOp(in.Program, "while") {
 			return SigHardcodedNoLoop
@@ -185,6 +233,25 @@ func usesOp(nodes []ast.Node, op string) bool {
 		}
 	}
 	return false
+}
+
+// tallyMoveAndTurns counts top-level move-steps and turns by direction. Deliberately
+// flat, not recursive into repeat/if/while bodies -- see its call site in Classify for
+// why that's the safe direction to be wrong in for SigWrongOrder specifically.
+func tallyMoveAndTurns(nodes []ast.Node) (moveSteps, turnLeft, turnRight int) {
+	for _, n := range nodes {
+		switch v := n.(type) {
+		case ast.MoveNode:
+			moveSteps += v.Steps
+		case ast.TurnNode:
+			if v.Dir == "left" {
+				turnLeft++
+			} else {
+				turnRight++
+			}
+		}
+	}
+	return
 }
 
 // staticMoveSteps counts move steps as written, unrolling repeat by its times but not

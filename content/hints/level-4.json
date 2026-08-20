@@ -1,5 +1,6 @@
 {
   "empty_program": "Nothing to run yet! This is a long winding path -- take it one corner at a time. Add the steps for the first straight bit.",
   "unbalanced_block": "Every block card you open needs its matching end card underneath it. Look down your stack for one that never got closed.",
-  "infinite_loop": "Your program went round and round and never stopped. A 'while not at goal' only ends when you actually reach the goal -- check yours can get there."
+  "infinite_loop": "Your program went round and round and never stopped. A 'while not at goal' only ends when you actually reach the goal -- check yours can get there.",
+  "wrong_order": "Right cards, wrong order! This path has several corners -- try tracing it one straight bit and one turn at a time, in the order you'd actually walk it."
 }

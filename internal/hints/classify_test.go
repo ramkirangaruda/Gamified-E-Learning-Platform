@@ -4,11 +4,13 @@ import (
 	"testing"
 
 	"github.com/ramkirangaruda/Gamified-E-Learning-Platform/internal/executor"
+	"github.com/ramkirangaruda/Gamified-E-Learning-Platform/internal/levels"
 	"github.com/ramkirangaruda/Gamified-E-Learning-Platform/packages/ast"
 )
 
 func move(steps int) ast.Node { return ast.MoveNode{OpField: "move", Steps: steps} }
 func turnR() ast.Node         { return ast.TurnNode{OpField: "turn", Dir: "right"} }
+func turnL() ast.Node         { return ast.TurnNode{OpField: "turn", Dir: "left"} }
 func repeatN(n int, body ...ast.Node) ast.Node {
 	return ast.RepeatNode{OpField: "repeat", Times: n, Body: body}
 }
@@ -163,5 +165,84 @@ func TestClassify_UnrecognizedFailureFallsBackToEmpty(t *testing.T) {
 	got := Classify(ClassifyInput{Level: moveLevel, Program: []ast.Node{move(1)}, Result: executor.Result{Outcome: "failed"}})
 	if got != "" {
 		t.Fatalf("got %q, want empty (must fall back to generic line)", got)
+	}
+}
+
+// wrongOrderLevel mirrors real level-2's canonical solution (2 moves, turn right, 3
+// moves -- see levels.Solutions["level-2"]): 5 move-steps total, 0 left turns, 1 right
+// turn. A move level with no branching has exactly one intended sequence, so a program
+// with the identical multiset of cards that still fails can only have them in the wrong
+// order.
+var wrongOrderLevel = level{
+	Teaches: "move", StartPos: executor.Pos{X: 0, Y: 0}, Goal: executor.Pos{X: 2, Y: 3},
+	WrongOrder: &solutionOpCounts{moveSteps: 5, turnLeft: 0, turnRight: 1},
+}
+
+func TestClassify_WrongOrder_SameCardsWrongSequence(t *testing.T) {
+	// The right cards -- 5 moves, 1 right turn -- but the turn is first instead of after
+	// the first 2 moves, so it walks a different (and here, failing) path.
+	program := []ast.Node{turnR(), move(1), move(1), move(1), move(1), move(1)}
+	got := Classify(ClassifyInput{Level: wrongOrderLevel, Program: program, Result: executor.Result{Outcome: "failed"}})
+	if got != SigWrongOrder {
+		t.Fatalf("got %q, want %q", got, SigWrongOrder)
+	}
+}
+
+func TestClassify_WrongOrder_DoesNotFireOnADifferentCardSet(t *testing.T) {
+	// Missing the turn entirely -- this is a different mistake (not enough cards, or the
+	// wrong cards), not "right cards, wrong order". Must fall through to the generic
+	// fallback rather than claim wrong_order.
+	program := []ast.Node{move(1), move(1), move(1), move(1), move(1)}
+	got := Classify(ClassifyInput{Level: wrongOrderLevel, Program: program, Result: executor.Result{Outcome: "failed"}})
+	if got == SigWrongOrder {
+		t.Fatal("wrong_order fired on a program missing the required turn -- that's a different card set, not a reorder")
+	}
+}
+
+func TestClassify_WrongOrder_DoesNotFireOnASolve(t *testing.T) {
+	program := []ast.Node{move(1), move(1), turnR(), move(1), move(1), move(1)}
+	got := Classify(ClassifyInput{Level: wrongOrderLevel, Program: program, Result: executor.Result{Outcome: "solved"}})
+	if got != "" {
+		t.Fatalf("got %q, want empty (a solve has nothing to diagnose)", got)
+	}
+}
+
+func TestClassify_WrongOrder_NotCheckedOutsideMoveLevels(t *testing.T) {
+	// Even if some other level's fixture had a WrongOrder set (it never does in
+	// practice -- LevelFor only populates it for Teaches=="move"), the switch only
+	// checks it in the "move" case.
+	rl := repeatLevel
+	rl.WrongOrder = &solutionOpCounts{moveSteps: 0, turnLeft: 0, turnRight: 0}
+	program := []ast.Node{}
+	got := Classify(ClassifyInput{Level: rl, Program: program, Result: executor.Result{Outcome: "failed"}})
+	if got == SigWrongOrder {
+		t.Fatal("wrong_order fired on a non-move-teaching level")
+	}
+}
+
+// LevelFor is the real wiring: proves a genuine level's actual Solutions entry produces
+// the counts by-hand math above expects, not just that the comparison logic in isolation
+// works against a hand-built fixture.
+func TestLevelFor_ComputesWrongOrderCountsFromRealSolution(t *testing.T) {
+	lvls, err := levels.LoadAll("../../content/levels")
+	if err != nil {
+		t.Fatalf("LoadAll: %v", err)
+	}
+	var level2 *levels.Level
+	for i := range lvls {
+		if lvls[i].ID == "level-2" {
+			level2 = &lvls[i]
+		}
+	}
+	if level2 == nil {
+		t.Fatal("level-2 not found")
+	}
+
+	lv := LevelFor(*level2)
+	if lv.WrongOrder == nil {
+		t.Fatal("WrongOrder was not populated for a move-teaching level with a real Solutions entry")
+	}
+	if lv.WrongOrder.moveSteps != 5 || lv.WrongOrder.turnLeft != 0 || lv.WrongOrder.turnRight != 1 {
+		t.Fatalf("WrongOrder counts = %+v, want {moveSteps:5 turnLeft:0 turnRight:1} (level-2's real solution: 2 moves, turn right, 3 moves)", *lv.WrongOrder)
 	}
 }

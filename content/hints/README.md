@@ -7,7 +7,7 @@ stays consistent and the per-level differences are visible side by side. Edit th
 generator, re-run it, then let `internal/hints`' `bank_test.go` prove the banks still
 match the table below.
 
-**122 hints across 25 levels**, grouped by the six concept groups (see
+**126 hints across 25 levels**, grouped by the six concept groups (see
 `scripts/gen-levels.py` for the curriculum itself).
 
 ## Which signatures each concept group can produce
@@ -23,8 +23,8 @@ match the table below.
 | `no_condition_used` | — | — | — | ✓ | — | — |
 | `missing_turn` | — | — | — | ✓ | — | — |
 | `never_picked_up` | — | — | — | — | — | ✓ |
-| `wrong_order` | — | — | — | — | — | — |
-| **per level** | **3** | **6** | **6** | **5** | **4** | **5** |
+| `wrong_order` | ✓ | — | — | — | — | — |
+| **per level** | **4** | **6** | **6** | **5** | **4** | **5** |
 
 Notes on the shape of that table:
 
@@ -51,9 +51,13 @@ Notes on the shape of that table:
 - **`never_picked_up` now has a detector.** `internal/executor` only opens the goal once
   every collectible is gathered, so on levels 23–25 walking past the items is a real,
   detectable failure rather than a silent non-event.
-- **`wrong_order` is the one remaining §11 gap.** It would need diffing a child's program
-  against a canonical per-level solution, and nothing in this system tracks one. A real
-  gap, not an oversight — logged in `DECISIONS.md`.
+- **`wrong_order` now has a detector, scoped to `move`.** `move` levels have no
+  branching, so `levels.Solutions` gives exactly one intended sequence per level; a
+  program with the identical move-step/turn-direction multiset as that solution, which
+  still fails, can only have the cards in the wrong order. Not extended to any other
+  group: every other group either already has richer detectors, or (like `repeat`'s
+  `off_by_one_repeat`) a comparable "close but reordered" case doesn't really apply once
+  loops are involved. Full reasoning in `DECISIONS.md`.
 
 `internal/hints.Classify` only ever returns a signature a level can actually produce (the
 table above is what it implements, not a promise about signatures it doesn't try to
