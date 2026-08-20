@@ -66,12 +66,10 @@ describe("pet evolution stage art", () => {
     expect(stageShows(all, 3, ".pet-stage-aura")).toBe(true);
   });
 
-  it("recolors the body starting at stage 1, so the very first evolution is visible even without close inspection of accessories", () => {
-    const stage1Body = all.some(
-      (r) =>
-        r.selector.split(",").some((s) => s.trim() === '.quest-pet[data-stage="1"] .pet-body') &&
-        /fill:/.test(r.body),
-    );
-    expect(stage1Body).toBe(true);
-  });
+  // A body recolor test used to live here (Pip's stage 1 recolored orange). Tom Lizard
+  // is a raster sprite, not an SVG with fillable paths, so that specific mechanism
+  // doesn't apply -- "stage 1 is visible without close inspection" is now covered by
+  // the hat test above instead: a hat appearing on top of the character's head is its
+  // own obvious-at-a-glance signal, which was the actual property this test cared
+  // about, not recoloring specifically.
 });

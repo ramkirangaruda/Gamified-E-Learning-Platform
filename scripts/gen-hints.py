@@ -2,9 +2,10 @@
 """Generates content/hints/*.json -- the verified hint bank for all 25 levels.
 
 Every string here is human-written. The model NEVER writes a hint; it only rephrases one
-of these in Pip's voice (brief §11), and if lookup or generation fails the child sees the
-string verbatim. So these are the actual words a child reads when they are stuck, and they
-are the last line of defence in the tutor pipeline.
+of these in the pet's voice (brief §11 -- Tom Lizard as of the character swap, see
+DECISIONS.md), and if lookup or generation fails the child sees the string verbatim. So
+these are the actual words a child reads when they are stuck, and they are the last line
+of defence in the tutor pipeline.
 
 Rules every line follows:
   * Point at the CONCEPT, never hand over the answer. "Count how many steps in total"

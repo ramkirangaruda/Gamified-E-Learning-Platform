@@ -18,8 +18,8 @@ describe("SpeechBubble idle line", () => {
     }
   });
 
-  it("stays short enough for the bubble and speaks as Pip", () => {
+  it("stays short enough for the bubble and speaks as Tom", () => {
     expect(IDLE_LINE.length).toBeLessThan(110);
-    expect(IDLE_LINE).toMatch(/Pip/);
+    expect(IDLE_LINE).toMatch(/Tom/);
   });
 });

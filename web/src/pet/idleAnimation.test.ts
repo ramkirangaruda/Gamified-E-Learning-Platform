@@ -63,15 +63,19 @@ describe("the idle animation budget", () => {
     expect(offenders.map((r) => r.selector)).toEqual([]);
   });
 
-  it("breathes on the HTML wrapper, never on an SVG group", () => {
+  it("the idle loop sits on the HTML wrapper, never an SVG group", () => {
     // The expensive mistake, pinned so it cannot come back: a transform animation on an
     // SVG child repaints its subtree every frame, because SVG content gets no compositor
-    // layer. Measured at +41 points of one CPU core when breathing the <g>; ~1 point on
-    // the wrapping div. Same motion, two orders of magnitude apart.
-    const breathing = infiniteRules.filter((r) => /quest-pet-breathe/.test(r.body));
-    expect(breathing.length).toBeGreaterThan(0);
-    for (const r of breathing) {
-      expect(r.selector, "breathing must sit on .quest-pet-shell, the HTML wrapper").toContain(
+    // layer. Measured at +41 points of one CPU core when Pip's old breathing lived on a
+    // <g>; ~1 point on the wrapping div. Same motion, two orders of magnitude apart.
+    // Tom Lizard's idle frame-stepping is a `transform` on a plain <div>
+    // (.tom-lizard-anim-idle) rather than Pip's `quest-pet-breathe`, but the property
+    // this test actually cares about -- does it live where the browser can composite
+    // it, not repaint it -- is unchanged by the character swap.
+    const idleLoop = infiniteRules.filter((r) => /tom-lizard-anim-idle/.test(r.selector));
+    expect(idleLoop.length).toBeGreaterThan(0);
+    for (const r of idleLoop) {
+      expect(r.selector, "the idle loop must sit on .quest-pet-shell, the HTML wrapper").toContain(
         ".quest-pet-shell",
       );
     }
@@ -82,19 +86,18 @@ describe("the idle animation budget", () => {
     // computed value CHANGES, so an eased loop costs 60 repaints a second while a stepped
     // one costs as many as it has steps. Eased breathing measured +14 points of one CPU
     // core; the same breath stepped measured +0.0. Any new looping animation here must be
-    // stepped, or it silently reintroduces that cost.
-    //
-    // The thinking dots are exempt: they are not idle motion, they are on screen only
-    // while a program or hint is actually in flight, and they fade rather than move.
-    const loops = infiniteRules.filter((r) => !/accent-think/.test(r.selector));
-    expect(loops.length).toBeGreaterThan(0);
-    for (const r of loops) {
+    // stepped, or it silently reintroduces that cost. A sprite-frame animation is stepped
+    // by nature -- there is nothing to ease between two different frames of art -- so this
+    // is not a budget concession for Tom Lizard the way it was for Pip's breathing, just
+    // the same rule holding for a different reason.
+    expect(infiniteRules.length).toBeGreaterThan(0);
+    for (const r of infiniteRules) {
       expect(r.body, `${r.selector} loops forever and must use steps(), not an easing curve`).toMatch(/steps\(/);
     }
   });
 
   it("keeps the looping set small enough to stay free on a Pi", () => {
-    // Three: breathe, blink, antenna gesture. Plus the thinking dots. If this number
+    // Two: the idle frame cycle and the thinking/"waiting" frame cycle. If this number
     // grows, the budget conversation happens here rather than after someone notices the
     // fan spinning.
     expect(infiniteRules.length).toBeLessThanOrEqual(5);
@@ -113,7 +116,7 @@ describe("the idle animation budget", () => {
     // transform and opacity are the only two a browser can animate without laying out
     // or painting. Anything else here would mean real CPU work every frame, forever.
     const keyframeBlocks = [...css.matchAll(/@keyframes\s+([\w-]+)\s*\{([\s\S]*?)\n\}/g)];
-    const idleLoops = ["quest-pet-breathe", "quest-pet-blink", "quest-pet-antenna-idle", "quest-pet-think-dots"];
+    const idleLoops = ["tom-lizard-anim-idle", "tom-lizard-anim-waiting"];
     for (const name of idleLoops) {
       const block = keyframeBlocks.find((k) => k[1] === name);
       expect(block, `missing @keyframes ${name}`).toBeTruthy();

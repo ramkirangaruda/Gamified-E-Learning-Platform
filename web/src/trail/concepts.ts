@@ -35,7 +35,7 @@ export function groupFor(teaches: string): ConceptGroup {
 /** Pet evolution stages, marked on the trail at the level where each was reached.
  *  Thresholds are counts of levels solved, so they can only ever move forwards (§10). */
 export const EVOLUTION_MARKERS: { afterSolved: number; label: string }[] = [
-  { afterSolved: 5, label: "Pip grew!" },
-  { afterSolved: 13, label: "Pip grew again!" },
-  { afterSolved: 22, label: "Pip is fully grown!" },
+  { afterSolved: 5, label: "Tom grew!" },
+  { afterSolved: 13, label: "Tom grew again!" },
+  { afterSolved: 22, label: "Tom is fully grown!" },
 ];

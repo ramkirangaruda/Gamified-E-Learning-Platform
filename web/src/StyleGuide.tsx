@@ -215,7 +215,7 @@ export default function StyleGuide() {
           <div className="flex flex-wrap gap-8">
             {MOODS.map((m) => (
               <div key={m} className="text-center">
-                <Pet mood={m} name="Pip" />
+                <Pet mood={m} name="Tom" />
                 <div className="mt-1 text-xs font-bold text-quest-ink-soft">{m}</div>
               </div>
             ))}
@@ -224,7 +224,7 @@ export default function StyleGuide() {
 
         <Section title="Speech bubble">
           <div className="flex items-end gap-3">
-            <Pet mood="confused" name="Pip" />
+            <Pet mood="confused" name="Tom" />
             <SpeechBubble text="This one's caught you before! Count up the steps your repeat blocks make." />
           </div>
         </Section>

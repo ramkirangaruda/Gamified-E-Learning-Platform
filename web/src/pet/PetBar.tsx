@@ -31,7 +31,7 @@ function HungerBar({ hunger }: { hunger: number }) {
     <div
       className="flex items-center gap-2"
       role="meter"
-      aria-label="Pip's tummy"
+      aria-label="Tom's tummy"
       aria-valuetext={hungerWord(pct)}
       aria-valuenow={pct}
       aria-valuemin={0}
@@ -63,7 +63,7 @@ export default function PetBar() {
 
   const points = state?.learner.points ?? 0;
   const hunger = state?.pet.hunger ?? 50;
-  const petName = state?.pet.name ?? "Pip";
+  const petName = state?.pet.name ?? "Tom";
   const solved = state?.solved_levels ?? [];
   const levelNumber = activeLevel ? levels.findIndex((l) => l.id === activeLevel.id) + 1 : null;
   // handoff/04-stars.md: real per-level star count instead of a hardcoded solved-or-not.
@@ -82,7 +82,7 @@ export default function PetBar() {
             type="button"
             onClick={() => setShopOpen(true)}
             aria-label={`${petName} — open treats`}
-            title="Give Pip a treat"
+            title="Give Tom a treat"
             className="relative -my-2 shrink-0 rounded-chunk transition-transform duration-100 hover:-translate-y-0.5 active:translate-y-[2px]"
           >
             <Pet mood={mood} name={petName} evolutionStage={state?.pet.evolution_stage ?? 0} size={84} feedTick={feedTick} />

@@ -12,8 +12,8 @@ import "regexp"
 // rest of this package (Classify) works: fixed, inspectable patterns rather than a
 // second model call to police the first one. It's deliberately narrow -- "I"/"my"
 // followed within a short span by a verb or noun tied to writing/running code -- so it
-// doesn't reject Pip's harmless first-person flavor text ("I bet you can fix this!",
-// "I know you can do it").
+// doesn't reject the character's harmless first-person flavor text ("I bet you can fix
+// this!", "I know you can do it").
 var (
 	firstPersonMistakeRe = regexp.MustCompile(
 		`(?i)\bI\b[\w'.,!?;:()\- ]{0,30}\b(forgot|forgotten|missed|wrote|opened|closed|added|coded|programmed|created|left out|used|had)\b`,

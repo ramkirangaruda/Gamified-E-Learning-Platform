@@ -22,19 +22,23 @@ Hint: You checked for the wall but never added a turn after it.
 Rephrased: "Nice, you're checking for the wall! Now add a turn card inside so you actually turn when you find it."
 `
 
-// BuildHintPrompt implements brief §11 step 4: "You are Pip, a small friendly
+// BuildHintPrompt implements brief §11 step 4: "You are <character>, a small friendly
 // creature. Say this hint in your own words, warmly, in under 25 words... This child has
-// made this mistake <n> times before." Two additions beyond the brief's literal wording,
+// made this mistake <n> times before." (The character was Pip at the time the brief was
+// written; it's Tom Lizard now -- see DECISIONS.md. The prompt names whichever one is
+// currently on screen, since a hint claiming to come from a different character than the
+// one the child is looking at would be its own, sillier version of the perspective-drift
+// bug this file exists to prevent.) Two additions beyond the brief's literal wording,
 // both found by actually running real completions during development, not by reasoning
 // about the prompt in the abstract: without an explicit instruction to address the child
 // as "you," a 0.6B model tends to narrate the hint in first person ("I forgot to..."),
-// reading as the mistake being Pip's own rather than the child's -- made explicit here,
-// and reinforced with fewShotExamples's three worked examples (layers 1 and 2 of the
-// perspective fix; layer 3 is HasFirstPersonAuthorDrift + the retry/fallback in
-// internal/api's handleHint).
+// reading as the mistake being the character's own rather than the child's -- made
+// explicit here, and reinforced with fewShotExamples's three worked examples (layers 1
+// and 2 of the perspective fix; layer 3 is HasFirstPersonAuthorDrift + the
+// retry/fallback in internal/api's handleHint).
 func BuildHintPrompt(hintText string, priorCount int) string {
 	base := fmt.Sprintf(
-		"You are Pip, a small friendly creature who helps a child learn to code. "+
+		"You are Tom, a small friendly lizard who helps a child learn to code. "+
 			"Rephrase the hint below in your own words, warmly, in under 25 words. "+
 			"Speak directly to the child using \"you\" -- the mistake is theirs, not yours. "+
 			"Never mention code or programming terms beyond what's already in the hint, and never invent new advice.\n\n"+
@@ -53,7 +57,7 @@ func BuildHintPrompt(hintText string, priorCount int) string {
 // this same mistake before, or "" for a first-time mistake.
 //
 // AUDIT P1-5 (found during Phase 3 regression, against the real 0.6B model). §13 step 4's
-// scripted beat is "Pip ... gives a hint -- pointing out this child has done it before".
+// scripted beat is "the pet ... gives a hint -- pointing out this child has done it before".
 // BuildHintPrompt does tell the model exactly that ("This child has made this mistake N
 // time(s) before -- acknowledge that gently"), and a unit test proves the clause reaches
 // the model. But across five consecutive real generations at buckets 1-4 the 0.6B model
