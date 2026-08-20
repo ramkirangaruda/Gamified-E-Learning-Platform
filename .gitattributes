@@ -1,0 +1,9 @@
+# *.sh must stay LF no matter what checks it out or on what platform — a CRLF shebang
+# line breaks with "bad interpreter" on Linux, and these specifically exist to run on
+# the Pi 5 hub. core.autocrlf=true on a Windows dev machine would otherwise convert them
+# to CRLF on checkout.
+*.sh text eol=lf
+
+# Cosmetic symmetry, not load-bearing the way the .sh rule is: PowerShell tolerates LF
+# fine, but keep .ps1 native-Windows CRLF since that's the platform they're for.
+*.ps1 text eol=crlf
