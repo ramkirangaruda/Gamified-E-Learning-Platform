@@ -388,3 +388,63 @@ One line per non-obvious choice, and why. Newest at the bottom.
   Go test funcs across 11 packages, 134 TypeScript. `scripts/README.md`'s standing warning
   that `pi-setup.sh` needs internet now carries its one explicit exception, since that
   paragraph is load-bearing for event planning.
+
+
+## Dashboard redesign: a subject-led shell around the existing game (2026-08-20)
+
+The dashboard was reworked against an attached UI wireframe. The brief was explicit that
+the old one was "clunky, not scalable" and that the existing components should be
+integrated into the new frame rather than replaced -- so this is an information-architecture
+change, and every component that already worked was lifted into the new shell verbatim.
+
+- **Five subjects, one of them real, and the other four say so.** The wireframe drew
+  Coding, Chemistry, Physics, Math and Biology. Only Coding has content: 25 levels, one
+  executor, one AST. The other four ship as `available: false` in `web/src/subjects.ts`
+  and render a locked card with no progress bar, no stars and no "0 of 25" -- an empty
+  meter reads as "you have done none of this", which would be a lie about a subject that
+  does not exist yet, and §10's "never punish, never mislead" applies to a subject as
+  much as to a level. Clicking one opens a real page that says it isn't ready and points
+  back at Coding, because a tab that silently ignores a click reads as broken to a child.
+  `subjects.test.ts` pins that exactly one subject is available and that every other one
+  gets an empty level list, since flipping a flag without a level source would silently
+  show Coding's levels under Chemistry.
+- **One header, two rows, still mounted once.** `nav/AppHeader.tsx` owns the fixed shell;
+  the navigation row sits above `pet/PetBar.tsx`, which lost its own positioning and
+  nothing else. The mounted-once property is the whole reason the pet is persistent
+  (PetProvider: unmounting resets mood, speech and animation phase), so the nav joined it
+  inside the same single fixed element rather than becoming a second stacked bar. Pages
+  pad past one value, `--app-header-h`, which is now *derived* (`calc(nav + pet)`) rather
+  than typed a third time, so changing either row keeps every page correct with no second
+  edit.
+- **Impossible states deleted, not documented.** App's `sandboxOpen` / `settingsOpen` /
+  `selectedLevelId` booleans became one `Route` union (`web/src/routes.ts`). The booleans
+  could encode settings and sandbox open at once with a level selected underneath both;
+  the union cannot. Still no router, for the reason `App.tsx` has always given -- one
+  offline binary, no URL bar worth addressing.
+- **What did NOT change.** `Trail`, `LevelGrid`, `PlayPage`, `Editor`, `GridRenderer`,
+  `SettingsPage`, `ClassroomPanel`, `TreatShop`, `BackgroundScene` and the whole mascot
+  event system were re-parented, not rewritten. Classroom deliberately stays the modal it
+  was (same convention as TreatShop: a short two-field errand, not somewhere to be);
+  giving it a route only changes what lights up in the nav.
+- **No new looping animation.** The wireframe's bob/drift/spin would have been three more
+  infinite animations, eased rather than stepped -- `pet/idleAnimation.test.ts` caps the
+  budget at ten and requires `steps()`. The hero's decoration is therefore static shapes,
+  and its speech bubble reuses the existing one-shot `quest-bubble-in`. The budget test
+  passes untouched.
+- **A second `<Pet>` on the home screen is deliberate and cheap.** It is purely
+  presentational (Trail already renders several at its evolution markers) and its one loop
+  is a stepped transform on an HTML wrapper -- the shape this codebase measured at ~0 CPU,
+  as opposed to the +41-point SVG-group version (see index.css's IDLE LIFE).
+- **Fixed en route: a legacy save rendered an invisible pet.** `spriteUrlFor` interpolated
+  the raw species id, so a drive saved before the sprite roster existed (`pet.species =
+  "pip"`, the original inline-SVG mascot) requested a sheet that 404s -- the character
+  simply vanished, taking the hunger badge's anchor with it, with nothing on screen
+  saying why. It now resolves through `characterById` exactly like every caption already
+  did, so the sprite and the name can no longer disagree either. Found by running the app
+  against the real `data/pet.db`, not by reading code.
+- **Verified by driving the built app, not only by typecheck.** `go run ./cmd/server` on
+  the production build, then Chrome over CDP (Node 24's built-in WebSocket, no new
+  dependency) to click through home, the Coding trail, a level, Progress, Settings and the
+  Classroom modal, screenshotting each. Two real defects came out of looking at those
+  screenshots rather than at the diff: the Biology tab was clipped by a crowded nav, and
+  the locked cards were too translucent to read over the meadow. Both fixed.

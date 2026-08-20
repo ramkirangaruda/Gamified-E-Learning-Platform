@@ -176,7 +176,7 @@ export default function PlayPage({ initialLevelId, onBackToDashboard }: PlayPage
   ];
 
   return (
-    <div className="flex h-[calc(100vh-var(--pet-bar-h))] w-full bg-quest-cream">
+    <div className="flex h-[calc(100vh-var(--app-header-h))] w-full bg-quest-cream">
       <div className="flex-1 p-3">
         <div className="h-full overflow-hidden rounded-3xl border-4 border-white bg-white shadow-lg">
           <Editor onWorkspaceReady={onWorkspaceReady} onBlockActivity={onBlockActivity} />

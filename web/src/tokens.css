@@ -99,10 +99,18 @@
   --outline-chunk: 3px;
   --outline-chunk-thick: 4px;
 
-  /* Height of the persistent pet bar (pet/PetBar.tsx). Every page pads past it by this
-     value rather than hard-coding a number, so the bar's height is changeable in exactly
-     one place. Within the 88-96px the design calls for. */
-  --pet-bar-h: 92px;
+  /* Height of the persistent app header (nav/AppHeader.tsx), which is two stacked rows:
+     the navigation row (brand, subject tabs, Progress/Classroom/Settings) above the pet
+     row (sprite, hunger meter, points). Every page pads past --app-header-h rather than
+     hard-coding a number, so the header's height is changeable in exactly one place.
+
+     The total is derived from the two rows rather than typed a third time -- editing
+     either row's height keeps every page's padding correct with no second edit. The pet
+     row stays within the 88-96px the pet design calls for; the nav row is deliberately
+     slimmer, since it is chrome rather than a character. */
+  --app-header-nav-h: 56px;
+  --app-header-pet-h: 88px;
+  --app-header-h: calc(var(--app-header-nav-h) + var(--app-header-pet-h));
 }
 
 html {
