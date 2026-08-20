@@ -1,0 +1,138 @@
+/* Design system tokens — the single source of truth for the whole UI.
+ *
+ * Reference feel: modern children's education sites (ABCya, Sesame Street games, Nick) —
+ * chunky rounded shapes, saturated colour, thick outlines with *offset solid* shadows for
+ * a sticker/cut-out look, oversized tap targets, low text density.
+ *
+ * The palette is not invented: it extends the four printed-card colours from
+ * blocks/cardBlocks.ts so the physical cards on the desk and the screen read as one
+ * system. Those four hexes are the anchor; everything else is neutrals plus one reward
+ * accent. If a card colour ever changes, change it here and in cardBlocks.ts together.
+ *
+ * Fonts are self-hosted woff2 (see /public/fonts, OFL 1.1 — redistribution permitted,
+ * licence text bundled alongside). No CDN, no Google Fonts runtime request.
+ */
+
+@font-face {
+  font-family: "Fredoka";
+  src: url("/fonts/Fredoka-Variable.woff2") format("woff2-variations");
+  font-weight: 400 700;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Nunito";
+  src: url("/fonts/Nunito-Variable.woff2") format("woff2-variations");
+  font-weight: 400 800;
+  font-display: swap;
+}
+
+@theme {
+  /* --- Type ------------------------------------------------------------- */
+  /* Fredoka for headings/buttons/nav chrome; Nunito for anything a child
+     actually reads as a sentence. A rounded display face everywhere hurts
+     readability for the age group this is built for. */
+  --font-display: "Fredoka", ui-rounded, "Segoe UI", sans-serif;
+  --font-body: "Nunito", ui-sans-serif, system-ui, sans-serif;
+
+  /* --- Concept colours: identical to the printed cards ------------------- */
+  --color-quest-move: #3b82f6; /* blue   — move, turn, wait, pick up */
+  --color-quest-move-dark: #1d4ed8;
+  --color-quest-repeat: #f59e0b; /* amber  — repeat 2/3/4, end repeat */
+  --color-quest-repeat-dark: #b45309;
+  --color-quest-cond: #22c55e; /* green  — if wall ahead, else, end if */
+  --color-quest-cond-dark: #15803d;
+  --color-quest-while: #a855f7; /* purple — while not at goal, end while */
+  --color-quest-while-dark: #7e22ce;
+
+  /* Legacy aliases: the existing components were written against these names.
+     Re-pointed at the card colours above rather than renamed across every file,
+     so the palette unifies without a rewrite. */
+  --color-quest-sky: var(--color-quest-move);
+  --color-quest-sky-dark: var(--color-quest-move-dark);
+  --color-quest-sun: var(--color-quest-repeat);
+  --color-quest-sun-dark: var(--color-quest-repeat-dark);
+  --color-quest-grass: var(--color-quest-cond);
+  --color-quest-grass-dark: var(--color-quest-cond-dark);
+  --color-quest-grape: var(--color-quest-while);
+  --color-quest-grape-dark: var(--color-quest-while-dark);
+
+  /* --- Reward accent (one only) ----------------------------------------- */
+  --color-quest-gold: #ffc93c;
+  --color-quest-gold-dark: #e0a010;
+
+  /* --- Semantic ---------------------------------------------------------- */
+  /* Coral is "try again", never "you failed" — §10: absence and mistakes cost
+     progress, never punishment. */
+  --color-quest-coral: #ff6b6b;
+  --color-quest-coral-dark: #e14f4f;
+
+  /* --- Neutrals ---------------------------------------------------------- */
+  --color-quest-cream: #fff8ec;
+  --color-quest-paper: #ffffff;
+  --color-quest-ink: #3d3328;
+  --color-quest-ink-soft: #6b5d4d;
+  --color-quest-locked: #cfc6ba;
+  --color-quest-locked-deep: #a89e91;
+
+  /* --- Chunky geometry ---------------------------------------------------- */
+  --radius-chunk-sm: 0.75rem;
+  --radius-chunk: 1.25rem;
+  --radius-chunk-lg: 1.75rem;
+  --radius-chunk-xl: 2.25rem;
+
+  /* Offset SOLID shadows, never blur — this is what produces the sticker /
+     die-cut look rather than a generic material drop shadow. */
+  --shadow-chunk-sm: 0 3px 0 0 rgb(61 51 40 / 0.28);
+  --shadow-chunk: 0 5px 0 0 rgb(61 51 40 / 0.3);
+  --shadow-chunk-lg: 0 8px 0 0 rgb(61 51 40 / 0.32);
+
+  /* --- Tap targets --------------------------------------------------------
+     48px floor, assuming young children with imprecise mouse control. Every
+     interactive element uses one of these. */
+  --spacing-tap: 3rem; /* 48px */
+  --spacing-tap-lg: 4rem; /* 64px */
+}
+
+:root {
+  color-scheme: light;
+  --outline-chunk: 3px;
+  --outline-chunk-thick: 4px;
+}
+
+html {
+  font-family: var(--font-body);
+}
+
+body {
+  margin: 0;
+  background: var(--color-quest-cream);
+  color: var(--color-quest-ink);
+  font-family: var(--font-body);
+}
+
+/* --- Motion policy --------------------------------------------------------
+ * The hub is a 4 GB Pi also running llama-server. Every decorative animation is
+ * transform/opacity only, event-triggered, and self-terminating. Two global
+ * off-switches, both of which must disable the same set:
+ *   1. prefers-reduced-motion  — the OS-level accessibility preference
+ *   2. [data-lite="on"]        — the --lite launcher flag / UI toggle, auto-enabled
+ *                                on the low RAM tier
+ * Anything decorative must be written so that removing its animation changes
+ * nothing about layout or legibility.
+ */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+}
+
+[data-lite="on"] .quest-decorative,
+[data-lite="on"] .quest-decorative * {
+  animation: none !important;
+  transition: none !important;
+}
