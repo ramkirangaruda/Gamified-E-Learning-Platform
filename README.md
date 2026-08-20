@@ -1,12 +1,25 @@
 # Tessera Quest
 
-A gamified, fully offline coding platform for kids 8–13. A child produces a program one
-of two ways — moving physical printed cards on a desk, read by a camera, or dragging the
-same blocks in a browser — and both compile to the same JSON program representation,
-which runs on a deterministic executor. A small local LLM (no cloud, no API key)
-rephrases pre-verified hint text in the voice of an in-game pet companion, Pip. Every
-child's entire progress — levels, points, the pet's state — lives in one SQLite file on
-a USB drive: no accounts, no server, no internet, ever.
+**The problem this solves: a school with computers and no working internet.** A shared
+Raspberry Pi and a stack of USB drives turn a room like that into a computer lab —
+every child's entire identity is their own drive, not an account, so there's no
+password for a nine-year-old to forget and no server anyone has to keep running. A
+child produces a program one of two ways — moving physical printed cards on a desk,
+read by the Pi's camera, or dragging the same blocks in a browser on whatever laptop is
+in front of them — and both compile to the same JSON program representation, run by a
+deterministic executor. Every child's entire progress — levels, points, the pet's
+state — lives in that one SQLite file on their drive: no accounts, no cloud, no
+internet, ever.
+
+A small LLM (Qwen3, via llama.cpp, running entirely on-device) rephrases pre-verified,
+human-written hint text in the voice of an in-game pet companion, Pip — it only sets
+tone, it never decides whether a child's code is correct, which is what makes a model
+small enough to fit a donated school laptop's RAM safe to put in front of a kid. That
+constraint is also why this isn't just a web app talking to a cloud API: a cloud tutor
+means a child's work and a per-request bill leaving the building on every hint, for
+every child, for as long as the school runs it. This one doesn't, ever — see the
+[classroom hub](#the-classroom-hub) below for the other half, recovering a lost drive
+without anyone's data having left the room in the first place.
 
 ## Architecture, briefly
 
