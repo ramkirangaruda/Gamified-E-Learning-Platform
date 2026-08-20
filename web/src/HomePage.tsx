@@ -20,12 +20,13 @@ type View = "trail" | "grid";
 interface HomePageProps {
   onSelectLevel: (levelId: string) => void;
   onOpenSandbox: () => void;
+  onOpenMath: () => void;
   /** Owned by App, which is what resolves it from the server/session -- see App.tsx. */
   lite: boolean;
   onToggleLite: () => void;
 }
 
-export default function HomePage({ onSelectLevel, onOpenSandbox, lite, onToggleLite }: HomePageProps) {
+export default function HomePage({ onSelectLevel, onOpenSandbox, onOpenMath, lite, onToggleLite }: HomePageProps) {
   const { state, levels, error, suggestion } = usePet();
   const [view, setView] = useState<View>("trail");
   const [classroomOpen, setClassroomOpen] = useState(false);
@@ -61,6 +62,9 @@ export default function HomePage({ onSelectLevel, onOpenSandbox, lite, onToggleL
           </ChunkyButton>
           <ChunkyButton tone="neutral" title="Fiddle with cards, no goal, just see what happens" onClick={onOpenSandbox}>
             Sandbox
+          </ChunkyButton>
+          <ChunkyButton tone="neutral" title="Number games: Fix the Machine, Math Detective, and more" onClick={onOpenMath}>
+            Math
           </ChunkyButton>
           <ChunkyButton
             tone="neutral"
