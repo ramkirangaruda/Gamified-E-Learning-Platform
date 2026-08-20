@@ -28,11 +28,15 @@ import (
 // DataDir resolves the drive's data/ directory relative to the running executable, per
 // brief §7 requirement 1 (drive letters are not stable across machines).
 func DataDir() (string, error) {
-	exeDir, err := paths.ExeDir()
+	// data/ lives at the drive root beside content/ and app/, NOT next to the binary --
+	// the binary is in bin/win or bin/linux (brief §7). Getting this wrong put the
+	// child's entire account, pet.db, inside bin/win/data on a real key: still
+	// functional, but in the wrong place and invisible to anything expecting §7's layout.
+	driveRoot, err := paths.DriveRoot()
 	if err != nil {
 		return "", err
 	}
-	dir := filepath.Join(exeDir, "data")
+	dir := filepath.Join(driveRoot, "data")
 	if err := os.MkdirAll(dir, 0o755); err != nil {
 		return "", fmt.Errorf("store: creating data dir: %w", err)
 	}
