@@ -77,7 +77,7 @@ export default function SubjectPage({ subjectId, onNavigate }: SubjectPageProps)
 
         <div className="relative mx-auto mt-8 max-w-3xl px-6 pb-24">
           <div className="flex flex-col items-center gap-4 rounded-chunk-xl border-(length:--outline-chunk-thick) border-quest-locked bg-quest-paper/85 px-6 py-10 text-center shadow-chunk backdrop-blur-sm">
-            <Pet mood="curious" species={state?.pet.species} size={96} />
+            <Pet state="playful" species={state?.pet.species} size={96} inventory={state?.inventory} />
             <h2 className="font-display text-2xl font-bold text-quest-ink">
               {subject.title} isn't ready yet
             </h2>

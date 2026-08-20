@@ -3,7 +3,6 @@ import Icon from "./icons/Icon";
 import Pet from "./pet/Pet";
 import { characterById } from "./pet/characters";
 import { usePet } from "./pet/PetProvider";
-import { mascotStateToLegacyMood } from "./mascot/state";
 import { SUBJECTS, type Subject } from "./subjects";
 import type { Route } from "./routes";
 import { StarRow } from "./ui/Chunky";
@@ -183,10 +182,11 @@ export default function HomePage({ onNavigate }: HomePageProps) {
 
               <div className="text-center">
                 <Pet
-                  mood={mascotStateToLegacyMood(mood)}
+                  state={mood}
                   species={state?.pet.species}
                   evolutionStage={state?.pet.evolution_stage ?? 0}
                   size={96}
+                  inventory={state?.inventory}
                 />
                 <div className="font-display text-base font-bold text-quest-ink">{petName}</div>
               </div>

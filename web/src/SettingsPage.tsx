@@ -1,14 +1,16 @@
 import { useState } from "react";
 import Pet from "./pet/Pet";
-import { ALL_MOODS, type PetMood } from "./pet/mood";
+import { ALL_MASCOT_STATES, type MascotState } from "./mascot/state";
 import { CHARACTERS, characterById } from "./pet/characters";
 import { ChunkyButton, ChunkyCard } from "./ui/Chunky";
 import { usePet } from "./pet/PetProvider";
 
 // The settings screen: "choose your pet". Picking a card doesn't save anything by
 // itself -- it only changes which character the preview panel below shows, cycling
-// through every mood that character actually reacts with during real play, each
-// labeled with the in-game moment that triggers it. Saving is a separate, explicit
+// through every state that character actually reacts with during real play, each
+// labeled with the in-game moment that triggers it. This is also the one screen where a
+// per-character clip override (pet/spriteLayout.ts's CHARACTER_CLIPS) is visible side by
+// side with the roster default, which is exactly where you want to notice one. Saving is a separate, explicit
 // step ("Make this my pet"), so a child can browse the whole roster before committing
 // rather than overwriting their current pet on every click.
 //
@@ -16,12 +18,18 @@ import { usePet } from "./pet/PetProvider";
 // related: PetProvider.commitState (POST /api/state), which already writes
 // pet.species/pet.name verbatim (internal/store.SaveState) -- no new endpoint needed.
 
-const SCENARIO_LABEL: Record<PetMood, string> = {
+const SCENARIO_LABEL: Record<MascotState, string> = {
   idle: "Just relaxing",
-  curious: "Notices you moving a block",
+  welcome: "You just arrived",
+  playful: "Notices you moving a block",
   thinking: "Your program is running",
   happy: "You just got a treat",
+  excited: "You got it right",
+  encouraging: "A level that isn't unlocked yet",
   celebrating: "You solved a level!",
+  streak: "Three solved in a row",
+  milestone: "A big total reached",
+  pointing: "Nudging you toward the next level",
   confused: "Your program hit a wall",
   hungry: "Getting hungry",
   sleepy: "Nobody's touched anything in a while",
@@ -74,7 +82,7 @@ export default function SettingsPage({ onBack }: SettingsPageProps) {
               className={`flex flex-col items-center gap-2 rounded-chunk-lg border-(length:--outline-chunk) p-4 text-center shadow-chunk transition-transform hover:-translate-y-0.5
                 ${isPreviewed ? "border-quest-gold-dark bg-quest-gold/20 ring-4 ring-quest-gold/40" : "border-quest-locked bg-white/80"}`}
             >
-              <Pet mood="idle" species={c.id} size={72} />
+              <Pet state="idle" species={c.id} size={72} />
               <span className="font-display text-sm font-bold text-quest-ink">{c.displayName}</span>
               {isCurrent && (
                 <span className="rounded-chunk-sm border-2 border-quest-cond-dark bg-quest-cond px-2 py-0.5 font-display text-[10px] font-bold text-white">
@@ -97,17 +105,17 @@ export default function SettingsPage({ onBack }: SettingsPageProps) {
           </ChunkyButton>
         </div>
 
-        {/* Every mood this character actually reacts with in real play, each labeled
+        {/* Every state this character actually reacts with in real play, each labeled
             with the scenario that triggers it -- not a generic "here's the art" gallery,
             but a preview of how this specific companion behaves as you play. */}
         <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
-          {ALL_MOODS.map((mood) => (
+          {ALL_MASCOT_STATES.map((petState) => (
             <div
-              key={mood}
+              key={petState}
               className="flex flex-col items-center gap-2 rounded-chunk border-2 border-quest-locked bg-quest-cream/60 p-3 text-center"
             >
-              <Pet mood={mood} species={previewId} evolutionStage={evolutionStage} size={64} />
-              <span className="text-xs font-semibold text-quest-ink-soft">{SCENARIO_LABEL[mood]}</span>
+              <Pet state={petState} species={previewId} evolutionStage={evolutionStage} size={64} inventory={state?.inventory} />
+              <span className="text-xs font-semibold text-quest-ink-soft">{SCENARIO_LABEL[petState]}</span>
             </div>
           ))}
         </div>

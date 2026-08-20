@@ -1,9 +1,9 @@
 import { useEffect, useRef, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 
-// The one modal shell, shared by pet/TreatShop.tsx and pet/ClassroomPanel.tsx.
+// The one modal shell, shared by pet/PetShop.tsx and pet/ClassroomPanel.tsx.
 //
-// It exists because of a bug neither panel could have fixed on its own. TreatShop is
+// It exists because of a bug neither panel could have fixed on its own. The shop is
 // rendered by PetBar, which lives inside nav/AppHeader's fixed shell -- and that shell
 // carries `backdrop-blur-sm`. A backdrop-filter makes an element the CONTAINING BLOCK for
 // every fixed-position descendant, so the shop's `fixed inset-0` resolved against the

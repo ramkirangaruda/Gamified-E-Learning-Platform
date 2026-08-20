@@ -640,7 +640,19 @@ func (s *Server) handlePostState(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
-	s.withSolvedLevels(w, &state)
+	// Echo what was STORED, not what was sent. This used to hand the caller its own
+	// payload straight back, which was harmless while every field was written verbatim.
+	// It stopped being harmless when inventory arrived: saveInventory merges rather than
+	// overwrites (qty is a lifetime count that may only rise, see its comment), so the
+	// stored row and the posted row can legitimately disagree. Echoing the request would
+	// have told a browser its collection was smaller than it really is, and the browser
+	// would have gone on computing its next purchase from that lower number.
+	saved, err := s.store.GetState()
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	s.withSolvedLevels(w, saved)
 }
 
 func writeJSON(w http.ResponseWriter, status int, v interface{}) {

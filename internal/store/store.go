@@ -214,6 +214,14 @@ var schemaStatements = []string{
 		qty INTEGER,
 		equipped INTEGER DEFAULT 0
 	)`,
+	// §7 declared the inventory table without a key, which was fine while nothing ever
+	// wrote to it. It does now, and an upsert needs something to conflict ON. Added as a
+	// separate index rather than by redeclaring the table with a PRIMARY KEY, because
+	// CREATE TABLE IF NOT EXISTS is a no-op on the drives that already exist -- a key in
+	// the table body would only ever reach brand-new ones, which is exactly the kind of
+	// silent split-brain between old and new drives this project cannot afford. An index
+	// applies to both.
+	`CREATE UNIQUE INDEX IF NOT EXISTS inventory_item_id ON inventory (item_id)`,
 	`CREATE TABLE IF NOT EXISTS attempts (
 		id INTEGER PRIMARY KEY AUTOINCREMENT,
 		level_id TEXT,
@@ -339,10 +347,51 @@ func (s *Store) SaveState(state *State) error {
 	if err != nil {
 		return fmt.Errorf("store: saving pet: %w", err)
 	}
+	if err := s.saveInventory(state.Inventory); err != nil {
+		return err
+	}
 	// AUDIT/handoff 02: refresh the recovery snapshot now, not just at process start --
 	// see refreshBackup's comment. Points/hunger/evolution stage are exactly the kind of
 	// progress a yank right after this call must not lose.
 	s.refreshBackup()
+	return nil
+}
+
+// saveInventory persists what the child owns, and it is deliberately the only write in
+// this file that CANNOT take anything away.
+//
+// The rule that makes that work is what `qty` means: it is a LIFETIME COUNT, not a
+// stock level. A treat's qty is how many of them have ever been fed to the pet, so
+// eating one raises it rather than spending it; a wearable's qty is 0 or 1 and only
+// ever goes up. Nothing in the game consumes an inventory row, so nothing here needs
+// to be able to decrement one -- and because it cannot, a stale or truncated payload
+// from a browser tab that has been open since before the last purchase cannot silently
+// erase a collection. That is the same never-regress reasoning AdvanceEvolutionStage
+// and RestoreFromSnapshot already apply to every other kind of progress (§10).
+//
+// `equipped` is the exception, and it is not progress: it is which hat the child has on
+// right now, which they are free to change as often as they like in either direction.
+//
+// An item the payload does not mention is left exactly as it is rather than deleted, so
+// this is always a merge and never a replacement.
+func (s *Store) saveInventory(items []InventoryItem) error {
+	for _, it := range items {
+		if it.ItemID == "" {
+			continue
+		}
+		equipped := 0
+		if it.Equipped {
+			equipped = 1
+		}
+		_, err := s.db.Exec(
+			`INSERT INTO inventory (item_id, qty, equipped) VALUES (?, ?, ?)
+			 ON CONFLICT(item_id) DO UPDATE SET qty = MAX(qty, excluded.qty), equipped = excluded.equipped`,
+			it.ItemID, it.Qty, equipped,
+		)
+		if err != nil {
+			return fmt.Errorf("store: saving inventory item %s: %w", it.ItemID, err)
+		}
+	}
 	return nil
 }
 
@@ -358,7 +407,7 @@ func (s *Store) SaveState(state *State) error {
 // RecordStars, AdvanceEvolutionStage, SaveState) rather than new SQL -- restoring is the
 // same data those already know how to persist correctly, just arriving from a different
 // source than a solved level or a spent treat.
-func (s *Store) RestoreFromSnapshot(displayName string, points, totalXP, highestLevel int, solvedLevels []string, starsByLevel map[string]int, evolutionStage int, ts int64) error {
+func (s *Store) RestoreFromSnapshot(displayName string, points, totalXP, highestLevel int, solvedLevels []string, starsByLevel map[string]int, evolutionStage int, inventory []InventoryItem, ts int64) error {
 	state, err := s.GetState() // ensures the learner/pet rows exist on a truly fresh drive
 	if err != nil {
 		return fmt.Errorf("store: restoring from snapshot: %w", err)
@@ -394,6 +443,15 @@ func (s *Store) RestoreFromSnapshot(displayName string, points, totalXP, highest
 	}
 	if err := s.AdvanceEvolutionStage(evolutionStage); err != nil {
 		return fmt.Errorf("store: restoring evolution stage: %w", err)
+	}
+	// What the child had collected comes back with everything else, and it has to: a
+	// wearable was PAID FOR out of the same points balance that is being restored above,
+	// and that balance is restored post-spend. Leave the collection out and a child who
+	// lost their drive comes back with neither the hat nor the points they bought it
+	// with -- progress quietly deleted by a recovery path, which is precisely what §10
+	// forbids. saveInventory merges rather than replaces, so this can only ever add.
+	if err := s.saveInventory(inventory); err != nil {
+		return fmt.Errorf("store: restoring inventory: %w", err)
 	}
 	return nil
 }

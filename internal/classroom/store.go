@@ -33,7 +33,23 @@ type Snapshot struct {
 	SolvedLevels   []string       `json:"solved_levels"`
 	StarsByLevel   map[string]int `json:"stars_by_level"`
 	EvolutionStage int            `json:"evolution_stage"`
-	LastSyncedAt   int64          `json:"last_synced_at"`
+	// What the child has collected. Carried so the lost-drive recovery path can give it
+	// back -- see store.RestoreFromSnapshot for why leaving it out would lose progress.
+	// Stored as a JSON blob in one column rather than a second table: the hub is a
+	// read-only reporting mirror of a drive, not a second game database, and nothing on
+	// the hub ever queries inside this value.
+	Inventory    []SnapshotItem `json:"inventory"`
+	LastSyncedAt int64          `json:"last_synced_at"`
+}
+
+// SnapshotItem mirrors store.InventoryItem across the package boundary. Duplicated rather
+// than imported so internal/classroom stays free of a dependency on internal/store -- the
+// hub binary and the drive binary are the same program today, but the hub only ever needs
+// the shape, never the drive's storage logic.
+type SnapshotItem struct {
+	ItemID   string `json:"item_id"`
+	Qty      int    `json:"qty"`
+	Equipped bool   `json:"equipped"`
 }
 
 type Store struct {

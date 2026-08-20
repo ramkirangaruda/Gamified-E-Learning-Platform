@@ -4,7 +4,7 @@ import Icon, { type IconName } from "./icons/Icon";
 import Pet from "./pet/Pet";
 import SpeechBubble from "./pet/SpeechBubble";
 import { ChunkyButton, ChunkyCard, ConceptChip, StarRow, type ChunkyTone } from "./ui/Chunky";
-import { ALL_MOODS, type PetMood } from "./pet/mood";
+import { ALL_MASCOT_STATES, type MascotState } from "./mascot/state";
 
 // Dev-only review surface at ?styleguide=1 — every token, component and state on one
 // page so the whole system can be judged at once instead of hunting states across the
@@ -54,7 +54,7 @@ const SUPPORT_SWATCHES = [
 ] as const;
 
 const TONES: ChunkyTone[] = ["move", "repeat", "cond", "while", "gold", "coral", "neutral"];
-const MOODS: PetMood[] = ALL_MOODS;
+const PET_STATES: MascotState[] = ALL_MASCOT_STATES;
 const ANIMALS: AnimalKind[] = ["monkey", "rabbit", "owl", "turtle"];
 const ICONS: IconName[] = ["star", "trophy", "apple", "check", "party", "play", "pause", "reset", "step", "lock"];
 
@@ -209,14 +209,14 @@ export default function StyleGuide() {
         </Section>
 
         <Section
-          title="Pet — one SVG, eight moods"
-          note="Every mood below is the same markup with a different data-mood on the SVG root. No image swapping, no second file. Idle is the only one that animates on its own."
+          title="Pet — one sheet, fourteen states"
+          note="Every state below is the same markup and the same spritesheet, with a different clip from pet/spriteLayout.ts. Nine rows of art cover fourteen states, so the ones sharing a row differ in speed, repeat count, or effect. Sleepy deliberately animates nothing at all."
         >
           <div className="flex flex-wrap gap-8">
-            {MOODS.map((m) => (
-              <div key={m} className="text-center">
-                <Pet mood={m} name="Tom" />
-                <div className="mt-1 text-xs font-bold text-quest-ink-soft">{m}</div>
+            {PET_STATES.map((s) => (
+              <div key={s} className="text-center">
+                <Pet state={s} name="Tom" />
+                <div className="mt-1 text-xs font-bold text-quest-ink-soft">{s}</div>
               </div>
             ))}
           </div>
@@ -226,7 +226,7 @@ export default function StyleGuide() {
           {/* The pet stands to the LEFT here, so the tail points that way -- in the app
               the bubble hangs under the pet bar and points up instead. */}
           <div className="flex items-start gap-4">
-            <Pet mood="confused" name="Tom" />
+            <Pet state="confused" name="Tom" />
             <SpeechBubble tail="left" text="This one's caught you before! Count up the steps your repeat blocks make." />
           </div>
         </Section>

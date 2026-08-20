@@ -1,20 +1,15 @@
 import Icon from "../icons/Icon";
 import Pet from "./Pet";
-import { mascotStateToLegacyMood } from "../mascot/state";
 import SpeechBubble from "./SpeechBubble";
-import TreatShop from "./TreatShop";
+import PetShop from "./PetShop";
 import { StarRow } from "../ui/Chunky";
 import { usePet } from "./PetProvider";
+import { WEARABLES, purchaseBlocker } from "./items";
 
-// The Rive mascot (mascot/MascotCanvas.tsx) is built and working -- self-hosted offline,
-// full 14-state event wiring, world decorations -- but visually parked here pending a
-// design review: the raw Rive canvas render didn't read as polished/kiddish enough yet
-// (see DECISIONS.md). This file goes back to rendering the original hand-drawn Pet.tsx
-// SVG as the primary mascot, translating the wider MascotState vocabulary down to it via
-// mascotStateToLegacyMood so every event (hover, correct/incorrect, streaks, clicks, ...)
-// still visibly reacts through the old character. Nothing about the mascot/ event system,
-// Rive plumbing, or tests was removed -- swapping MascotCanvas back in here is a one-line
-// change once the visual is approved.
+// The sprite character (pet/Pet.tsx) is the mascot, and the MascotState it is handed is
+// the same value the state machine resolved -- no translation in between. There used to be
+// a parked Rive canvas here and a mascotStateToLegacyMood() call squashing 14 states down
+// to the 8 the old renderer understood; both are gone (see DECISIONS.md).
 
 // The companion row: the pet, its hunger meter, points, and the current level's stars.
 //
@@ -87,6 +82,17 @@ export default function PetBar() {
   // handoff/04-stars.md: real per-level star count instead of a hardcoded solved-or-not.
   const stars = activeLevel ? (state?.stars_by_level?.[activeLevel.id] ?? 0) : 0;
 
+  // Closes the earn-and-spend loop. Without this a child only finds out they can finally
+  // afford the hat they have been saving for by opening the shop and checking, which is
+  // exactly the moment worth telling them about. Deliberately only for WEARABLES: treats
+  // are affordable almost always, so a dot that is permanently lit says nothing.
+  //
+  // It is a quiet gold dot, not a count or a "NEW!" -- the same restraint as the hunger
+  // badge beside it. Nothing is lost by ignoring it and it never nags (§10).
+  const canBuySomething = WEARABLES.some(
+    (item) => purchaseBlocker(item, points, state?.inventory ?? [], solved.length) === null,
+  );
+
   return (
     <>
       <div className="h-[var(--app-header-pet-h)] border-t-2 border-quest-ink/10" data-testid="pet-bar">
@@ -103,22 +109,29 @@ export default function PetBar() {
               mascotClicked();
               setShopOpen(true);
             }}
-            aria-label={`${petName} — open treats`}
-            title="Give Tom a treat"
+            aria-label={`${petName} — open the shop`}
+            title={`Treats and things to wear for ${petName}`}
             className="relative -my-2 shrink-0 rounded-chunk transition-transform duration-100 hover:-translate-y-0.5 active:translate-y-[2px]"
           >
             <Pet
-              mood={mascotStateToLegacyMood(mood)}
+              state={mood}
               name={petName}
               species={petSpecies}
               evolutionStage={state?.pet.evolution_stage ?? 0}
               size={84}
               feedTick={feedTick}
+              inventory={state?.inventory}
             />
             {hunger < 25 && (
               <span className="absolute -right-1 top-1 flex h-5 w-5 items-center justify-center rounded-full border-2 border-white bg-quest-coral font-display text-[11px] font-bold text-white">
                 !
               </span>
+            )}
+            {canBuySomething && (
+              <span
+                className="absolute -left-1 top-1 h-3.5 w-3.5 rounded-full border-2 border-white bg-quest-gold"
+                title="There's something new you can afford"
+              />
             )}
           </button>
 
@@ -166,7 +179,7 @@ export default function PetBar() {
         </div>
       </div>
 
-      {shopOpen && <TreatShop onClose={() => setShopOpen(false)} />}
+      {shopOpen && <PetShop onClose={() => setShopOpen(false)} />}
     </>
   );
 }

@@ -1,10 +1,12 @@
 // The mascot's state vocabulary and the rules that pick one. Pure, no React, no timers,
-// no DOM -- structurally identical to pet/mood.ts (which this supersedes), extended from
-// 8 moods to the 14 states the Hub Mode mascot brief calls for (the 13 named states plus
-// `hungry`, which is an existing, working, orthogonal sustained state from the hunger/
-// feed system and must not silently disappear). `curious` (existing, block-drag-only) is
-// folded into `playful` -- dragging a block is exactly "the pet notices something small
-// and playful happened".
+// no DOM. Fourteen states: the thirteen the Hub Mode mascot brief names, plus `hungry`
+// from the hunger/feed system.
+//
+// This is now the ONLY mood vocabulary in the app. pet/mood.ts used to sit alongside it --
+// a near-identical 8-value machine with the same four function names and its own priority
+// table -- which this file's header already described as superseded while the renderer
+// went on rendering from it through a lossy translation table. Both the duplicate and the
+// translation are gone; pet/spriteLayout.ts maps these fourteen states straight to art.
 //
 // Two kinds of state, same distinction pet/mood.ts drew:
 //
@@ -17,6 +19,8 @@
 //
 // Priority is what makes interruption clean: a higher-priority event always replaces
 // what's showing, a lower-priority one is dropped rather than queued.
+
+import { CLIP_DURATION_MS } from "../pet/spriteLayout";
 
 export type MascotState =
   | "idle"
@@ -79,30 +83,19 @@ export const STATE_PRIORITY: Record<MascotState, number> = {
   idle: 0,
 };
 
-/** How long each transient state holds before falling back. Milliseconds.
+/** How long each transient state holds before falling back, DERIVED FROM ITS ANIMATION
+ *  (pet/spriteLayout.ts) rather than typed here.
  *
- *  `pointing` DOES have a duration here, for the hover/unlock-triggered pulse
- *  (levelHovered/levelUnlocked push it as an ordinary transient reaction) -- that's a
- *  separate thing from the SUSTAINED pointing branch in sustainedMascotState, which is
- *  genuinely durationless and persists until the child acts or falls asleep. Both resolve
- *  to the same "pointing" value; makeTransient/resolveMascotState don't need to know which
- *  produced it. Earlier draft of this file left pointing out of this table entirely on the
- *  (wrong) assumption that "sustained-like" meant "never transient" -- that made
- *  react("pointing") a silent no-op, since makeTransient returns null for anything absent
- *  here. Caught via manual browser verification (hovering an available level produced no
- *  visible reaction), not by the type system. */
-export const STATE_DURATION_MS: Partial<Record<MascotState, number>> = {
-  celebrating: 1800,
-  milestone: 2600,
-  streak: 1800,
-  confused: 2400,
-  excited: 1800,
-  encouraging: 2000,
-  happy: 2600,
-  pointing: 1600,
-  welcome: 2400,
-  playful: 1100,
-};
+ *  This used to be a hand-written table of round numbers, and it was the source of the
+ *  pet's worst jank: the numbers had no relationship to the art they were gating.
+ *  `celebrating` was 1800ms against a 500ms jump, so a celebration played for half a
+ *  second, froze on its last frame for 1.3 seconds, then snapped to idle. `happy` was
+ *  2600ms against a 500ms wave. Every reaction in the app was play-freeze-snap.
+ *
+ *  A reaction should last exactly as long as its animation, so there is exactly one number
+ *  and the clip table owns it. Tuning how long a state lingers now means saying how many
+ *  times it plays, next to the art it plays -- see StateClip's `plays`. */
+export const STATE_DURATION_MS: Partial<Record<MascotState, number>> = CLIP_DURATION_MS;
 
 /** Below this, the mascot is visibly hungry and starts asking for something. Unchanged
  *  from pet/mood.ts's HUNGRY_THRESHOLD. */
@@ -134,13 +127,24 @@ export interface StateInputs {
   now: number;
 }
 
-/** The state implied by the world as it stands, ignoring anything that just happened. */
+/** The state implied by the world as it stands, ignoring anything that just happened.
+ *
+ *  ORDER MATTERS, and `sleepy` deliberately outranks `hungry` here -- it used to be the
+ *  other way round, which meant a hungry pet could never fall asleep. That was not a
+ *  corner case: store.go resets hunger to SessionStartHunger (10) at every boot, which is
+ *  below HUNGRY_THRESHOLD (25) on purpose, so EVERY session began hungry. A hub left
+ *  running between groups therefore sat in `hungry` indefinitely rather than dozing off --
+ *  which both contradicted "goes completely still once nobody is there" and burned a
+ *  Raspberry Pi's CPU on an animation with no one in the room to see it.
+ *
+ *  Being hungry is something the child is meant to notice and act on, so it belongs to the
+ *  time when a child is actually there. */
 export function sustainedMascotState(
   i: Pick<StateInputs, "busy" | "hunger" | "lastInteractionAt" | "hasRecommendedLevel" | "now">,
 ): MascotState {
   if (i.busy) return "thinking";
-  if (i.hunger < HUNGRY_THRESHOLD) return "hungry";
   if (i.now - i.lastInteractionAt >= SLEEPY_AFTER_MS) return "sleepy";
+  if (i.hunger < HUNGRY_THRESHOLD) return "hungry";
   if (i.hasRecommendedLevel && i.now - i.lastInteractionAt >= POINTING_AFTER_MS) return "pointing";
   return "idle";
 }
@@ -171,40 +175,4 @@ export function shouldReplaceTransient(current: Transient | null, incoming: Masc
 export function makeTransient(state: MascotState, now: number): Transient | null {
   const ms = STATE_DURATION_MS[state];
   return ms === undefined ? null : { state, expiresAt: now + ms };
-}
-
-// Pet.tsx's data-mood CSS only knows the original 8-value vocabulary -- this maps the
-// wider MascotState set down onto it. Used by MascotCanvas.tsx's fallback path, and (while
-// the Rive mascot is visually parked pending review, see PetBar.tsx) by PetBar.tsx to drive
-// Pet.tsx directly as the primary renderer. One mapping, shared, so the two call sites can
-// never quietly disagree about which legacy mood a given MascotState should look like.
-export type LegacyPetMood = "idle" | "curious" | "thinking" | "happy" | "celebrating" | "hungry" | "sleepy" | "confused";
-
-export function mascotStateToLegacyMood(state: MascotState): LegacyPetMood {
-  switch (state) {
-    case "welcome":
-    case "excited":
-    case "streak":
-    case "milestone":
-      return "happy";
-    case "encouraging":
-    case "pointing":
-    case "playful":
-      return "curious";
-    case "celebrating":
-      return "celebrating";
-    case "confused":
-      return "confused";
-    case "thinking":
-      return "thinking";
-    case "hungry":
-      return "hungry";
-    case "sleepy":
-      return "sleepy";
-    case "happy":
-      return "happy";
-    case "idle":
-    default:
-      return "idle";
-  }
 }

@@ -451,7 +451,9 @@ func TestRestoreFromSnapshot_FreshDrive(t *testing.T) {
 		"Priya", 40, 40, 3,
 		[]string{"level-1", "level-2"},
 		map[string]int{"level-1": 3, "level-2": 2},
-		1, 5000,
+		1,
+		[]InventoryItem{{ItemID: "sun-hat", Qty: 1, Equipped: true}},
+		5000,
 	)
 	if err != nil {
 		t.Fatalf("RestoreFromSnapshot: %v", err)
@@ -516,7 +518,7 @@ func TestRestoreFromSnapshot_NeverRegressesExistingLocalProgress(t *testing.T) {
 
 	// A worse, older snapshot (lower points, fewer stars, lower evolution stage, and a
 	// different name) must not overwrite any of it.
-	err = s.RestoreFromSnapshot("SomeoneElse", 10, 10, 1, []string{"level-1"}, map[string]int{"level-1": 1}, 0, 50)
+	err = s.RestoreFromSnapshot("SomeoneElse", 10, 10, 1, []string{"level-1"}, map[string]int{"level-1": 1}, 0, nil, 50)
 	if err != nil {
 		t.Fatalf("RestoreFromSnapshot: %v", err)
 	}
@@ -667,5 +669,99 @@ func TestStartSessionOnAFreshDriveStillSetsSessionHunger(t *testing.T) {
 	}
 	if state.Pet.SessionStartedAt == 0 {
 		t.Error("session_started_at was never stamped")
+	}
+}
+
+// The inventory table went from "declared in §7 and never written" to carrying what a
+// child has collected, so the invariant that keeps it safe is worth pinning: a payload
+// can add to a collection and re-equip within it, but nothing in it can take anything
+// away. Every other write path in this file is already held to that (§10); this is the
+// one that arrives straight from a browser and is therefore the easiest to get wrong.
+func TestSaveInventory_NeverLosesAnything(t *testing.T) {
+	dbPath := filepath.Join(t.TempDir(), "pet.db")
+	s, err := Open(dbPath)
+	if err != nil {
+		t.Fatalf("Open: %v", err)
+	}
+	defer s.Close()
+
+	state, err := s.GetState()
+	if err != nil {
+		t.Fatalf("GetState: %v", err)
+	}
+
+	state.Inventory = []InventoryItem{
+		{ItemID: "berry", Qty: 4},
+		{ItemID: "sun-hat", Qty: 1, Equipped: true},
+	}
+	if err := s.SaveState(state); err != nil {
+		t.Fatalf("SaveState: %v", err)
+	}
+
+	// A stale tab posts an older, smaller view of the same collection and omits the hat
+	// entirely. Nothing may shrink and nothing may vanish.
+	state.Inventory = []InventoryItem{{ItemID: "berry", Qty: 2}}
+	if err := s.SaveState(state); err != nil {
+		t.Fatalf("SaveState (stale): %v", err)
+	}
+
+	got, err := s.GetState()
+	if err != nil {
+		t.Fatalf("GetState: %v", err)
+	}
+	byID := map[string]InventoryItem{}
+	for _, it := range got.Inventory {
+		byID[it.ItemID] = it
+	}
+	if byID["berry"].Qty != 4 {
+		t.Errorf("berry qty = %d, want 4 (a lifetime count must never go down)", byID["berry"].Qty)
+	}
+	if _, ok := byID["sun-hat"]; !ok {
+		t.Error("sun-hat disappeared: an item the payload omits must be left alone, not deleted")
+	}
+
+	// Equipping IS free to move in both directions -- it is what the child is wearing
+	// right now, not something they earned.
+	state.Inventory = []InventoryItem{{ItemID: "sun-hat", Qty: 1, Equipped: false}}
+	if err := s.SaveState(state); err != nil {
+		t.Fatalf("SaveState (unequip): %v", err)
+	}
+	got, _ = s.GetState()
+	for _, it := range got.Inventory {
+		if it.ItemID == "sun-hat" && it.Equipped {
+			t.Error("sun-hat still equipped: taking a hat off must be allowed")
+		}
+	}
+}
+
+// A lost drive gets its collection back, for the reason RestoreFromSnapshot spells out:
+// the points that paid for it are restored post-spend, so dropping the item would leave
+// the child with neither.
+func TestRestoreFromSnapshot_BringsBackTheCollection(t *testing.T) {
+	dbPath := filepath.Join(t.TempDir(), "pet.db")
+	s, err := Open(dbPath)
+	if err != nil {
+		t.Fatalf("Open: %v", err)
+	}
+	defer s.Close()
+
+	err = s.RestoreFromSnapshot("Priya", 40, 40, 3, nil, nil, 1,
+		[]InventoryItem{{ItemID: "star-crown", Qty: 1, Equipped: true}}, 5000)
+	if err != nil {
+		t.Fatalf("RestoreFromSnapshot: %v", err)
+	}
+
+	state, err := s.GetState()
+	if err != nil {
+		t.Fatalf("GetState: %v", err)
+	}
+	found := false
+	for _, it := range state.Inventory {
+		if it.ItemID == "star-crown" && it.Qty == 1 && it.Equipped {
+			found = true
+		}
+	}
+	if !found {
+		t.Errorf("star-crown not restored; inventory = %+v", state.Inventory)
 	}
 }

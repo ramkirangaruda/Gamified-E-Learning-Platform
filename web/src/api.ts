@@ -36,10 +36,21 @@ export interface PetState {
   session_started_at: number;
 }
 
+/** One row of §7's `inventory` table. `qty` is a LIFETIME COUNT, not a stock level --
+ *  how many of this item have ever been bought -- so it only ever grows and nothing in
+ *  the game consumes it (see pet/items.ts, and internal/store's saveInventory, which
+ *  enforces the same rule server-side). `equipped` is what the pet is wearing right now
+ *  and moves freely in both directions. */
+export interface InventoryItem {
+  item_id: string;
+  qty: number;
+  equipped: boolean;
+}
+
 export interface GameState {
   learner: Learner;
   pet: PetState;
-  inventory: unknown[];
+  inventory: InventoryItem[];
   // Derived from level_progress -- every level_id ever solved, regardless of order.
   // The correct, order-independent replacement for a "highest_level index" check now
   // that levels are reachable via independent dashboard sections rather than one

@@ -84,7 +84,7 @@ function App() {
         return <SettingsPage onBack={() => setRoute(HOME)} />;
       case "progress":
         return <ProgressPage />;
-      // Classroom stays the modal it has always been (same convention as TreatShop:
+      // Classroom stays the modal it has always been (same convention as PetShop:
       // reached by a button, closed by Escape or a click outside) -- it is a short
       // two-field errand, not somewhere to be. Giving it a route rather than a boolean
       // only changes what lights up in the nav; the panel itself is untouched, and it

@@ -9,7 +9,7 @@ import {
   type MascotState,
   type Transient,
 } from "../mascot/state";
-import { canSpeak, LOCKED_LINES, pickLine, SPEECH_LINES, UNLOCK_LINES } from "../mascot/speech";
+import { canSpeak, LOCKED_LINES, pickLine, SPEECH_LINES, UNLOCK_LINES, WEARABLE_LINES } from "../mascot/speech";
 import {
   detectNewMilestones,
   detectNewlyUnlockedLevel,
@@ -17,9 +17,8 @@ import {
   hasRecommendedLevel as computeHasRecommendedLevel,
   type Milestone,
 } from "../mascot/progress";
-import { applyPurchase, type Treat } from "./treats";
+import { applyEquip, applyPurchase, type Item } from "./items";
 import { fetchLevels, fetchState, fetchSuggestion, saveState, type GameState, type LevelDef, type Suggestion } from "../api";
-import type { ExecResult } from "../executorTypes";
 
 // The mascot's single source of truth, mounted once by App above everything else.
 //
@@ -34,9 +33,9 @@ import type { ExecResult } from "../executorTypes";
 // /api/levels and /api/state independently, so the two screens could disagree about
 // points and solved levels until whichever request landed last.
 //
-// Extended (not replaced) from the original 8-mood engine to the 14-state Hub-Mode-mascot
-// vocabulary in mascot/state.ts -- see that file for why this is one engine, not two, and
-// DECISIONS.md for the reasoning log.
+// The state vocabulary is mascot/state.ts's fourteen, and `mood` below carries one of them
+// through to the renderer untranslated. It used to be squashed to eight on the way out --
+// see pet/spriteLayout.ts for what that cost and why the intermediate vocabulary is gone.
 
 // A rotating (not purely random) reaction cycle for direct mascot clicks -- guarantees
 // variety across repeated clicks rather than "usually random, occasionally repeats twice
@@ -78,13 +77,11 @@ interface PetContextValue extends MascotEvents {
 
   /** Push a transient reaction directly. Lower-priority pushes are dropped, not queued.
    *  Prefer the named MascotEvents methods above at real call sites -- this stays exposed
-   *  for the dev debug hook and for reactToRun's fine-grained trace reading. */
+   *  for PlayPage's `thinking` handoff and the dev debug hook. */
   react: (state: MascotState) => void;
   /** True while a program is running or a hint is in flight -> `thinking`. */
   setBusy: (busy: boolean) => void;
   say: (text: string | null) => void;
-  /** Reads a finished run's trace and reacts: goal -> celebrating, bump -> confused. */
-  reactToRun: (result: ExecResult) => void;
 
   /** Replaces game state and persists it (the reward write from PlayPage). Also diffs
    *  the result for newly-crossed XP/level-count milestones. */
@@ -97,7 +94,11 @@ interface PetContextValue extends MascotEvents {
 
   shopOpen: boolean;
   setShopOpen: (open: boolean) => void;
-  feed: (treat: Treat) => Promise<boolean>;
+  /** Buy a treat or a wearable. Returns false, changing nothing, when it can't happen --
+   *  the shop reads `purchaseBlocker` itself to say WHY before it ever gets here. */
+  buy: (item: Item) => Promise<boolean>;
+  /** Put a wearable on or take it off. Never a purchase, and never loses the item. */
+  equip: (item: Item, on: boolean) => Promise<void>;
 
   /** Calm Mode -- owned by App.tsx (see lite.ts), threaded down rather than re-read from
    *  the DOM a second way. Gates reaction intensity/frequency, never removed. */
@@ -233,18 +234,6 @@ export function PetProvider({ children, lite = false }: { children: ReactNode; l
       setSpeech(line);
     },
     [lite],
-  );
-
-  const reactToRun = useCallback(
-    (result: ExecResult) => {
-      // Read the trace, not the outcome string: a run can reach the goal having bumped
-      // on the way, and the goal is the higher-priority reaction either way. Priority in
-      // mascot/state.ts decides which one wins, so the order of these two calls doesn't
-      // matter.
-      if (result.events.some((e) => e.type === "bump")) react("confused");
-      if (result.outcome === "solved" || result.events.some((e) => e.type === "goal")) react("celebrating");
-    },
-    [react],
   );
 
   // --- Mascot event-bus API (see mascot/events.ts's public re-export) ------
@@ -397,10 +386,16 @@ export function PetProvider({ children, lite = false }: { children: ReactNode; l
     setState(fresh);
   }, []);
 
-  const feed = useCallback(
-    async (treat: Treat) => {
+  const buy = useCallback(
+    async (item: Item) => {
       if (!state) return false;
-      const result = applyPurchase({ points: state.learner.points, hunger: state.pet.hunger, treat });
+      const result = applyPurchase({
+        points: state.learner.points,
+        hunger: state.pet.hunger,
+        item,
+        inventory: state.inventory,
+        solvedCount: state.solved_levels.length,
+      });
       if (!result.ok) return false;
 
       const next: GameState = {
@@ -410,12 +405,31 @@ export function PetProvider({ children, lite = false }: { children: ReactNode; l
         // balance. Spending costs the balance, never the progress.
         learner: { ...state.learner, points: result.points },
         pet: { ...state.pet, hunger: result.hunger },
+        inventory: result.inventory,
       };
-      setFeedTick((t) => t + 1);
-      setSpeech(treat.line);
-      react("happy");
+
+      if (item.kind === "treat") {
+        setFeedTick((t) => t + 1);
+        setSpeech(item.line ?? null);
+        react("happy");
+      } else {
+        // A wearable is the bigger moment of the two -- it is the thing that was saved
+        // for -- so it gets the louder reaction, and applyPurchase has already put it on
+        // so there is something to react TO.
+        setSpeech(pickLine(WEARABLE_LINES, null));
+        react("excited");
+      }
       await commitState(next);
       return true;
+    },
+    [state, react, commitState],
+  );
+
+  const equip = useCallback(
+    async (item: Item, on: boolean) => {
+      if (!state) return;
+      react(on ? "happy" : "playful");
+      await commitState({ ...state, inventory: applyEquip(state.inventory, item, on) });
     },
     [state, react, commitState],
   );
@@ -506,12 +520,12 @@ export function PetProvider({ children, lite = false }: { children: ReactNode; l
     react,
     setBusy,
     say,
-    reactToRun,
     commitState,
     refreshState,
     shopOpen,
     setShopOpen,
-    feed,
+    buy,
+    equip,
     lite,
     sessionStart,
     levelHovered,

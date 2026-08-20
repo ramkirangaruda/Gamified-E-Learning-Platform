@@ -155,3 +155,44 @@ describe("the state vocabulary itself", () => {
     expect(STATE_PRIORITY.streak).toBeGreaterThan(STATE_PRIORITY.excited);
   });
 });
+
+describe("an unattended pet", () => {
+  const idleWorld = {
+    transient: null,
+    busy: false,
+    hunger: 100,
+    hasRecommendedLevel: false,
+    now: 1_000_000,
+  };
+
+  it("falls asleep even while hungry", () => {
+    // Regression, and not a corner case: internal/store/store.go resets hunger to
+    // SessionStartHunger (10) at every boot, deliberately below HUNGRY_THRESHOLD (25), so
+    // every session BEGINS hungry. `hungry` used to be checked before `sleepy`, which meant
+    // a pet that started hungry and was never fed could not doze off at all -- a hub left
+    // running between groups sat animating in an empty room indefinitely.
+    const state = sustainedMascotState({
+      ...idleWorld,
+      hunger: 5,
+      lastInteractionAt: idleWorld.now - SLEEPY_AFTER_MS - 1,
+    });
+    expect(state).toBe("sleepy");
+  });
+
+  it("still looks hungry while someone is actually there", () => {
+    // The other half: pushing sleepy ahead of hungry must not swallow hunger during play,
+    // because being hungry is the thing the child is supposed to notice and act on.
+    const state = sustainedMascotState({ ...idleWorld, hunger: 5, lastInteractionAt: idleWorld.now - 1_000 });
+    expect(state).toBe("hungry");
+  });
+
+  it("lets a running program outrank both", () => {
+    const state = sustainedMascotState({
+      ...idleWorld,
+      busy: true,
+      hunger: 5,
+      lastInteractionAt: idleWorld.now - SLEEPY_AFTER_MS - 1,
+    });
+    expect(state).toBe("thinking");
+  });
+});

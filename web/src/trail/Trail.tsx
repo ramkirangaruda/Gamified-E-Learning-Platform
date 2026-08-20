@@ -33,7 +33,12 @@ import type { LevelDef } from "../api";
 // ones that aren't complete".
 export default function Trail({ levels, solvedIds, starsByLevel, onSelectLevel, petStage, petName, petSpecies }: TrailProps) {
   const currentRef = useRef<HTMLButtonElement>(null);
-  const { mood, celebratingLevelId } = usePet();
+  // Species and stage arrive as props (the caller already has them), but the collection
+  // is read straight from the provider rather than threaded through as a fourth pet prop
+  // -- Trail is already a usePet() consumer, and one more prop that must be passed
+  // identically at every call site is one more place they can disagree.
+  const { mood, celebratingLevelId, state: petState } = usePet();
+  const petInventory = petState?.inventory;
   const { levelHovered, levelSelected, levelLocked } = useMascotEvents();
 
   const solvedSet = new Set(solvedIds);
@@ -197,7 +202,7 @@ export default function Trail({ levels, solvedIds, starsByLevel, onSelectLevel, 
             {EVOLUTION_MARKERS.map((m) =>
               m.afterSolved === index + 1 ? (
                 <div key={m.label} className="flex flex-col items-center">
-                  <Pet mood="happy" species={petSpecies} evolutionStage={petStage} size={52} />
+                  <Pet state="happy" species={petSpecies} evolutionStage={petStage} size={52} inventory={petInventory} />
                   <div className="-mt-1 rounded-chunk-sm border-2 border-quest-gold-dark bg-quest-gold px-2 py-0.5 font-display text-[10px] font-bold text-quest-ink">
                     {m.label}
                   </div>
