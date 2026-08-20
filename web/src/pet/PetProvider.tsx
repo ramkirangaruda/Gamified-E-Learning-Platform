@@ -154,6 +154,17 @@ export function PetProvider({ children, lite = false }: { children: ReactNode; l
       .catch(() => {});
   }, []);
 
+  // The speech bubble clears itself 10s after whatever set it -- every setSpeech call
+  // site (say(), speakFor(), the wearable-equip lines) goes through this one timer rather
+  // than each managing its own, so a bubble never just sits there stale once the pet has
+  // moved on to a different mood. Re-armed on every change: a new line resets the clock
+  // instead of the old timer cutting the new one off early.
+  useEffect(() => {
+    if (!speech) return;
+    const id = setTimeout(() => setSpeech(null), 10_000);
+    return () => clearTimeout(id);
+  }, [speech]);
+
   // --- Interaction tracking (feeds `sleepy`/`pointing`) --------------------
   // Coalesced to at most one state update per second so that ordinary clicking does not
   // re-render this provider on every pointer event. Waking from sleepy is still instant:

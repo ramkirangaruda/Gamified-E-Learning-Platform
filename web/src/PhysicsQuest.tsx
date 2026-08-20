@@ -6,6 +6,7 @@ import {
   type PhysicsLevelKey,
   type PhysicsSolved,
 } from "./physics/progress";
+import { usePet } from "./pet/PetProvider";
 import { ChunkyButton } from "./ui/Chunky";
 import { toneClasses } from "./ui/tone";
 
@@ -57,11 +58,22 @@ const LEVELS: PhysLevel[] = [
     explain: "Light bounces off a mirror at the same angle it arrives. A 45° mirror turns a beam by exactly a quarter turn." },
 ];
 
+// Every target/wall/wind combo below is verified reachable, not just eyeballed: a
+// standalone Node sweep (dt=0.008, matching the real per-frame step, integer angle
+// 10-85 / power 20-100 exactly like the sliders a child actually drags) replays this
+// file's own fire()/stepProj() physics and counts how many (angle, power) pairs land
+// each balloon. Round 2's rock-stack target and Round 3's whole setup used to have
+// either a razor-thin (needing power 98-100 exactly) or a genuinely EMPTY solution set
+// -- headwind -70 decelerates the cannonball enough that no angle/power combo in range
+// could reach either balloon before falling short or thudding into the wall, confirmed
+// by the same sweep returning zero hits at every one of the 76*81 grid points. Retuned
+// (lower wall, gentler wind, closer targets) until both balloons in every round have a
+// wide, comfortable band of solutions (35-150+ combos), not a pixel-perfect one.
 interface ProjRound { goal: string; targets: { x: number; y: number }[]; wall: { x: number; h: number } | null; wind: number; shots: number }
 const PROJ_ROUNDS: ProjRound[] = [
   { goal: "Pop both balloons over the cove. Five cannonballs, still air.", targets: [{ x: 520, y: 296 }, { x: 648, y: 232 }], wall: null, wind: 0, shots: 5 },
-  { goal: "A rock stack blocks the low road -- arc the shot over it.", targets: [{ x: 596, y: 184 }, { x: 690, y: 318 }], wall: { x: 414, h: 158 }, wind: 0, shots: 5 },
-  { goal: "A sea breeze is pushing back. Aim into it.", targets: [{ x: 566, y: 150 }, { x: 704, y: 262 }], wall: { x: 400, h: 112 }, wind: -70, shots: 6 },
+  { goal: "A rock stack blocks the low road -- arc the shot over it.", targets: [{ x: 570, y: 220 }, { x: 690, y: 318 }], wall: { x: 414, h: 120 }, wind: 0, shots: 5 },
+  { goal: "A sea breeze is pushing back. Aim into it.", targets: [{ x: 540, y: 150 }, { x: 670, y: 262 }], wall: { x: 400, h: 90 }, wind: -20, shots: 6 },
 ];
 
 interface SpringRound { goal: string; basket: { x: number; y: number } }
@@ -225,6 +237,7 @@ function beamPath(round: MirrorRound, mirrors: MirrorCell[]) {
 }
 
 export default function PhysicsQuest() {
+  const { state: petState, commitState } = usePet();
   const [view, setView] = useState<"trail" | "play">("trail");
   const [li, setLi] = useState(0);
   const [round, setRound] = useState(0);
@@ -306,11 +319,28 @@ export default function PhysicsQuest() {
     const key = lvl.key, r = round;
     const misses = missesRef.current;
     const stars = misses === 0 ? 3 : misses <= 2 ? 2 : 1;
+    const priorStars = solved[key][r];
     setSolved((prev) => {
       const arr: [number, number, number] = [...prev[key]] as [number, number, number];
       arr[r] = Math.max(arr[r], stars);
       return { ...prev, [key]: arr };
     });
+    // Feeds the SAME shared points/hunger economy the pet bar and Coding levels use,
+    // not a second, disconnected number -- a child who plays Physics should see the
+    // top counter move too. Awards only the DELTA between this round's new star best
+    // and whatever was already recorded for it (never regress, and never re-pay for
+    // replaying a round at the same or a worse result), using the identical
+    // 20 + (stars-1)*10 curve physics/progress.ts's own physicsXp() already displays,
+    // so the two numbers can never quietly disagree about what one round is worth.
+    if (stars > priorStars && petState) {
+      const xpFor = (s: number) => (s > 0 ? 20 + (s - 1) * 10 : 0);
+      const delta = xpFor(stars) - xpFor(priorStars);
+      void commitState({
+        ...petState,
+        learner: { ...petState.learner, points: petState.learner.points + delta, total_xp: petState.learner.total_xp + delta },
+        pet: { ...petState.pet, hunger: Math.min(100, petState.pet.hunger + 4) },
+      });
+    }
     const last = r === 2;
     const doneAll = (() => {
       const arr = [...solved[key]] as [number, number, number]; arr[r] = Math.max(arr[r], stars);

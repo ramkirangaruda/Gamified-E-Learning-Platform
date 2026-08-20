@@ -54,7 +54,7 @@ export default function SubjectPage({ subjectId, onNavigate }: SubjectPageProps)
 
   const header = (
     <header className="relative mx-auto max-w-6xl px-6 pt-6">
-      <div className="flex flex-wrap items-center gap-4 rounded-chunk-lg border-(length:--outline-chunk) border-white bg-quest-paper/80 px-6 py-4 shadow-chunk backdrop-blur-sm">
+      <div className="flex flex-wrap items-center gap-4 rounded-chunk-lg border-(length:--outline-chunk) border-white bg-quest-paper px-6 py-4 shadow-chunk">
         <span
           className={`flex h-14 w-14 shrink-0 items-center justify-center rounded-full border-b-[3px] font-display text-xl font-bold shadow-chunk-sm
             ${subject.available ? `${t.bg} ${t.border} ${t.text}` : "border-quest-locked-deep bg-quest-locked text-white/80"}`}
@@ -92,7 +92,7 @@ export default function SubjectPage({ subjectId, onNavigate }: SubjectPageProps)
         {header}
 
         <div className="relative mx-auto mt-8 max-w-3xl px-6 pb-24">
-          <div className="flex flex-col items-center gap-4 rounded-chunk-xl border-(length:--outline-chunk-thick) border-quest-locked bg-quest-paper/85 px-6 py-10 text-center shadow-chunk backdrop-blur-sm">
+          <div className="flex flex-col items-center gap-4 rounded-chunk-xl border-(length:--outline-chunk-thick) border-quest-locked bg-quest-paper px-6 py-10 text-center shadow-chunk">
             <Pet state="playful" species={state?.pet.species} size={96} inventory={state?.inventory} />
             <h2 className="font-display text-2xl font-bold text-quest-ink">
               {subject.title} isn't ready yet

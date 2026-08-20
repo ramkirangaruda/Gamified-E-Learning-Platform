@@ -8,6 +8,7 @@ import { levelsForSubject, SUBJECTS, type Subject } from "./subjects";
 import type { Route } from "./routes";
 import { StarRow } from "./ui/Chunky";
 import { toneClasses } from "./ui/tone";
+import WelcomeIntro from "./pet/WelcomeIntro";
 
 // The home screen, rebuilt around the dashboard redesign: a hero panel that says where
 // you are and gives you one obvious thing to press, then the subject cards.
@@ -55,7 +56,7 @@ function SubjectCard({ card, onOpen }: { card: CardData; onOpen: () => void }) {
       }
       className={`flex flex-col gap-2 rounded-chunk-lg border-(length:--outline-chunk-thick) p-4 text-left shadow-chunk transition-transform duration-100
         hover:-translate-y-1 active:translate-y-[3px] active:shadow-chunk-sm
-        ${subject.available ? `${t.border} bg-quest-paper` : "border-quest-locked bg-quest-paper/85 backdrop-blur-sm"}`}
+        ${subject.available ? `${t.border} bg-quest-paper` : "border-quest-locked bg-quest-paper"}`}
     >
       <div className="flex items-center justify-between">
         <span
@@ -171,7 +172,7 @@ export default function HomePage({ onNavigate }: HomePageProps) {
       <BackgroundScene solvedCount={solvedCount} />
 
       <div className="relative mx-auto max-w-6xl px-6 pb-24 pt-6">
-        <section className="relative mb-8 overflow-hidden rounded-chunk-xl border-(length:--outline-chunk-thick) border-white bg-quest-paper/85 px-6 py-7 shadow-chunk-lg backdrop-blur-sm">
+        <section className="relative mb-8 overflow-hidden rounded-chunk-xl border-(length:--outline-chunk-thick) border-white bg-quest-paper px-6 py-7 shadow-chunk-lg">
           {/* Decorative discs, echoing the wireframe's confetti corners. Static shapes,
               not motion, so they cost a Pi nothing. */}
           <div className="pointer-events-none absolute -right-10 -top-12 h-40 w-40 rounded-full bg-quest-gold/45" aria-hidden="true" />
@@ -242,6 +243,8 @@ export default function HomePage({ onNavigate }: HomePageProps) {
           ))}
         </div>
       </div>
+
+      <WelcomeIntro />
     </div>
   );
 }

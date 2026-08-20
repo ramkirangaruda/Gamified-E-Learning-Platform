@@ -2,7 +2,6 @@ import { useEffect, useState } from "react";
 import CompareView from "./CompareView";
 import HomePage from "./HomePage";
 import { applyLite, setOverride, storedOverride } from "./lite";
-import { fetchTierInfo } from "./api";
 import AppHeader from "./nav/AppHeader";
 import ClassroomPanel from "./pet/ClassroomPanel";
 import { PetProvider } from "./pet/PetProvider";
@@ -36,23 +35,18 @@ function App() {
   // machine that had already been put into lite mode.
   const [lite, setLite] = useState(false);
 
-  // Decide lite mode once, as early as possible, so the Pi never plays an animation
-  // even briefly before being told not to. A session override always wins over the
-  // server's decision; if the request fails we simply keep whatever is already set
-  // (prefers-reduced-motion still applies regardless -- that lives in CSS).
+  // Calm Mode defaults OFF, full stop -- the server's own low-RAM-tier auto-lite
+  // decision (GET /api/tier's `lite` field) is deliberately never applied here anymore.
+  // The only thing that can turn it on is the child's own explicit toggle, persisted via
+  // setOverride/storedOverride, which still wins on every later load. A machine that
+  // genuinely can't keep up now shows that by actually running slowly rather than the
+  // app silently deciding for a family what their computer can handle.
   useEffect(() => {
     const override = storedOverride();
     if (override !== null) {
       applyLite(override);
       setLite(override);
-      return;
     }
-    fetchTierInfo()
-      .then((t) => {
-        applyLite(!!t.lite);
-        setLite(!!t.lite);
-      })
-      .catch(() => {});
   }, []);
 
   function toggleLite() {
