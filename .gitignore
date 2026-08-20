@@ -37,3 +37,11 @@ __pycache__/
 # just this working tree, since removing it from history entirely needs an explicit
 # rewrite this project hasn't been asked for.
 /xiaoxin-static/
+
+# strawberry-pochacco/ is the raw cursor-pack source drop (includes cursors this project
+# never uses, plus scratch files from extracting a static frame out of an .ani). The
+# actual product assets are the renamed copies in web/public/cursors/, which ARE
+# tracked -- this stays untracked so a future `git add -A` can't sweep the whole source
+# pack in again the way an earlier session's broad add once did with the pet character
+# drops (see DECISIONS.md).
+/strawberry-pochacco/
