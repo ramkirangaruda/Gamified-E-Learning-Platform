@@ -137,6 +137,51 @@ body {
   font-family: var(--font-body);
 }
 
+/* --- Custom cursor ----------------------------------------------------------
+ * "Strawberry Pochacco" cursor set, web/public/cursors/ -- fan art of Sanrio's
+ * Pochacco, CC BY-NC (attribution required, noncommercial only): credited in
+ * web/public/cursors/CREDITS.txt and in README.md's Credits section, per the
+ * license's own terms, the same way this project already vendors Baloo2 (OFL)
+ * with its license kept alongside it rather than just dropped in unlabeled.
+ *
+ * Each rule falls back to the matching standard keyword (`, pointer`, `, text`,
+ * etc.) so a browser that can't load a .cur for any reason still shows a normal,
+ * usable cursor rather than nothing. `pointer.cur` is a single frame pulled from
+ * the pack's animated "Link Select" cursor -- CSS `cursor:` has no way to play a
+ * Windows .ani, so every clickable element gets the still image instead (see
+ * CREDITS.txt for exactly which frame and why).
+ *
+ * Scoped to real interactive elements, not `*` -- overriding the cursor on
+ * every element on the page would also cursor-ize things like plain body text
+ * a child is only ever reading, never clicking. */
+html {
+  cursor: url("/cursors/default.cur"), auto;
+}
+
+button:not(:disabled):not([aria-disabled="true"]),
+a[href],
+[role="button"]:not([aria-disabled="true"]),
+input[type="checkbox"],
+input[type="radio"],
+input[type="range"],
+select,
+label {
+  cursor: url("/cursors/pointer.cur"), pointer;
+}
+
+button:disabled,
+button[aria-disabled="true"],
+[role="button"][aria-disabled="true"],
+input:disabled {
+  cursor: url("/cursors/not-allowed.cur"), not-allowed;
+}
+
+input:not([type]),
+input[type="text"],
+textarea {
+  cursor: url("/cursors/text.cur"), text;
+}
+
 /* --- Scrollbars ------------------------------------------------------------
  * The default OS scrollbar is a 17px grey channel with square ends, and next to a UI
  * built entirely out of thick outlines and rounded sticker shapes it reads as a piece of

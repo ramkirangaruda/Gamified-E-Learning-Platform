@@ -152,3 +152,10 @@ Known gaps, honestly:
 See [`AUDIT.md`](AUDIT.md) for the full pre-hackathon audit this list is drawn from, and
 [`DEMO.md`](DEMO.md) for an honest, step-by-step account of what a live demo can
 currently show.
+
+## Credits
+
+- **Cursor set**: "Strawberry Pochacco" by [Britichi6](http://www.rw-designer.com/user/110962)
+  ([source](http://www.rw-designer.com/cursor-set/strawberry-pochacco)), licensed
+  Creative Commons Attribution-NonCommercial. `web/public/cursors/`.
+- **Font**: Baloo 2 (SIL Open Font License), `web/public/fonts/`.
