@@ -1,7 +1,72 @@
 # AUDIT.md — pre-hackathon audit
 
-> Summary is written at the top **after** Phase 2/3 complete. Phase 1 findings are below.
-> Nothing in Phase 1 was fixed; every item is classified and left alone until Phase 2.
+## Summary
+
+**Found:** 5 P0, 6 P1 (4 from reading, 2 more surfaced only in Phase 3 against the real
+model), 8 P2, 5 P3. **Fixed:** all 11 P0s and P1s, each with a test written first that
+reproduced the failure. **Left:** every P2 and P3, documented and untouched.
+
+Four of the five P0s were reproduced, not inferred. The one that mattered most was
+confirmed by hard-killing a live launcher and watching `llama-server` (PID 34684) keep
+running with the model resident.
+
+**What was fixed**
+
+| ID | Finding | Fix |
+|---|---|---|
+| P0-1 | `llama-server` survives a parent crash — **reproduced live** | Linux `Pdeathsig=SIGKILL`; `Close()` now also `Wait`s, bounded |
+| P0-2 | `log.Fatalf` after engine start skips `defer`, orphaning the model | Levels load *before* the engine spawns; `ListenAndServe` failure closes the engine explicitly instead of `Fatalf` |
+| P0-3 | Corrupt/truncated `pet.db` bricks the app — **reproduced** | `Open` restores from a `backup.db` snapshot, else quarantines and starts fresh; non-corruption errors still fail loudly |
+| P0-4 | One malformed level file kills all eight — **reproduced** | Skip-and-log bad files; error only when zero levels are usable |
+| P0-5 | Raw technical errors rendered to the child | `friendlyError()` — one short sentence on screen, real error to `console.error` |
+| P1-1 | Pre-warm silently emptied `?compare=1` and blanked the latency HUD — **reproduced** | Pre-warm records its (real-latency) generations; `latency_ms` always sent; HUD shows "instant" for 0 |
+| P1-2 | "I'll have real hints for you soon — M3 territory" on screen every level load | Real in-character idle line, guarded by a test that rejects milestone language generally |
+| P1-3 | Empty levels dir started silently with zero levels | Now an explained startup error |
+| P1-5 | §13 step 4's "points out you've done this before" **never actually appeared** — 5/5 real generations dropped it | Acknowledgement prepended deterministically (`HistoryPrefix`) rather than trusted to a 0.6B |
+| P1-6 | Real model emitted "Keep **the child** learning" — talking about the child to an adult | Extended the existing drift validator + retry/fallback to reject third person |
+| — | §13 step 4 had no end-to-end coverage | Two tests walking the real two-mistakes-then-hint path |
+
+P1-4 (an 8 GB Pi 5 selects the *high* tier, undercutting §13 step 7) was deliberately
+**not** code-fixed: `profiles.json` ships on the drive and already controls this. Raise
+`tiers.high.trigger.min_ram_mb` on the Pi's copy. It is a pre-event checklist item, not a
+code change.
+
+**Phase 3 regression result: everything green, nothing broken.** 72 Go tests, 26 TS tests,
+production bundle rebuilt, `linux/arm64` + `windows/amd64` cross-compiles clean (including
+`vet` over the Linux-only files). The full drive layout was assembled and the real binary
+run against the real 0.6B model — not the dev server. §13 step 4 was walked end to end
+five times: correct `off_by_one_repeat` classification, no acknowledgement on the first
+mistake, "This one's caught you before!" on the second and third, "We keep meeting this
+one, don't we?" on the fourth and fifth, 1.2–1.8 s real generations and 0 ms on cache
+hits, then the fix-and-solve landing `solved_levels: ["level-2"]`. The 370-generation
+drift benchmark came back **0/370 rejected** under the stricter validator, so it does not
+over-reject. The offline audit still passes: every request localhost, zero external, zero
+console errors, and the stale placeholder is confirmed absent from the shipped bundle.
+
+**Biggest remaining risk — and it is not a bug.**
+
+**Only two of §13's eight demo steps exist.** Steps 4 and 7 are built and now well
+covered. Steps 2, 3, 5, and 6 — the pet's evolution art and hat, the camera reading
+physical cards, buying a cake, and pulling key A out for key B — are M4/M5 and are not
+written. The codebase is in good shape for what it does; the risk is that the *demo as
+scripted cannot currently be performed*, and four days is not much runway for a camera
+pipeline (§14 already flags ArUco under venue lighting as the top risk) plus hot-swap
+plus an economy.
+
+Everything I fixed makes the built parts hard to break. None of it moves that line. If
+one thing gets decided tomorrow, it should be which of steps 2/3/5/6 actually ship and
+which get cut from the script — deciding that late is what turns a working demo into a
+missed beat on stage.
+
+Second, much smaller: the `llama-server` parent-crash guarantee is **kernel-enforced on
+Linux only**. Windows would need a Job Object; that was judged more startup-failure risk
+than the residual exposure warrants this close to the event. The Pi — the machine where
+an orphan actually hurts — is covered, and the Linux path is cross-compiled and vetted
+but runtime-unverified until Pi bring-up.
+
+---
+
+> Phase 1 findings follow, exactly as written before anything was fixed.
 
 Audit date: 2026-08-15. Scope: entire repo at commit `8228d3c`+ (post-dashboard work).
 Method: full read of all 33 Go files / 25 TS files / 8 level + 8 hint content files, plus

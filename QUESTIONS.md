@@ -1,5 +1,41 @@
 # QUESTIONS.md
 
+## Audit pass (2026-08-15) — decisions needed from you
+
+Full findings and the Phase 3 regression result are in `AUDIT.md`. Nothing below is
+blocking; these are the calls that are yours rather than mine.
+
+1. **The demo script is the real risk, not the code.** Only §13 steps 4 and 7 exist.
+   Steps 2 (evolution art + hat), 3 (camera reads cards), 5 (buy a cake, pet evolves) and
+   6 (pull key A, plug key B) are M4/M5 and unwritten. Four days. **Which of those four
+   actually ship, and which get cut from the script?** Deciding late is what turns a
+   working demo into a missed beat on stage. Everything I fixed hardens what exists; none
+   of it moves this line.
+2. **Pi checklist item, no code change:** an 8 GB Pi 5 will select the *high* tier
+   (`SelectTier` is RAM-only, threshold 6144 MB). The Pi then runs the 1.7B and §13 step 7
+   ("the model just resized itself for the bigger machine") has nothing to show. Fix is
+   one number in the Pi drive's `profiles.json` — raise
+   `tiers.high.trigger.min_ram_mb` to something unreachable. Confirm which Pi you have.
+3. **Scope call I made under conflicting instructions — tell me if it was wrong.** The
+   pass said "no new features, M4 is out of scope" *and* "pet.db crash safety is P0 by
+   definition, confirm recovery works." Recovery did not exist; a corrupt `pet.db` refused
+   to start the app entirely. I built the minimum that unbricks it (snapshot on clean
+   open, restore on corruption, quarantine-and-continue otherwise) and left the full
+   write-then-rename scheme for M4. If you'd rather that had stayed untouched, it reverts
+   cleanly — it's one commit.
+4. **Windows parent-crash orphan is still open.** `llama-server` surviving a hard-killed
+   launcher is now kernel-prevented on Linux (`Pdeathsig`) — the Pi, where 1.4 GB matters.
+   Windows would need a Job Object; I judged that more startup-failure risk than the
+   residual exposure warrants this close to the event. If a Windows laptop is the primary
+   demo machine rather than the Pi, say so and I'll reconsider.
+5. **Hunger is cumulative for the life of the key, not session-scoped** (brief §10 says
+   session-scoped). The two hard rules hold — it never decays, it never regresses — but a
+   well-used key sits permanently at 100 and the stat stops meaning anything. Related:
+   §13 step 6's "level 1, **hungry**" pet won't render as hungry, because a fresh key
+   defaults to 50 and the `hungry` mood needs < 25. Both are one-value economy decisions,
+   not bugs, so I left them alone. Say the word and either is a one-line change.
+
+
 ## Handoff summary (2026-08-15) — verification/hardening queue complete, all 6 items
 
 Not M4 — this was the pre-M4 verification and hardening queue (llama.cpp-on-ARM had to
