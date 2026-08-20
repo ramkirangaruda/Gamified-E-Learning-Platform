@@ -61,7 +61,13 @@ export default function Trail({ levels, solvedIds, starsByLevel, onSelectLevel, 
                 const index = levels.indexOf(level);
                 const solved = solvedSet.has(level.id);
                 const isCurrent = index === current;
-                const locked = index > current;
+                // A solved level is NEVER locked, even if it sits past the current
+                // position -- §10: nothing re-locks once unlocked. Without the
+                // `!solved` guard, solving out of order (via the grid's replay, or a
+                // level completed on another machine with the same key) made finished
+                // levels render as padlocked, which is precisely the regression §10
+                // forbids.
+                const locked = index > current && !solved;
                 const group = groupFor(level.teaches);
                 const stars = starsByLevel[level.id] ?? 0;
 
