@@ -106,7 +106,7 @@ or `--image photo.png --dry-run` to try it without one. See [`hub/README.md`](hu
 - Go 1.26, `net/http` stdlib server, `modernc.org/sqlite` (pure Go, no CGO — the one
   runtime dependency that isn't stdlib, chosen so the binary cross-compiles cleanly to
   both the Pi and Windows). React + TypeScript + Vite + Blockly on the frontend.
-- 138 Go tests across 11 packages, 134 TypeScript tests (`npm test`, vitest), a separate
+- 138 Go tests across 11 packages, 141 TypeScript tests (`npm test`, vitest), a separate
   Python test suite for the camera pipeline (`python -m pytest hub/tests`).
 
 ## What's real, and what isn't yet

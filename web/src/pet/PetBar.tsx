@@ -16,14 +16,20 @@ import { usePet } from "./PetProvider";
 // Rive plumbing, or tests was removed -- swapping MascotCanvas back in here is a one-line
 // change once the visual is approved.
 
-// The fixed companion bar. Mounted once by App, above the page switch, so it never
-// unmounts -- see PetProvider for why that matters.
+// The companion row: the pet, its hunger meter, points, and the current level's stars.
 //
-// Layout is deliberately fixed-height (--pet-bar-h, 92px) and the pages below simply pad
-// past it. The speech bubble is absolutely positioned and OVERLAYS the page rather than
-// participating in the bar's layout: a bubble that pushed content would reflow the whole
-// screen every time Tom said something, which on a Pi is both janky and disorienting for
-// a child mid-drag.
+// This is the LOWER of the two rows inside nav/AppHeader.tsx, which owns the fixed
+// positioning both rows share. It used to be the fixed header itself; the redesign put a
+// navigation row above it, and the one thing that could not change in the move is that it
+// is still mounted exactly ONCE by App, above the page switch, so it never unmounts --
+// see PetProvider for why that matters. Everything here is unchanged apart from no longer
+// positioning itself.
+//
+// Layout is deliberately fixed-height (--app-header-pet-h) and the pages below pad past
+// the header total (--app-header-h). The speech bubble is absolutely positioned and
+// OVERLAYS the page rather than participating in the row's layout: a bubble that pushed
+// content would reflow the whole screen every time Tom said something, which on a Pi is
+// both janky and disorienting for a child mid-drag.
 
 function hungerWord(hunger: number): string {
   if (hunger >= 85) return "completely full";
@@ -83,10 +89,7 @@ export default function PetBar() {
 
   return (
     <>
-      <header
-        className="fixed inset-x-0 top-0 z-40 h-[var(--pet-bar-h)] border-b-[var(--outline-chunk-thick)] border-quest-ink/15 bg-quest-paper/95 backdrop-blur-sm"
-        data-testid="pet-bar"
-      >
+      <div className="h-[var(--app-header-pet-h)] border-t-2 border-quest-ink/10" data-testid="pet-bar">
         <div className="relative mx-auto flex h-full max-w-6xl items-center gap-4 px-4">
           {/* The pet itself is the shop button (item 5). A child does not look for a
               "shop" label -- they click the animal. */}
@@ -148,12 +151,12 @@ export default function PetBar() {
           {/* Anchored to the pet, overlaying whatever is below. pointer-events-none so it
               can never intercept a click meant for the page underneath. */}
           {speech && (
-            <div className="pointer-events-none absolute left-20 top-[calc(var(--pet-bar-h)-14px)] z-50 max-w-md">
+            <div className="pointer-events-none absolute left-20 top-[calc(var(--app-header-pet-h)-14px)] z-50 max-w-md">
               <SpeechBubble text={speech} />
             </div>
           )}
         </div>
-      </header>
+      </div>
 
       {shopOpen && <TreatShop onClose={() => setShopOpen(false)} />}
     </>
