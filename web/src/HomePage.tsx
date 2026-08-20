@@ -20,12 +20,13 @@ type View = "trail" | "grid";
 interface HomePageProps {
   onSelectLevel: (levelId: string) => void;
   onOpenSandbox: () => void;
+  onOpenSettings: () => void;
   /** Owned by App, which is what resolves it from the server/session -- see App.tsx. */
   lite: boolean;
   onToggleLite: () => void;
 }
 
-export default function HomePage({ onSelectLevel, onOpenSandbox, lite, onToggleLite }: HomePageProps) {
+export default function HomePage({ onSelectLevel, onOpenSandbox, onOpenSettings, lite, onToggleLite }: HomePageProps) {
   const { state, levels, error, suggestion } = usePet();
   const [view, setView] = useState<View>("trail");
   const [classroomOpen, setClassroomOpen] = useState(false);
@@ -68,6 +69,9 @@ export default function HomePage({ onSelectLevel, onOpenSandbox, lite, onToggleL
             onClick={() => setClassroomOpen(true)}
           >
             Classroom
+          </ChunkyButton>
+          <ChunkyButton tone="neutral" title="Pick which pet keeps you company" onClick={onOpenSettings}>
+            Settings
           </ChunkyButton>
           <ChunkyButton
             tone="neutral"
