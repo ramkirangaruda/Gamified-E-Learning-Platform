@@ -118,6 +118,7 @@ export default function HomePage({ onSelectLevel, onOpenSandbox, lite, onToggleL
               onSelectLevel={onSelectLevel}
               petStage={state?.pet.evolution_stage ?? 0}
               petName={state?.pet.name}
+              petSpecies={state?.pet.species}
             />
           ) : (
             <LevelGrid levels={levels} solvedIds={solvedIds} starsByLevel={starsByLevel} onSelectLevel={onSelectLevel} />

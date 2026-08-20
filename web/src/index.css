@@ -163,7 +163,7 @@
  * Only `idle` and `thinking` loop -- every other mood is a one-shot reaction that
  * holds its final frame via `animation-fill-mode: forwards` until the mood changes out
  * from under it (mood.ts's transient durations all comfortably outlast these clips).
- * `hungry` and `sleepy` get no animation class at all (see tomLizard.ts) and simply
+ * `hungry` and `sleepy` get no animation class at all (see spriteLayout.ts) and simply
  * show the sheet's default resting position -- `sleepy` doing this is the direct
  * continuation of the "asleep is completely still" rule below: nothing here loops
  * without `idle` or `thinking` being the active mood, full stop.

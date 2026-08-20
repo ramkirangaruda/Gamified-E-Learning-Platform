@@ -1,0 +1,126 @@
+{
+  "id": "rex",
+  "displayName": "Rex",
+  "description": "A sly long-snouted mechanical wolf riding a worn red vintage motorcycle.",
+  "spritesheetPath": "spritesheet.webp",
+  "states": {
+    "idle": {
+      "atlasRow": "idle",
+      "notes": "Low-distraction bike idle with tiny eye shifts, slight chest bob, and ready-to-go posture."
+    },
+    "walk": {
+      "atlasRows": [
+        "running-right",
+        "running-left"
+      ],
+      "notes": "Directional riding rows for true right-facing and left-facing motorcycle travel."
+    },
+    "curious": {
+      "atlasRow": "review",
+      "notes": "Alert scanning look while staying seated on the motorcycle and holding the bars."
+    },
+    "happy": {
+      "atlasRow": "waving",
+      "notes": "Smug pleased loop with a tiny throttle flourish instead of a literal wave."
+    },
+    "sleep": {
+      "atlasRow": "waiting",
+      "notes": "Drowsy roadside rest with drooping eyelids and a relaxed lean onto the handlebars."
+    },
+    "active": {
+      "atlasRow": "running",
+      "notes": "Compact rev/coast support loop with slight chassis vibration and engine bounce."
+    },
+    "hop": {
+      "atlasRow": "jumping",
+      "notes": "Small controlled wheelie sequence, preserving rider-bike unity."
+    },
+    "brake_support": {
+      "atlasRow": "failed",
+      "notes": "Controlled brake-and-slump support loop; no crash or disassembly."
+    }
+  },
+  "atlasRowSemantics": {
+    "idle": "idle",
+    "running-right": "ride-right",
+    "running-left": "ride-left",
+    "waving": "happy",
+    "jumping": "wheelie",
+    "failed": "brake-support",
+    "waiting": "sleep",
+    "running": "rev-coast",
+    "review": "curious"
+  },
+  "requestedActionMap": {
+    "idle": {
+      "atlasRow": "idle",
+      "status": "implemented"
+    },
+    "ride_right": {
+      "atlasRow": "running-right",
+      "status": "implemented"
+    },
+    "ride_left": {
+      "atlasRow": "running-left",
+      "status": "implemented"
+    },
+    "curious": {
+      "atlasRow": "review",
+      "status": "implemented"
+    },
+    "happy": {
+      "atlasRow": "waving",
+      "status": "implemented"
+    },
+    "sleep": {
+      "atlasRow": "waiting",
+      "status": "implemented"
+    },
+    "drag": {
+      "leftAtlasRow": "running-left",
+      "rightAtlasRow": "running-right",
+      "status": "implemented",
+      "notes": "Directional drag reuses the true-facing ride rows."
+    },
+    "wheelie": {
+      "atlasRow": "jumping",
+      "status": "implemented"
+    },
+    "rev": {
+      "atlasRow": "running",
+      "status": "implemented",
+      "notes": "Mapped to the non-directional rev/coast support loop."
+    },
+    "coast": {
+      "atlasRow": "running",
+      "status": "approximate",
+      "notes": "Shares the same non-directional support row as rev because the fixed atlas has no extra dedicated coast row."
+    },
+    "brake": {
+      "atlasRow": "failed",
+      "status": "approximate",
+      "notes": "Mapped to the brake-and-slump support loop in the fixed atlas."
+    },
+    "rest": {
+      "atlasRow": "waiting",
+      "status": "implemented",
+      "notes": "Mapped to the sleep/rest row."
+    }
+  },
+  "dragFacingValidation": {
+    "rule": "deltaX < 0 => facing left; deltaX > 0 => facing right",
+    "leftDragUses": "running-left",
+    "rightDragUses": "running-right",
+    "leftRowDerivedFrom": "generated-directly",
+    "rightRowDerivedFrom": "generated-directly",
+    "manualVerification": [
+      "left drag uses the true left-facing ride row",
+      "right drag uses the true right-facing ride row",
+      "ride_left and ride_right are not swapped",
+      "wolf muzzle, handlebars, headlamp, tank, and wheel orientation agree with the travel direction",
+      "left drag never faces right",
+      "right drag never faces left",
+      "Rex remains readable at small size as a long-snouted wolf riding a worn vintage red motorcycle"
+    ]
+  }
+}

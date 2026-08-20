@@ -75,6 +75,7 @@ export default function PetBar() {
   const points = state?.learner.points ?? 0;
   const hunger = state?.pet.hunger ?? 50;
   const petName = state?.pet.name ?? "Tom";
+  const petSpecies = state?.pet.species ?? "tom-lizard";
   const solved = state?.solved_levels ?? [];
   const levelNumber = activeLevel ? levels.findIndex((l) => l.id === activeLevel.id) + 1 : null;
   // handoff/04-stars.md: real per-level star count instead of a hardcoded solved-or-not.
@@ -106,6 +107,7 @@ export default function PetBar() {
             <Pet
               mood={mascotStateToLegacyMood(mood)}
               name={petName}
+              species={petSpecies}
               evolutionStage={state?.pet.evolution_stage ?? 0}
               size={84}
               feedTick={feedTick}
