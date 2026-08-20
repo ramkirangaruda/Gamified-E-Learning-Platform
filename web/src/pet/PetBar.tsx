@@ -101,7 +101,7 @@ export default function PetBar() {
             top-left corner, poking up into the nav row above for a "big companion" feel,
             and present on every page because this whole header is mounted exactly once
             (see the file header comment). The rest of the row's content gets left padding
-            (pl-[168px] below) sized to the pet's own box (size 128 + the left-4 inset +
+            (pl-[152px] below) sized to the pet's own box (size 112 + the left-4 inset +
             breathing room) so nothing ever sits under it. */}
         <button
           type="button"
@@ -122,7 +122,7 @@ export default function PetBar() {
             name={petName}
             species={petSpecies}
             evolutionStage={state?.pet.evolution_stage ?? 0}
-            size={128}
+            size={112}
             feedTick={feedTick}
             inventory={state?.inventory}
           />
@@ -139,7 +139,7 @@ export default function PetBar() {
           )}
         </button>
 
-        <div className="mx-auto flex h-full max-w-6xl items-center gap-4 pl-[168px] pr-4">
+        <div className="mx-auto flex h-full max-w-6xl items-center gap-4 pl-[152px] pr-4">
           <div className="flex min-w-0 flex-col gap-1.5">
             <span className="font-display text-lg font-bold leading-none text-quest-ink">{petName}</span>
             <HungerBar hunger={hunger} />

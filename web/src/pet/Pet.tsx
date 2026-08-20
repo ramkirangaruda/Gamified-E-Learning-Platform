@@ -164,19 +164,16 @@ export default function Pet({
             hat they chose sits on top of it. */}
         {hat && wearable(hat.id, "hat")}
 
-        {/* Evolution stage art (§13 step 2): the same additive hat/badge language the
-            original mascot used, a small overlay above the sprite so it works over any
-            character's art -- stage 1 adds the hat, stage 2 adds the badge, stage 3 (via
-            .pet-stage-aura above) adds the glow. See index.css's [data-stage] rules. */}
+        {/* Evolution stage art (§13 step 2): the cap that used to sit here at stage 1 was
+            removed at product direction (no default cap on the pet). What remains is the
+            badge, still stage 2's own additive signal, and the aura (via .pet-stage-aura
+            above) at stage 3. See index.css's [data-stage] rules. */}
         <svg
           className={`pet-hat${hat ? " pet-hat-replaced" : ""}`}
           viewBox="0 0 40 40"
           style={{ position: "absolute", top: "4%", left: "50%", transform: "translateX(-50%)", width: frameW * 0.34, height: frameW * 0.34 }}
           aria-hidden="true"
         >
-          <path className="pet-hat-brim" d="M 8 27 Q 20 23 32 27 L 30 31 Q 20 28 10 31 Z" />
-          <path className="pet-hat-cone" d="M 10 28 L 30 28 L 20 5 Z" />
-          <circle className="pet-hat-pompom" cx={20} cy={5} r={3} />
           <g className="pet-hat-badge">
             <path d="M 33 12 l 1.8 4 l 4 1.8 l -4 1.8 l -1.8 4 l -1.8 -4 l -4 -1.8 l 4 -1.8 Z" />
           </g>

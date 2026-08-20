@@ -13,12 +13,12 @@ import type { ChunkyTone } from "./ui/Chunky";
 // on screen claims progress a child has not made, which is the same rule §10 applies to
 // levels. Biology still renders that way, for the same reason.
 //
-// Chemistry (ChemLabPage.tsx), Physics (PhysicsQuest.tsx) and Math (MathPage.tsx, an
-// offline-bundled iframe) are the first three to actually ship, and none of them is a
-// level trail -- each keeps progress its own way: Chemistry in session-only React state
-// (no persistence), Physics in localStorage (survives a reload, not a drive swap), Math
-// not tracked at all (its iframe exposes no progress signal to the host app). `available:
-// true` here does NOT mean "has levels" -- it never did for Coding-shaped content, but
+// Chemistry (ChemLabPage.tsx), Physics (PhysicsQuest.tsx) and Math (MathLabPage.tsx, four
+// native mini-games with generated questions) are the first three to actually ship, and
+// none of them is a level trail -- each keeps progress its own way: Chemistry and Math in
+// session-only React state (no persistence), Physics in localStorage (survives a reload,
+// not a drive swap). `available: true` here does NOT mean "has levels" -- it never did for
+// Coding-shaped content, but
 // it's worth saying explicitly now that four subjects use it four different ways.
 // `levelsForSubject` returns [] for every one of "chem"/"phys"/"math"; `standalone`
 // (true for chem and math, absent for phys) is the second axis HomePage/ProgressPage
@@ -63,9 +63,9 @@ export const SUBJECTS: Subject[] = [
   // once there's something to actually measure -- see HomePage/ProgressPage's own
   // Physics special-case.
   { id: "phys", letter: "Ph", title: "Physics", desc: "Forces & energy", tone: "repeat", available: true },
-  // Math Lab (MathPage.tsx, an offline-bundled iframe): four mini-games with no progress
-  // signal exposed to the host app at all, so `standalone` here isn't a choice the way
-  // Chemistry's is -- there is nothing to count even in principle.
+  // Math Lab (MathLabPage.tsx): four native mini-games (generated questions, no fixed
+  // level count), `standalone` here for the same reason as Chemistry -- real, playable
+  // content with no natural "X of Y levels" total to show, not nothing to count.
   { id: "math", letter: "Mt", title: "Math", desc: "Numbers & patterns", tone: "coral", available: true, standalone: true },
   { id: "bio", letter: "Bi", title: "Biology", desc: "Life & living systems", tone: "cond", available: false },
 ];

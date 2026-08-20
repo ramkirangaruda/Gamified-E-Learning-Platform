@@ -117,11 +117,6 @@
   opacity: 0;
   transition: opacity 260ms cubic-bezier(0.22, 0.9, 0.3, 1);
 }
-.quest-pet .pet-hat-cone { fill: var(--color-quest-coral); }
-.quest-pet .pet-hat-brim,
-.quest-pet .pet-hat-pompom {
-  fill: var(--color-quest-gold);
-}
 .quest-pet .pet-hat-badge path {
   fill: var(--color-quest-gold);
   stroke: var(--color-quest-gold-dark);

@@ -91,7 +91,7 @@ function NavAction({
       title={title}
       aria-current={active ? "page" : undefined}
       aria-pressed={pressed}
-      className={`shrink-0 rounded-full border-2 px-4 py-2.5 font-display text-base font-bold transition-transform duration-100
+      className={`shrink-0 rounded-full border-2 px-3 py-2.5 font-display text-base font-bold transition-transform duration-100
         hover:-translate-y-0.5 active:translate-y-[2px]
         ${active ? "border-quest-gold-dark bg-quest-gold text-quest-ink" : "border-quest-ink/15 bg-quest-paper text-quest-ink-soft hover:text-quest-ink"}`}
     >
@@ -109,7 +109,7 @@ export default function AppHeader({ route, onNavigate, lite, onToggleLite }: App
       data-testid="app-header"
     >
       <nav
-        className="mx-auto flex h-[var(--app-header-nav-h)] max-w-6xl items-center gap-4 px-5"
+        className="mx-auto flex h-[var(--app-header-nav-h)] max-w-6xl items-center gap-3 px-5"
         aria-label="Subjects and sections"
       >
         <button
