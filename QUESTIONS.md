@@ -1,11 +1,14 @@
 # QUESTIONS.md
 
-## Verification/hardening queue (2026-08-15) — in progress
+## Handoff summary (2026-08-15) — verification/hardening queue complete, all 6 items
 
-Not M4 — this is the pre-M4 verification and hardening queue (llama.cpp-on-ARM has to
+Not M4 — this was the pre-M4 verification and hardening queue (llama.cpp-on-ARM had to
 be proven before the cross-platform drive milestone is worth building). Standing
-decisions carried forward: repo stays public, don't revisit; standing permission to push
-to master for the rest of this project.
+decisions carried forward, still in effect: repo stays public, not revisited again;
+standing permission to push to master for the rest of this project. Worked the queue in
+order (item 6 first, deliberately, to resolve limbo before touching the hint pipeline
+further), committed and pushed after each item. `go build ./... && go vet ./... && go
+test ./...` and the TS suite (`npx vitest run`, `npx tsc --noEmit`) all green throughout.
 
 **Item 6 done first (resolving limbo before touching the hint pipeline further):**
 both of the M3 handoff's "worth your eyes" items 1 and 2 are now resolved, not just
@@ -66,10 +69,57 @@ first-ever hint) came back in **0.173s** with `"cached":true` instead of a live
 ~0.7-1.2s generation. That's the acceptance criterion ("so the first hint a child sees
 is instant") demonstrated, not assumed.
 
-Remaining item (4, ARM cross-compile + Pi bring-up) still in progress — see
-`DECISIONS.md` for entries as they land, and the top of this file will get a fresh
-queue-complete summary when all 6 are done, matching how the M2 and M3 queues were
-closed out.
+**Item 4 done — and this is the one where "done" means something narrower than the
+others, worth reading carefully:** `bin/linux/launcher` now cross-compiles for
+`linux/arm64` (was silently `amd64` before — a gap this file already had flagged as
+"known, not yet built"; confirmed clean by actually running the cross-compile and
+inspecting the resulting ELF header, not assumed from "it's pure Go so it should just
+work"). `scripts/pi-setup.sh` brings a fresh Pi 5 up: refuses to run on anything but
+`aarch64` (verified live on this x64 box), checks the drive layout, and gets
+`bin/linux/llama-server` in place — checked the actual GitHub release assets for the
+pinned tag first rather than assuming a prebuilt Linux ARM64 binary exists (it doesn't,
+at this tag — Windows-only release), so it builds from source via cmake instead, and
+documents exactly which step needs connectivity (that build, only) and what to pre-stage
+if the Pi won't have any (the recommended path: build once on any internet-connected Pi
+5, then copy the resulting binary onto every spare drive, same as `bin/win/`'s existing
+llama-server already works). `scripts/pi-benchmark.sh <url>` hits the real `/api/hint`
+endpoint 20 times with distinct fake signatures specifically to force 20 genuine
+generations rather than 19 cache hits after the first, and reports p50/p95/max, flagging
+anything that would have actually crossed the 8s hint timeout.
+
+**What's real and what isn't**: the cross-compile, both build scripts, and
+`pi-setup.sh`'s arch-guard were run for real. `pi-benchmark.sh`'s logic was run for real
+too — against a live x64 server with pre-warming off so all 20 requests were forced
+misses — and produced sane numbers (p50 592ms, p95 711ms, max 1501ms on this x64
+machine). **What could not be verified here: `pi-setup.sh`'s build-from-source path, and
+any latency number on actual Raspberry Pi 5 hardware — there is no Pi in this sandbox.**
+This is exactly the boundary you drew: "Once that comes back, get the Pi bring-up done
+yourself and post the benchmark numbers." Everything on this side of that line is done,
+tested where testable, and honest about the one thing that genuinely couldn't be tested
+here.
+
+**Worth your eyes first, in priority order, across the whole queue:**
+1. **The real ARM numbers don't exist yet.** Everything about pre-warming (item 5),
+   the 8s timeout (item 5), and whether M4 needs to change shape at all hinges on a p95
+   this environment cannot produce. Run `scripts/pi-setup.sh` on the Pi, then
+   `scripts/pi-benchmark.sh`, and the actual numbers are the real next input.
+2. The `unbalanced_block` and `/api/program` decisions (item 6) are both irreversible-ish
+   choices already implemented, not just proposed — worth a skim in `DECISIONS.md` in
+   case either reasoning doesn't match your intent, since undoing either later means
+   another migration, not a config flip.
+3. The Blockly media CDN bug (item 2) was a real, previously-shipping gap — every prior
+   "verified offline" claim in this project's history (M2, M3) was made before this fix
+   existed, meaning trashcan/sound assets would have quietly reached out to Google's
+   servers the whole time despite those earlier claims. Not something to worry about now
+   (fixed, verified), but worth knowing the earlier "verified offline" language wasn't
+   as complete as it sounded at the time.
+4. `models/` really is ~1.9GB, not ~6GB (item 3) — if drive-sizing or clone-time planning
+   was done against the larger number, it can be revised down.
+
+Everything below this line (including the M2 and M3 handoff summaries) is the original
+log, oldest first.
+
+---
 
 ---
 
