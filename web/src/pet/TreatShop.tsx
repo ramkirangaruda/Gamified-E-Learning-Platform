@@ -1,12 +1,19 @@
-import { useEffect, type ReactNode } from "react";
+import type { ReactNode } from "react";
 import Icon from "../icons/Icon";
 import { ChunkyButton } from "../ui/Chunky";
+import Modal from "../ui/Modal";
 import { usePet } from "./PetProvider";
 import { TREATS, canAfford, type Treat } from "./treats";
 
 // Reached by clicking the pet in the bar, never from a menu. Closes as soon as something
 // is bought, on purpose: the eat animation and the hunger bar filling both happen in the
 // bar behind this panel, and the whole point of feeding is watching it land.
+//
+// The dialog chrome -- backdrop, centring, Escape, click-outside -- is ui/Modal.tsx.
+// Worth knowing why, since this panel is where the problem showed: it is opened from
+// inside the fixed app header, whose backdrop-filter made every `fixed` descendant
+// resolve against the header instead of the viewport and sheared the top off this panel.
+// See Modal.tsx for the full account.
 //
 // What a treat a child cannot afford looks like matters as much as the ones they can.
 // §10 is explicit that absence of progress is never punished, so an unaffordable treat is
@@ -47,79 +54,60 @@ export default function TreatShop({ onClose }: { onClose: () => void }) {
   const { state, feed } = usePet();
   const points = state?.learner.points ?? 0;
 
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [onClose]);
-
   async function buy(treat: Treat) {
     const ok = await feed(treat);
     if (ok) onClose();
   }
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-quest-ink/35 p-4"
-      role="dialog"
-      aria-modal="true"
-      aria-label="Treats for Tom"
-      onClick={onClose}
-    >
-      <div
-        className="w-full max-w-2xl rounded-chunk-xl border-[var(--outline-chunk-thick)] border-quest-ink/15 bg-quest-paper p-6 shadow-chunk-lg"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="mb-5 flex items-center justify-between gap-4">
-          <div>
-            <h2 className="font-display text-2xl font-bold text-quest-ink">Treats for Tom</h2>
-            <p className="text-sm font-medium text-quest-ink-soft">
-              Points come from every attempt — trying counts, not just getting it right.
-            </p>
-          </div>
-          <span className="flex shrink-0 items-center gap-1.5 rounded-chunk border-[var(--outline-chunk)] border-quest-gold-dark bg-quest-gold px-3 py-1.5 font-display text-lg font-bold text-quest-ink">
-            <Icon name="star" size={18} />
-            {points}
-          </span>
+    <Modal label="Treats for Tom" onClose={onClose} width="max-w-2xl">
+      <div className="mb-5 flex items-center justify-between gap-4">
+        <div>
+          <h2 className="font-display text-2xl font-bold text-quest-ink">Treats for Tom</h2>
+          <p className="text-sm font-medium text-quest-ink-soft">
+            Points come from every attempt — trying counts, not just getting it right.
+          </p>
         </div>
-
-        <div className="grid gap-4 sm:grid-cols-3">
-          {TREATS.map((treat) => {
-            const affordable = canAfford(points, treat);
-            return (
-              <div
-                key={treat.id}
-                className={`flex flex-col items-center gap-2 rounded-chunk-lg border-[var(--outline-chunk)] p-4 text-center ${
-                  affordable ? "border-quest-locked bg-quest-cream" : "border-quest-locked bg-quest-cream/50 opacity-60"
-                }`}
-              >
-                {TREAT_ART[treat.id]}
-                <div className="font-display text-base font-bold text-quest-ink">{treat.name}</div>
-                <div className="flex items-center gap-1 font-display text-sm font-bold text-quest-ink-soft">
-                  <Icon name="star" size={14} />
-                  {treat.cost}
-                </div>
-                <ChunkyButton
-                  tone={affordable ? "cond" : "neutral"}
-                  disabled={!affordable}
-                  onClick={() => buy(treat)}
-                  className="w-full"
-                >
-                  {affordable ? "Feed" : `${treat.cost - points} more`}
-                </ChunkyButton>
-              </div>
-            );
-          })}
-        </div>
-
-        <div className="mt-5 flex justify-end">
-          <ChunkyButton tone="neutral" onClick={onClose}>
-            Not now
-          </ChunkyButton>
-        </div>
+        <span className="flex shrink-0 items-center gap-1.5 rounded-chunk border-(length:--outline-chunk) border-quest-gold-dark bg-quest-gold px-3 py-1.5 font-display text-lg font-bold text-quest-ink">
+          <Icon name="star" size={18} />
+          {points}
+        </span>
       </div>
-    </div>
+
+      <div className="grid gap-4 sm:grid-cols-3">
+        {TREATS.map((treat) => {
+          const affordable = canAfford(points, treat);
+          return (
+            <div
+              key={treat.id}
+              className={`flex flex-col items-center gap-2 rounded-chunk-lg border-(length:--outline-chunk) p-4 text-center ${
+                affordable ? "border-quest-locked bg-quest-cream" : "border-quest-locked bg-quest-cream/50 opacity-60"
+              }`}
+            >
+              {TREAT_ART[treat.id]}
+              <div className="font-display text-base font-bold text-quest-ink">{treat.name}</div>
+              <div className="flex items-center gap-1 font-display text-sm font-bold text-quest-ink-soft">
+                <Icon name="star" size={14} />
+                {treat.cost}
+              </div>
+              <ChunkyButton
+                tone={affordable ? "cond" : "neutral"}
+                disabled={!affordable}
+                onClick={() => buy(treat)}
+                className="w-full"
+              >
+                {affordable ? "Feed" : `${treat.cost - points} more`}
+              </ChunkyButton>
+            </div>
+          );
+        })}
+      </div>
+
+      <div className="mt-5 flex justify-end">
+        <ChunkyButton tone="neutral" onClick={onClose}>
+          Not now
+        </ChunkyButton>
+      </div>
+    </Modal>
   );
 }

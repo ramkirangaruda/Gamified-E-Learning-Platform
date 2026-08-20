@@ -40,7 +40,30 @@ func main() {
 	classroomHub := flag.Bool("classroom-hub", false, "run as the classroom's aggregator: the one machine in the room that keeps a roster of every student who has synced. Set on the Pi, never on a student's own laptop.")
 	classroomAddr := flag.String("classroom-addr", "", "address of the classroom hub to sync progress to, e.g. http://192.168.1.50:8080 (empty by default -- classroom sync is opt-in, ordinary offline play is unaffected)")
 	classroomSecret := flag.String("classroom-secret", "", "shared secret signing classroom sync/restore requests -- set the SAME value on the hub and every student machine in a room, or leave empty to accept any sync (fine for a low-stakes classroom LAN, not recommended if the network isn't trusted)")
+	// Defaults on, but see the -classroom-hub interaction resolved just below: the
+	// aggregator has no reason to hold a 0.6B model in RAM.
+	tutorOn := flag.Bool("tutor", true, "run the local LLM tutor (llama-server) that rephrases verified hint text. Defaults on, but is turned OFF automatically when -classroom-hub is set unless you pass -tutor explicitly.")
 	flag.Parse()
+
+	// The classroom Hub aggregates; it never generates a hint. Every student machine runs
+	// its own launcher against its own drive and rephrases hints locally (that is the
+	// whole offline premise), so the roster machine loading llama-server buys nothing and
+	// costs a 4 GB Pi essentially its entire RAM budget -- the exact hardware this mode
+	// exists to run on. Skipping it is what leaves headroom for anything else the Pi is
+	// asked to do in the same room.
+	//
+	// flag.Visit rather than comparing against the default: it reports only flags actually
+	// present on the command line, so `-classroom-hub -tutor=true` still forces the engine
+	// on (a dev box playing hub and student at once, which main.go already tolerates
+	// elsewhere) while a bare `-classroom-hub` gets the sensible default. Comparing
+	// `*tutorOn == true` could not tell those two cases apart.
+	tutorExplicit := false
+	flag.Visit(func(f *flag.Flag) {
+		if f.Name == "tutor" {
+			tutorExplicit = true
+		}
+	})
+	runTutor := resolveTutor(*classroomHub, *tutorOn, tutorExplicit)
 
 	// The DRIVE ROOT, not the binary's own directory: on a real key (brief §7) the
 	// launcher lives in bin/win or bin/linux and content/, app/, models/, profiles.json
@@ -101,7 +124,16 @@ func main() {
 		log.Printf("classroom sync: configured, hub at %s", *classroomAddr)
 	}
 
-	engine := startTutorEngine(driveRoot)
+	// nil engine is a first-class supported state, not a degraded one: api.Server
+	// documents it as nil-able and handleHint returns the verified, human-written hint
+	// text verbatim without it. That is exactly right for a hub, and it means turning the
+	// tutor off needs no other code to know about it.
+	var engine tutor.Engine
+	if runTutor {
+		engine = startTutorEngine(driveRoot)
+	} else {
+		log.Printf("tutor: off (classroom hub -- the aggregator serves no hints; pass -tutor to override)")
+	}
 	if engine != nil {
 		srv.SetEngine(engine)
 		defer engine.Close()
@@ -217,6 +249,22 @@ func shutdownEverything(engine tutor.Engine, st *store.Store) {
 // a dev machine, llama-server binary missing on an unusual platform, etc.); every
 // failure just logs and leaves engine nil, and internal/api's handlers already treat a
 // nil engine as "fall back to the verified hint text, no rephrasing."
+// resolveTutor decides whether to spawn llama-server, given the two flags and whether
+// -tutor was actually typed on the command line. Split out of main() purely so the
+// decision is testable without a real flag set, a real drive, or a real model: main() is
+// otherwise one long un-unit-testable startup sequence, and this is the one branch in it
+// with non-obvious behaviour worth pinning.
+//
+// The rule: -classroom-hub means "aggregator", and an aggregator never serves a hint, so
+// it defaults the tutor off -- but an explicit -tutor always wins in both directions, so
+// a dev machine can still be hub and player at once.
+func resolveTutor(classroomHub, tutorFlag, tutorExplicit bool) bool {
+	if classroomHub && !tutorExplicit {
+		return false
+	}
+	return tutorFlag
+}
+
 func startTutorEngine(driveRoot string) tutor.Engine {
 	profilesPath := filepath.Join(driveRoot, "profiles.json")
 	profiles, err := tutor.LoadProfiles(profilesPath)

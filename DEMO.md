@@ -1,9 +1,17 @@
-# Demo script — honest, as of 2026-08-18
+# Demo script — honest, as of 2026-08-20
 
 Eight steps, matched to the original brief's §13 demo script. Each is labeled **real**,
 **half**, or **cut**, based on what's actually merged to `master` today — not on any
 earlier planning document. Rehearse this yourself before presenting; see the note at the
 bottom on what this pass could and couldn't verify live.
+
+> **Corrected 2026-08-20.** The first version of this file was written on 2026-08-18
+> and went stale within a day: steps 2 and 6 were both graded **cut** against handoff
+> tasks that have since merged, and the companion was renamed and then grew into a
+> roster of seven selectable characters. Confirmed with `git merge-base` — the
+> evolution-art commit is *not* an ancestor of this file's last edit — rather than by
+> re-reading the old text and trusting it. Steps 2 and 6 are re-graded below; step 5
+> was re-checked against `internal/api/api.go` and its original grade still holds.
 
 ## 1. Router unplugged / offline — **real, unpolished proof**
 
@@ -17,13 +25,29 @@ regression test for this, so if anything changes upstream (a new dependency that
 home, say) it wouldn't be caught by CI. Worth a manual sanity check the morning of the
 event, not just trusting this document.
 
-## 2. "Pip appears, level 4, orange, wearing a hat" — **cut**
+## 2. Pet appears, level 4, wearing a hat — **real** (re-graded 2026-08-20, was "cut")
 
-Evolution art and cosmetics were never built — the pet's evolution *stage* is tracked
-internally as levels are solved, but there's no art asset that changes with it, and no
-hat. Cut this beat entirely rather than gesture at something that isn't visible. If it
-lands before the event (`handoff/05-pet-evolution-art.md` is the open task for it),
-re-add it.
+**What to do:** solve enough levels to cross an evolution threshold and let the pet's
+stage art appear on screen.
+
+**Why it changed:** evolution art landed *after* this script was first written.
+`handoff/05-pet-evolution-art.md` merged on 2026-08-19 (commit `13e8f0e`, "Give the pet
+real evolution stage art and a real stage writer") and was verified live in a real
+browser — see `DECISIONS.md`. The evolution *stage* is no longer only tracked
+internally; it renders as an additive hat/badge/aura layer over the character's sprite.
+The original "cut this beat entirely" instruction is obsolete — play it.
+
+**Two things in the original wording are now wrong, though.** The companion is not
+"Pip" any more, and there is no one colour to promise. The roster is **seven** selectable
+characters (`web/src/pet/characters.ts`), picked on the settings screen, and the
+evolution layer is the same additive art over whichever one the child chose. Say "your
+pet" and name whichever character is actually on screen — don't script a specific name
+or a specific colour into the line.
+
+**What still isn't claimable:** evolution is driven *solely* by levels solved
+(`internal/api/api.go`, `AdvanceEvolutionStage(evolutionStageFor(len(solvedIDs)))`).
+See step 5 — feeding the pet does not cause it.
+
 
 ## 3. Camera reads the cards — **real, but rehearse this one specifically before trusting it on stage**
 
@@ -44,6 +68,9 @@ the real card set (see `DECISIONS.md`'s "Verified `hub-mode` after merge" entry)
   printed `print/composited/*.png` cards now confirmed detecting to their correct ids.**
 - **Still open:** nobody has pointed a real, physical webcam at the real printed cards
   yet — every check so far has been against still images, not a live camera feed.
+  **As of 2026-08-20 there is no camera hardware on hand to close this with**, so plan on
+  this staying open unless one is sourced before the event. Budget for the fallback below
+  rather than assuming a rehearsal slot will fix it.
 
 None of this means it's broken — the ArUco detection and AST-building logic is real and
 directly reused from the already-verified print pipeline — but this is the one step
@@ -86,14 +113,28 @@ shop. If the script needs "buy a cake, pet evolves" as a single visible beat, it
 built yet; either cut the shop moment entirely or reframe it honestly as "here's the
 economy" without promising evolution follows from it.
 
-## 6. Key A out, key B in — **cut**
+## 6. Key A out, key B in — **half** (re-graded 2026-08-20, was "cut")
 
-Hot-swap and crash-safe writes during a live session were never built (scoped to M4 in
-`PLAN.md`, still open — `handoff/02-key-hot-swap.md`). What exists is narrower: a
-`pet.db` that's *already* corrupt when the app starts recovers instead of refusing to
-boot. That is not the same as surviving a yank mid-session. **Do not physically pull the
-drive on stage** — the failure mode this step is supposed to demonstrate resilience
-against is exactly the one that isn't handled yet. Cut this beat until it's built.
+**Why it changed:** `handoff/02-key-hot-swap.md` merged on 2026-08-19 (commit `30a95f0`).
+`backup.db` now re-snapshots after **every** progress-bearing write — `SaveState` and
+`RecordLevelAttempt` — instead of only once at `Open`. That was the real gap: a level
+solved mid-session had no recovery snapshot until the process happened to restart, so a
+yank right after a solve rolled that solve back even though the recovery machinery
+itself "worked". Proven three ways, including a test confirmed to *fail* on the pre-fix
+code before being confirmed to pass after (`TestOpen_ProgressAfterLastOpenSurvivesAYank`,
+plus two asserting `backup.db`'s bytes actually change across a second write). Full
+writeup in `DECISIONS.md` 2026-08-19.
+
+**What is still not proven, and why this is "half" and not "real":** nobody has
+physically pulled a drive mid-session and plugged a second one in. The durability
+mechanism is tested under *simulated* corruption, not under a real yank on real
+hardware — `DECISIONS.md` says so in as many words.
+
+**Still do not pull the drive on stage** unless you have rehearsed exactly that first.
+The difference from the old grade is that this is now "built and tested, unrehearsed on
+hardware" rather than "not built" — a much shorter distance to close, but not zero. If
+you get one rehearsal slot before the event, spend it here or on step 3.
+
 
 ## 7. Tier pill resizes on a bigger machine — **real, but check your Pi's RAM tier first**
 

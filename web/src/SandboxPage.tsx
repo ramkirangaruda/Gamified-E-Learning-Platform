@@ -46,14 +46,17 @@ export default function SandboxPage({ onBackToDashboard }: SandboxPageProps) {
   }
 
   return (
-    <div className="flex h-[calc(100vh-var(--pet-bar-h))] w-full bg-quest-cream">
+    <div className="flex h-[calc(100vh-var(--app-header-h))] w-full bg-quest-cream">
       <div className="flex-1 p-3">
         <div className="h-full overflow-hidden rounded-3xl border-4 border-white bg-white shadow-lg">
           <Editor onWorkspaceReady={onWorkspaceReady} onBlockActivity={onBlockActivity} />
         </div>
       </div>
 
-      <div className="flex w-[440px] flex-col gap-5 overflow-y-auto p-5">
+      {/* overscroll-contain: once this panel hits its end, the wheel stops there instead
+          of handing the scroll on to the page behind it. Without it, scrolling past the
+          bottom of the level list quietly drags the whole play screen. */}
+      <div className="flex w-[440px] flex-col gap-5 overflow-y-auto overscroll-contain p-5">
         <div className="flex items-center justify-between">
           <button
             type="button"

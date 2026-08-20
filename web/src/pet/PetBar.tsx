@@ -16,14 +16,20 @@ import { usePet } from "./PetProvider";
 // Rive plumbing, or tests was removed -- swapping MascotCanvas back in here is a one-line
 // change once the visual is approved.
 
-// The fixed companion bar. Mounted once by App, above the page switch, so it never
-// unmounts -- see PetProvider for why that matters.
+// The companion row: the pet, its hunger meter, points, and the current level's stars.
 //
-// Layout is deliberately fixed-height (--pet-bar-h, 92px) and the pages below simply pad
-// past it. The speech bubble is absolutely positioned and OVERLAYS the page rather than
-// participating in the bar's layout: a bubble that pushed content would reflow the whole
-// screen every time Tom said something, which on a Pi is both janky and disorienting for
-// a child mid-drag.
+// This is the LOWER of the two rows inside nav/AppHeader.tsx, which owns the fixed
+// positioning both rows share. It used to be the fixed header itself; the redesign put a
+// navigation row above it, and the one thing that could not change in the move is that it
+// is still mounted exactly ONCE by App, above the page switch, so it never unmounts --
+// see PetProvider for why that matters. Everything here is unchanged apart from no longer
+// positioning itself.
+//
+// Layout is deliberately fixed-height (--app-header-pet-h) and the pages below pad past
+// the header total (--app-header-h). The speech bubble is absolutely positioned and
+// OVERLAYS the page rather than participating in the row's layout: a bubble that pushed
+// content would reflow the whole screen every time Tom said something, which on a Pi is
+// both janky and disorienting for a child mid-drag.
 
 function hungerWord(hunger: number): string {
   if (hunger >= 85) return "completely full";
@@ -49,7 +55,7 @@ function HungerBar({ hunger }: { hunger: number }) {
       aria-valuemax={100}
     >
       <Icon name="apple" size={20} />
-      <div className="relative h-6 w-32 overflow-hidden rounded-chunk-sm border-[var(--outline-chunk)] border-quest-ink/25 bg-quest-cream sm:w-40">
+      <div className="relative h-6 w-32 overflow-hidden rounded-chunk-sm border-(length:--outline-chunk) border-quest-ink/25 bg-quest-cream sm:w-40">
         {/* scaleX rather than width: transform-only, so filling up after a feed is
             composited and cannot reflow the bar or anything beside it. */}
         <div
@@ -83,10 +89,7 @@ export default function PetBar() {
 
   return (
     <>
-      <header
-        className="fixed inset-x-0 top-0 z-40 h-[var(--pet-bar-h)] border-b-[var(--outline-chunk-thick)] border-quest-ink/15 bg-quest-paper/95 backdrop-blur-sm"
-        data-testid="pet-bar"
-      >
+      <div className="h-[var(--app-header-pet-h)] border-t-2 border-quest-ink/10" data-testid="pet-bar">
         <div className="relative mx-auto flex h-full max-w-6xl items-center gap-4 px-4">
           {/* The pet itself is the shop button (item 5). A child does not look for a
               "shop" label -- they click the animal. */}
@@ -125,7 +128,7 @@ export default function PetBar() {
           </div>
 
           <div className="ml-auto flex items-center gap-3">
-            <span className="flex items-center gap-1.5 rounded-chunk border-[var(--outline-chunk)] border-quest-gold-dark bg-quest-gold px-3 py-1.5 font-display text-lg font-bold text-quest-ink">
+            <span className="flex items-center gap-1.5 rounded-chunk border-(length:--outline-chunk) border-quest-gold-dark bg-quest-gold px-3 py-1.5 font-display text-lg font-bold text-quest-ink">
               <Icon name="star" size={18} />
               {/* Re-keyed so a change replays the one-shot bump. No timer. */}
               <span key={points} className="quest-decorative quest-count-bump">
@@ -146,14 +149,22 @@ export default function PetBar() {
           </div>
 
           {/* Anchored to the pet, overlaying whatever is below. pointer-events-none so it
-              can never intercept a click meant for the page underneath. */}
+              can never intercept a click meant for the page underneath.
+
+              The two numbers are the anchoring, and both are measured off the sprite
+              rather than picked to look right once: left-4 matches the row's own px-4, so
+              the bubble's left edge and the pet's line up and the tail's left-8 point
+              lands on the 84px sprite's centre; the +16px clears the pet row and the
+              header's 4px bottom border, leaving the tail's tip just touching the header
+              edge it is speaking out of. Anything less and the tail crosses the border
+              into the bar; anything more and it floats free of it. */}
           {speech && (
-            <div className="pointer-events-none absolute left-20 top-[calc(var(--pet-bar-h)-14px)] z-50 max-w-md">
-              <SpeechBubble text={speech} />
+            <div className="pointer-events-none absolute left-4 top-[calc(var(--app-header-pet-h)+16px)] z-50">
+              <SpeechBubble text={speech} tail="up" />
             </div>
           )}
         </div>
-      </header>
+      </div>
 
       {shopOpen && <TreatShop onClose={() => setShopOpen(false)} />}
     </>

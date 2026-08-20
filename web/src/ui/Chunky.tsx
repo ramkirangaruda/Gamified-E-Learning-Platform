@@ -1,4 +1,7 @@
 import type { ButtonHTMLAttributes, ReactNode } from "react";
+import { TONE, type ChunkyTone } from "./tone";
+
+export type { ChunkyTone };
 
 // The chunky/sticker component vocabulary. Every interactive surface in the game is one
 // of these, so the "thick outline + offset solid shadow + press-down" behaviour is
@@ -11,17 +14,9 @@ import type { ButtonHTMLAttributes, ReactNode } from "react";
 //
 // Transform/opacity only (tokens.css motion policy). Nothing here animates while idle.
 
-export type ChunkyTone = "move" | "repeat" | "cond" | "while" | "gold" | "neutral" | "coral";
-
-const TONE: Record<ChunkyTone, { bg: string; border: string; text: string }> = {
-  move: { bg: "bg-quest-move", border: "border-quest-move-dark", text: "text-white" },
-  repeat: { bg: "bg-quest-repeat", border: "border-quest-repeat-dark", text: "text-white" },
-  cond: { bg: "bg-quest-cond", border: "border-quest-cond-dark", text: "text-white" },
-  while: { bg: "bg-quest-while", border: "border-quest-while-dark", text: "text-white" },
-  gold: { bg: "bg-quest-gold", border: "border-quest-gold-dark", text: "text-quest-ink" },
-  coral: { bg: "bg-quest-coral", border: "border-quest-coral-dark", text: "text-white" },
-  neutral: { bg: "bg-quest-paper", border: "border-quest-locked", text: "text-quest-ink" },
-};
+// The tone table itself now lives in ui/tone.ts so the dashboard shell can share it --
+// re-exported above so every existing `import { ChunkyTone } from "../ui/Chunky"` still
+// resolves and no call site had to change.
 
 interface ChunkyButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   tone?: ChunkyTone;
@@ -36,7 +31,7 @@ export function ChunkyButton({ tone = "move", size = "md", className = "", child
   return (
     <button
       {...rest}
-      className={`inline-flex items-center justify-center gap-2 rounded-chunk border-b-[var(--outline-chunk-thick)] font-display font-bold
+      className={`inline-flex items-center justify-center gap-2 rounded-chunk border-b-(length:--outline-chunk-thick) font-display font-bold
         ${t.bg} ${t.border} ${t.text} ${sizing}
         shadow-chunk transition-transform duration-100
         hover:-translate-y-0.5 active:translate-y-[3px] active:shadow-chunk-sm
@@ -56,7 +51,7 @@ interface ChunkyCardProps {
 export function ChunkyCard({ tone = "neutral", className = "", children }: ChunkyCardProps) {
   const t = TONE[tone];
   return (
-    <div className={`rounded-chunk-lg border-[var(--outline-chunk)] ${t.bg} ${t.border} ${t.text} shadow-chunk ${className}`}>
+    <div className={`rounded-chunk-lg border-(length:--outline-chunk) ${t.bg} ${t.border} ${t.text} shadow-chunk ${className}`}>
       {children}
     </div>
   );

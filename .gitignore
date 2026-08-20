@@ -29,3 +29,11 @@ Thumbs.db
 # Python (scripts/)
 __pycache__/
 *.pyc
+
+# xiaoxin-static/ is Crayon Shin-chan -- a copyrighted commercial character supplied
+# alongside the other (original/generated) pet assets. Deliberately never wired into the
+# app (see characters.ts, DECISIONS.md) and untracked here so it can't be re-added by
+# accident. It was briefly committed at ac4a823 before this; still in git history, not
+# just this working tree, since removing it from history entirely needs an explicit
+# rewrite this project hasn't been asked for.
+/xiaoxin-static/

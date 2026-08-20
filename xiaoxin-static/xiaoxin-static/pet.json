@@ -1,6 +1,0 @@
-{
-  "id": "xiaoxin-static",
-  "displayName": "Xiaoxin Animated",
-  "description": "Animated pet made from the provided reference image.",
-  "spritesheetPath": "spritesheet.webp"
-}

@@ -40,7 +40,9 @@ cd web && npm run dev          # Vite dev server with a proxy to the Go API
 
 `go run ./cmd/server` accepts `-addr` (default `:8080`), `-open=false` (skip
 auto-opening a browser tab — useful on a headless hub), `-lite` (disable decorative
-animation), `-prewarm-hints=false`, and `-hint-timeout`.
+animation), `-prewarm-hints=false`, `-hint-timeout`, and `-tutor=false` (skip
+`llama-server` entirely; hints fall back to their verified text, which is what the
+classroom hub below runs with).
 
 **Assembled drive** (what actually ships): `scripts/build-launchers.{ps1,sh}`
 cross-compiles the launcher for both drive targets, `cd web && npm run build` builds the
@@ -49,6 +51,43 @@ or run `drive-root/start-tessera-quest.sh` (the Raspberry Pi hub). Both just `cd
 drive root and start the launcher, so everything resolves relative to wherever the drive
 is mounted — no hardcoded path. Full script-by-script detail in
 [`scripts/README.md`](scripts/README.md).
+
+## The classroom Hub
+
+Ordinary play is unchanged by any of this and needs none of it: no accounts, no server,
+no network. The Hub is opt-in, and it exists for one problem a USB drive structurally
+cannot solve — there is no always-on machine in the room, so there is nowhere for a
+teacher to see the class at a glance, and nowhere for a child who lost their drive to
+recover from.
+
+One machine in the room (a Raspberry Pi 5 is the intended one) runs as the aggregator:
+
+```
+./bin/linux/launcher -classroom-hub -open=false          # the Pi
+./bin/linux/launcher -classroom-addr http://<pi-ip>:8080 # each student machine
+```
+
+`scripts/pi-setup.sh --classroom-hub` does the Pi side end to end, including printing the
+dashboard URL and the exact command for the student machines. Add `-classroom-secret`
+(the same value on the Pi and every student machine) to HMAC-sign sync and restore, so
+another device on the room's LAN can't forge a child's progress.
+
+Students still play on their own laptop or lab machine off their own drive — the Pi is
+only the aggregator, and it **mirrors** what each drive already decided rather than
+owning progress. `RestoreFromSnapshot` composes entirely from the existing never-regress
+writers, so recovering onto a fresh drive can only ever raise what's locally there,
+never lower it. The roster lives in its own `classroom.db`, separate from any child's
+`pet.db`.
+
+**The hub needs no model and no `llama-server`.** It never generates a hint — every
+student machine rephrases locally against its own drive, which is the whole offline
+premise — so `-classroom-hub` turns the tutor off by default (pass `-tutor` explicitly to
+override on a dev box that is playing both roles). On a 4 GB Pi that is the difference
+between the aggregator idling and it holding a language model in RAM for no reason, and
+it means `pi-setup.sh --classroom-hub` skips the one step in Pi bring-up that needs
+internet. A hub can therefore be brought up on a Pi that has never been online.
+
+## Running the camera pipeline
 
 The camera pipeline (`hub/`) is a separate Python process: `pip install -r
 hub/requirements.txt`, then `python -m hub.hub --level-id <id>` with a webcam attached,
@@ -67,7 +106,7 @@ or `--image photo.png --dry-run` to try it without one. See [`hub/README.md`](hu
 - Go 1.26, `net/http` stdlib server, `modernc.org/sqlite` (pure Go, no CGO — the one
   runtime dependency that isn't stdlib, chosen so the binary cross-compiles cleanly to
   both the Pi and Windows). React + TypeScript + Vite + Blockly on the frontend.
-- 88 Go tests across 10 packages, 58 TypeScript tests (`npm test`, vitest), a separate
+- 138 Go tests across 11 packages, 141 TypeScript tests (`npm test`, vitest), a separate
   Python test suite for the camera pipeline (`python -m pytest hub/tests`).
 
 ## What's real, and what isn't yet

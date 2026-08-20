@@ -1,5 +1,25 @@
 #!/usr/bin/env bash
-# Brings a fresh Raspberry Pi 5 (64-bit Raspberry Pi OS) up as the Tessera Quest hub.
+# Brings a fresh Raspberry Pi 5 (64-bit Raspberry Pi OS) up as a Tessera Quest machine.
+#
+# TWO MODES, and the difference matters more than it looks:
+#
+#   ./scripts/pi-setup.sh                   # player mode (default, unchanged behaviour)
+#   ./scripts/pi-setup.sh --classroom-hub   # the room's aggregator
+#
+# Player mode is what this script always did: the Pi runs the game itself, so it needs
+# llama-server and a .gguf model to rephrase hints locally.
+#
+# --classroom-hub is the classroom aggregator (cmd/server's -classroom-hub): the one
+# always-on machine in the room holding the roster, the teacher dashboard at /classroom,
+# and lost-USB recovery. It never generates a hint -- every student plays on their own
+# machine off their own drive and rephrases locally -- so it needs NEITHER llama-server
+# NOR a model, and the launcher skips loading one (see resolveTutor in cmd/server).
+#
+# That is not just a tidiness win. Step 3 below, building llama-server from source, is
+# the ONLY step in this entire script that needs internet. Skipping it means a classroom
+# hub can be brought up start to finish with no connectivity at all, on a Pi that has
+# never been online -- which is the whole premise of this project, applied to its own
+# setup rather than only to the game.
 # Run this FROM the root of an already-assembled drive layout (brief §7): the launcher,
 # content/, profiles.json, and models/*.gguf are all expected to already be present --
 # they're either committed (content/) or cross-compiled/downloaded on a dev machine
@@ -8,7 +28,8 @@
 # this script's actual job.
 #
 # CONNECTIVITY: exactly one step below needs it -- building llama-server from source
-# (step 3) when bin/linux/llama-server isn't already on the drive. Everything else
+# (step 3) when bin/linux/llama-server isn't already on the drive, and --classroom-hub
+# skips that step outright, so a hub needs none at all. Everything else
 # (the launcher binary, content/, profiles.json, models/*.gguf) is expected to already
 # be staged and needs zero connectivity at the event, matching brief §13's
 # router-unplugged assumption and this repo's existing scripts/README.md policy: run
@@ -26,6 +47,27 @@
 #   do exist elsewhere, a locally-built binary is safer against glibc/NEON mismatches
 #   than a binary built on a different distro image.
 set -euo pipefail
+
+mode="player"
+addr=":8080"
+secret=""
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        --classroom-hub) mode="classroom-hub"; shift ;;
+        --addr) addr="$2"; shift 2 ;;
+        --secret) secret="$2"; shift 2 ;;
+        -h|--help)
+            sed -n '2,30p' "${BASH_SOURCE[0]}" | sed 's/^# \?//'
+            exit 0 ;;
+        *) echo "unknown option: $1 (try --help)" >&2; exit 2 ;;
+    esac
+done
+
+# The hub skips the llama-server build entirely, so it has one fewer step AND no
+# internet dependency -- see the header.
+if [[ "$mode" == "classroom-hub" ]]; then total_steps=3; else total_steps=4; fi
+step_n=0
+step() { step_n=$((step_n + 1)); echo "[$step_n/$total_steps] $1"; }
 
 LLAMA_CPP_TAG="b10430"  # same pinned tag scripts/fetch-llama-server.sh uses for Windows, so
                         # the binary's provenance matches across platforms.
@@ -55,15 +97,21 @@ if [[ ! -f "$root/bin/linux/launcher" ]]; then
     exit 1
 fi
 chmod +x "$root/bin/linux/launcher"
-echo "[1/4] launcher binary present"
+step "launcher binary present"
 
 # --- Step 3: llama-server for arm64, fetch-or-build -----------------------------------
+# Skipped entirely for a classroom hub: the aggregator never generates a hint, so there is
+# no model to serve and nothing to serve it with. This is the branch that makes an
+# offline, internet-free hub bring-up possible -- see the header.
+if [[ "$mode" == "classroom-hub" ]]; then
+    echo "-- skipping llama-server (classroom hub serves no hints, so it needs no model)"
+else
 llama_bin="$root/bin/linux/llama-server"
 if [[ -f "$llama_bin" ]]; then
     chmod +x "$llama_bin"
-    echo "[2/4] llama-server already staged on this drive, skipping build"
+    step "llama-server already staged on this drive, skipping build"
 else
-    echo "[2/4] llama-server not found on this drive -- attempting to build from source"
+    step "llama-server not found on this drive -- attempting to build from source"
     echo "      (this is the only step in this script that needs internet)"
 
     if ! curl -fsS --connect-timeout 5 -o /dev/null https://github.com 2>/dev/null; then
@@ -103,9 +151,10 @@ else
     chmod +x "$llama_bin"
     echo "built $llama_bin -- copy this file onto other drives so they don't need to rebuild"
 fi
+fi
 
 # --- Step 4: verify the rest of the drive layout is complete (warn, don't hard-fail) --
-echo "[3/4] checking drive layout completeness"
+step "checking drive layout completeness"
 check() {
     if [[ -e "$root/$1" ]]; then
         echo "  ok   $1"
@@ -116,10 +165,33 @@ check() {
 check "profiles.json" "tier selection will fail without it (falls back to no rephrasing, still playable)"
 check "content/levels" "the game has no levels without this"
 check "content/hints" "hints will always be the generic fallback without this"
-check "models/qwen3-0.6b-q4_k_m.gguf" "low tier (the Pi's expected tier) needs this"
+if [[ "$mode" != "classroom-hub" ]]; then
+    check "models/qwen3-0.6b-q4_k_m.gguf" "low tier (the Pi's expected tier) needs this"
+fi
 check "app" "the frontend won't load without a built bundle here (npm run build on a dev machine, drive layout brief §7)"
 
-# --- Step 5: start the hub -------------------------------------------------------------
-echo "[4/4] starting the hub (Ctrl-C to stop)"
+# --- Step 5: start ---------------------------------------------------------------------
 cd "$root"
-exec ./bin/linux/launcher -addr :8080
+if [[ "$mode" == "classroom-hub" ]]; then
+    step "starting the classroom hub (Ctrl-C to stop)"
+    echo ""
+    echo "    Teacher dashboard:  http://$(hostname -I 2>/dev/null | awk '{print $1}')${addr}/classroom"
+    echo ""
+    echo "    Point each student machine at this Pi with:"
+    echo "      ./bin/linux/launcher -classroom-addr http://<this-pi-ip>${addr}"
+    echo "    (or the equivalent on Windows), then use the Classroom panel on the home screen."
+    echo ""
+    # -open=false: a hub is a headless appliance, not something anyone sits in front of.
+    # The launcher would otherwise try to xdg-open a browser tab on a Pi that may well
+    # have no display attached at all.
+    hub_args=(-addr "$addr" -classroom-hub -open=false)
+    if [[ -n "$secret" ]]; then
+        # Signs sync/restore so another device on the room's LAN can't forge a child's
+        # progress. Must match on every student machine -- see cmd/server's flag help.
+        hub_args+=(-classroom-secret "$secret")
+    fi
+    exec ./bin/linux/launcher "${hub_args[@]}"
+else
+    step "starting the game (Ctrl-C to stop)"
+    exec ./bin/linux/launcher -addr "$addr"
+fi
