@@ -65,10 +65,6 @@ export default function ChemLabPage({ subjectLetter, subjectTitle }: ChemLabPage
   const [submitting, setSubmitting] = useState(false);
   const [stars, setStars] = useState(0);
   const [assistantText, setAssistantText] = useState(WELCOME_LINE);
-  // The big per-test animation: a burst key rather than just the test kind, so clicking
-  // the SAME test twice in a row still restarts the animation from frame one (React only
-  // remounts on a genuine key change, not on setting an already-equal state value).
-  const [burst, setBurst] = useState<{ test: ChemistryTest; key: number } | null>(null);
 
   useEffect(() => {
     fetchChemistrySamples()
@@ -85,7 +81,6 @@ export default function ChemLabPage({ subjectLetter, subjectTitle }: ChemLabPage
     setAssistantText(clue.text);
     say(clue.text);
     react("playful");
-    setBurst({ test: clue.test, key: Date.now() });
   }
 
   async function submitGuess(choiceId: string) {
@@ -194,20 +189,6 @@ export default function ChemLabPage({ subjectLetter, subjectTitle }: ChemLabPage
       <BackgroundScene solvedCount={stars} />
       {header}
 
-      {/* The big per-test animation -- fixed over the whole viewport so it reads as a
-          real event, not a small icon change tucked inside a card. Pointer-events-none
-          so it can never block the very buttons a fast-clicking kid is still using. */}
-      {burst && (
-        <div
-          key={burst.key}
-          className="pointer-events-none fixed left-1/2 top-1/2 z-[60] quest-decorative quest-test-burst text-[10rem] drop-shadow-lg"
-          aria-hidden="true"
-          onAnimationEnd={() => setBurst(null)}
-        >
-          {TESTS.find((td) => td.test === burst.test)?.emoji}
-        </div>
-      )}
-
       <main className="relative mx-auto mt-6 max-w-6xl px-6 pb-24">
         {loadError && (
           <p className="font-medium text-quest-coral-dark">
@@ -271,54 +252,8 @@ export default function ChemLabPage({ subjectLetter, subjectTitle }: ChemLabPage
                 </div>
               </div>
 
-              {/* Lab tests -- big, bold, colorful cards, not small chips. */}
-              <h3 className="mt-6 font-display text-2xl font-bold text-quest-ink">🔬 Lab Tests</h3>
-              <div className="mt-3 grid grid-cols-1 gap-4 sm:grid-cols-3">
-                {TESTS.map((td) => {
-                  const clue = sample.clues.find((c) => c.test === td.test);
-                  const revealed = revealedTests.has(td.test);
-                  const tone = toneClasses(td.tone);
-                  return (
-                    <button
-                      key={td.test}
-                      type="button"
-                      disabled={!clue}
-                      onClick={() => clue && revealTest(clue)}
-                      aria-label={revealed ? `${td.label}, clue revealed: ${clue?.text}` : `${td.label}, click to reveal a clue`}
-                      className={`flex flex-col items-center gap-2 rounded-chunk-xl border-[3px] px-4 py-6 text-center shadow-chunk transition-transform hover:-translate-y-1 active:translate-y-[2px] ${tone.bg} ${revealed ? tone.border : "border-quest-locked"}`}
-                    >
-                      <span className="text-6xl" aria-hidden="true">
-                        {td.emoji}
-                      </span>
-                      <span className="font-display text-lg font-bold text-white drop-shadow">{td.label}</span>
-                      {revealed && clue && (
-                        <p className="mt-1 rounded-chunk-sm bg-white/90 px-2 py-1 text-sm font-bold text-quest-ink">{clue.text}</p>
-                      )}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-
-            <div className="flex flex-col gap-5">
-              {/* Lab assistant. */}
-              <div className={`rounded-chunk-xl border-[3px] ${t.border} ${t.soft} p-5`}>
-                <div className={`mx-auto mb-3 w-fit rounded-chunk-sm border-2 ${t.border} ${t.bg} px-4 py-1.5 font-display text-sm font-bold uppercase tracking-wide ${t.text}`}>
-                  Lab Assistant
-                </div>
-                <div className="flex flex-col items-center gap-3">
-                  <Pet
-                    state={guess ? (guess.correct ? "celebrating" : "confused") : "playful"}
-                    species={state?.pet.species}
-                    size={100}
-                    inventory={state?.inventory}
-                  />
-                  <SpeechBubble text={assistantText} />
-                </div>
-              </div>
-
               {/* The guess -- big, colorful, thumb-sized options. */}
-              <div className="rounded-chunk-xl border-[var(--outline-chunk-thick)] border-quest-locked bg-white p-5">
+              <div className="mt-6 rounded-chunk-xl border-[var(--outline-chunk-thick)] border-quest-locked bg-white p-5">
                 <h3 className="mb-4 font-display text-xl font-bold text-quest-ink">Your Guess</h3>
                 <div className="flex flex-col gap-3">
                   {sample.choices.map((choice) => {
@@ -355,6 +290,56 @@ export default function ChemLabPage({ subjectLetter, subjectTitle }: ChemLabPage
                     {roundIndex + 1 >= (samples?.length ?? 0) ? "See results" : "Next sample"}
                   </ChunkyButton>
                 )}
+              </div>
+            </div>
+
+            <div className="flex flex-col gap-5">
+              {/* Lab assistant. */}
+              <div className={`rounded-chunk-xl border-[3px] ${t.border} ${t.soft} p-5`}>
+                <div className={`mx-auto mb-3 w-fit rounded-chunk-sm border-2 ${t.border} ${t.bg} px-4 py-1.5 font-display text-sm font-bold uppercase tracking-wide ${t.text}`}>
+                  Lab Assistant
+                </div>
+                <div className="flex flex-col items-center gap-3">
+                  <Pet
+                    state={guess ? (guess.correct ? "celebrating" : "confused") : "playful"}
+                    species={state?.pet.species}
+                    size={100}
+                    inventory={state?.inventory}
+                  />
+                  <SpeechBubble text={assistantText} />
+                </div>
+              </div>
+
+              {/* Lab tests -- big, bold, colorful cards, not small chips. Two columns here
+                  rather than three: this column is the narrow 400px one, and three across
+                  it would squeeze each card down to almost nothing. */}
+              <div className="rounded-chunk-xl border-[var(--outline-chunk-thick)] border-quest-locked bg-white p-5">
+                <h3 className="mb-4 font-display text-xl font-bold text-quest-ink">🔬 Lab Tests</h3>
+                <div className="grid grid-cols-2 gap-3">
+                  {TESTS.map((td) => {
+                    const clue = sample.clues.find((c) => c.test === td.test);
+                    const revealed = revealedTests.has(td.test);
+                    const tone = toneClasses(td.tone);
+                    return (
+                      <button
+                        key={td.test}
+                        type="button"
+                        disabled={!clue}
+                        onClick={() => clue && revealTest(clue)}
+                        aria-label={revealed ? `${td.label}, clue revealed: ${clue?.text}` : `${td.label}, click to reveal a clue`}
+                        className={`flex flex-col items-center gap-2 rounded-chunk-xl border-[3px] px-3 py-5 text-center shadow-chunk transition-transform hover:-translate-y-1 active:translate-y-[2px] ${tone.bg} ${revealed ? tone.border : "border-quest-locked"}`}
+                      >
+                        <span className="text-5xl" aria-hidden="true">
+                          {td.emoji}
+                        </span>
+                        <span className="font-display text-base font-bold text-white drop-shadow">{td.label}</span>
+                        {revealed && clue && (
+                          <p className="mt-1 rounded-chunk-sm bg-white/90 px-2 py-1 text-xs font-bold text-quest-ink">{clue.text}</p>
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
             </div>
           </div>
