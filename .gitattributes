@@ -4,6 +4,13 @@
 # to CRLF on checkout.
 *.sh text eol=lf
 
+# Same reasoning as the .sh rule above, and just as load-bearing: a systemd unit checked
+# out with CRLF puts a stray  on the end of the last argument of every directive, so
+# ExecStart's final flag silently gains a carriage return and the service fails in a way
+# that reads as a bad flag rather than a line-ending problem. These units are written on
+# Windows and run only on the Pi, so they cross the boundary every time.
+*.service text eol=lf
+
 # Cosmetic symmetry, not load-bearing the way the .sh rule is: PowerShell tolerates LF
 # fine, but keep .ps1 native-Windows CRLF since that's the platform they're for.
 *.ps1 text eol=crlf
