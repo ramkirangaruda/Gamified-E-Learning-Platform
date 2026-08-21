@@ -201,8 +201,13 @@ func main() {
 	var engine tutor.Engine
 	if runTutor {
 		engine = startTutorEngine(driveRoot)
-	} else {
+	} else if *classroomHub {
 		log.Printf("tutor: off (classroom hub -- the aggregator serves no hints; pass -tutor to override)")
+	} else {
+		// Reached only via an explicit -tutor=false on a machine that is not a hub.
+		// Reporting the hub reason here would send someone debugging a quiet tutor
+		// looking for a classroom flag they never set.
+		log.Printf("tutor: off (-tutor=false) -- hints will use their verified text without rephrasing")
 	}
 	if engine != nil {
 		srv.SetEngine(engine)
