@@ -59,16 +59,26 @@ run_user="${SUDO_USER:-$USER}"
 run_group="$(id -gn "$run_user")"
 echo "will run as: $run_user:$run_group"
 
-# --- The secret, if any, goes to a root-only file rather than into the unit ----------
-if [[ -n "$secret" ]]; then
-    printf 'TESSERA_CLASSROOM_SECRET=%s\n' "$secret" | sudo tee "$env_file" >/dev/null
-    sudo chown root:root "$env_file"
-    sudo chmod 600 "$env_file"
-    echo "wrote $env_file (root-only)"
-else
-    sudo rm -f "$env_file"
-    echo "no --secret given: sync/restore will accept any client on the LAN"
+# --- The secret is MANDATORY, and goes to a root-only file, not into the unit --------
+# cmd/server refuses to start a hub without -classroom-secret: an unsigned hub lets any
+# device on the school LAN forge or read a child's progress. Rather than let the service
+# fail at boot and sit in a restart loop, generate one here when the operator did not
+# supply it -- the same thing scripts/pi-setup.sh does, for the same reason.
+generated=0
+if [[ -z "$secret" ]]; then
+    if command -v openssl >/dev/null 2>&1; then
+        secret="$(openssl rand -hex 16)"
+    else
+        # No openssl on a minimal Lite image; the kernel's entropy source is fine.
+        secret="$(head -c 16 /dev/urandom | od -An -tx1 | tr -d ' \n')"
+    fi
+    generated=1
 fi
+
+printf 'TESSERA_CLASSROOM_SECRET=%s\n' "$secret" | sudo tee "$env_file" >/dev/null
+sudo chown root:root "$env_file"
+sudo chmod 600 "$env_file"
+echo "wrote $env_file (root-only)"
 
 # --- Render and install the unit -----------------------------------------------------
 tmp="$(mktemp)"
@@ -79,12 +89,10 @@ sed -e "s|@USER@|$run_user|g" \
     -e "s|@ADDR@|$addr|g" \
     "$unit_src" > "$tmp"
 
-# The secret is appended as an extra ExecStart argument only when one exists, so the
-# no-secret case does not pass an empty -classroom-secret "" (which would read as an
-# explicitly-set empty secret rather than as "not configured").
-if [[ -n "$secret" ]]; then
-    sed -i 's|^ExecStart=\(.*\)$|ExecStart=\1 -classroom-secret ${TESSERA_CLASSROOM_SECRET}|' "$tmp"
-fi
+# The secret is always appended: a hub without one refuses to start, so there is no
+# no-secret case left to guard. ${VAR} is expanded by systemd from the EnvironmentFile,
+# which keeps the value itself out of the unit.
+sed -i 's|^ExecStart=\(.*\)$|ExecStart=\1 -classroom-secret ${TESSERA_CLASSROOM_SECRET}|' "$tmp"
 
 sudo cp "$tmp" "$unit_dst"
 sudo chmod 644 "$unit_dst"
@@ -100,15 +108,29 @@ sudo systemctl --no-pager --lines=0 status tessera-hub.service || true
 ip="$(hostname -I 2>/dev/null | awk '{print $1}')"
 host="$(hostname 2>/dev/null || echo tessera)"
 port="${addr##*:}"
-echo ""
-echo "  Teacher dashboard:  http://${ip}:${port}/classroom"
-echo "                 or:  http://${host}.local:${port}/classroom"
-echo ""
-echo "  Point each student machine at this Pi:"
-echo "    -classroom-addr http://${host}.local:${port}"
-if [[ -n "$secret" ]]; then
-    echo "    -classroom-secret <the same secret you just set>"
+me="$(whoami)"
+
+if [[ "$generated" == "1" ]]; then
+    echo ""
+    echo "  =============== CLASSROOM SECRET ==============="
+    echo "     $secret"
+    echo "  Write this down. Every student machine needs the"
+    echo "  SAME value. Stored root-only at $env_file."
+    echo "  ================================================"
 fi
+
+echo ""
+echo "  TEACHER DASHBOARD -- readable only from the Pi itself, by design."
+echo "  The roster and dashboard check the PEER address, not the listen address, so a"
+echo "  browser on a student laptop is refused even though that laptop can sync fine."
+echo "  From your own machine, tunnel in:"
+echo ""
+echo "    ssh -L ${port}:localhost:${port} ${me}@${host}.local"
+echo "    then open  http://localhost:${port}/classroom"
+echo ""
+echo "  STUDENT MACHINES -- these DO reach the hub across the LAN:"
+echo "    -classroom-addr http://${host}.local:${port} -classroom-secret <the secret>"
+echo "    (use http://${ip}:${port} instead if mDNS is unreliable on your network)"
 echo ""
 echo "  Logs:     journalctl -u tessera-hub -f"
 echo "  Stop:     sudo systemctl stop tessera-hub"

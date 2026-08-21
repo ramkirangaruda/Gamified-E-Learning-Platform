@@ -19,11 +19,32 @@ fire at the right moments:
 From the drive root on the Pi:
 
 ```bash
-./pi/install-hub-service.sh --secret <your-secret>
+./pi/install-hub-service.sh
 ```
 
-Omit `--secret` to accept any client on the LAN. `--addr :9090` changes the port. Re-run
-it any time to change the port or rotate the secret — it's idempotent.
+**A hub refuses to start without a shared secret** — `cmd/server` enforces this, because
+an unsigned hub lets any device on the school LAN forge or read a child's progress. If
+you don't pass `--secret`, the installer generates one and prints it; write it down,
+every student machine needs the same value. `--addr :9090` changes the port. Re-run any
+time to rotate the secret or change the port — it's idempotent.
+
+## Reaching the teacher dashboard
+
+The roster and dashboard are **loopback-only**, and that is deliberate: they check the
+*peer* address, not the listen address, so a browser on a student laptop is refused even
+though that same laptop syncs fine. A browser can't send an HMAC header, so SSH is the
+documented way in:
+
+```bash
+ssh -L 8080:localhost:8080 <user>@tessera.local
+# then open http://localhost:8080/classroom on your own machine
+```
+
+Student machines point at the hub over the LAN as normal:
+
+```
+-classroom-addr http://tessera.local:8080 -classroom-secret <the secret>
+```
 
 ## Day to day
 
@@ -60,6 +81,6 @@ layout, `classroom.db` and every `pet.db` completely untouched.
 
 It's written to `/etc/tessera-hub.env`, root-owned and mode 600, so it isn't sitting in a
 world-readable unit file. But the launcher takes it as a command-line flag, so it remains
-visible in `ps` to any local user on the Pi. That matches the threat model the flag's own
-help text describes — a low-stakes classroom LAN — and is not a substitute for a trusted
-network if you ever need one.
+visible in `ps` to any local user on the Pi. On a single-purpose appliance that only you
+have shell on, that's an acceptable residual — it's written down here rather than left
+for someone to discover.
