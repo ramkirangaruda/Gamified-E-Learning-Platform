@@ -194,6 +194,32 @@ func main() {
 		log.Printf("classroom sync: configured, hub at %s", *classroomAddr)
 	}
 
+	// Bind BEFORE starting the tutor, not after -- the ordering is the point.
+	//
+	// Binding explicitly (rather than letting ListenAndServe do it) was always deliberate:
+	// the browser must not open until the port actually accepts connections, or a child's
+	// first sight of the game is a connection-refused page. But doing it *after* the
+	// engine meant the most likely failure here, "port already in use", cost a ~460 MB
+	// model load to discover. Worse, pre-warming had already started by then, so the
+	// failure path killed llama-server mid-flight and buried the one line explaining the
+	// problem under ~130 "connection refused" errors from the in-flight warm-up.
+	//
+	// Observed for real: an `ssh -L 8080:localhost:8080` tunnel to the classroom hub holds
+	// 8080 on the operator's own machine, so launching the game there fails exactly this
+	// way. Failing in milliseconds, before anything expensive starts, makes the cause the
+	// last thing on screen instead of the first.
+	ln, err := net.Listen("tcp", *addr)
+	if err != nil {
+		log.Printf("cannot listen on %s: %v", *addr, err)
+		log.Printf("")
+		log.Printf("Something else already holds that address. The usual causes:")
+		log.Printf("  - another copy of Tessera Quest is still running")
+		log.Printf("  - an SSH tunnel (ssh -L ...) is bound to the same local port")
+		log.Printf("Close whatever holds it, or start with -addr 127.0.0.1:8081")
+		st.Close()
+		os.Exit(1)
+	}
+
 	// nil engine is a first-class supported state, not a degraded one: api.Server
 	// documents it as nil-able and handleHint returns the verified, human-written hint
 	// text verbatim without it. That is exactly right for a hub, and it means turning the
@@ -273,18 +299,6 @@ func main() {
 			log.Printf("http server shutdown: %v", err)
 		}
 	}()
-
-	// Bind explicitly instead of letting ListenAndServe do it, for two reasons. The
-	// browser must not be opened until the port is actually accepting connections, or a
-	// child's first sight of the game is a connection-refused page and a race they lose
-	// on a slow machine. And "port already in use" -- by far the most likely failure here
-	// -- is now caught before we announce that we are listening, rather than after.
-	ln, err := net.Listen("tcp", *addr)
-	if err != nil {
-		log.Printf("cannot listen on %s: %v", *addr, err)
-		shutdownEverything(engine, st)
-		os.Exit(1)
-	}
 
 	log.Printf("tessera quest listening on %s (data: %s, app: %s, levels: %s)", *addr, dbPath, appDir, levelsDir)
 	if *openUI {

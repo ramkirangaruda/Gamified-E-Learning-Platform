@@ -36,9 +36,14 @@ though that same laptop syncs fine. A browser can't send an HMAC header, so SSH 
 documented way in:
 
 ```bash
-ssh -L 8080:localhost:8080 <user>@tessera.local
-# then open http://localhost:8080/classroom on your own machine
+ssh -L 8081:localhost:8080 <user>@tessera.local
+# then open http://localhost:8081/classroom on your own machine
 ```
+
+**The left-hand port must not be 8080.** That number is a port on *your* machine, and
+8080 is what Tessera Quest itself binds — a tunnel there quietly takes the game's port,
+and the launcher then refuses to start on that machine. Use 8081 (or anything free) on
+the left; the right-hand 8080 is the Pi's and stays as it is.
 
 Student machines point at the hub over the LAN as normal:
 
