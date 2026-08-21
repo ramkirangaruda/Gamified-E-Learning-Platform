@@ -364,12 +364,6 @@ func shutdownEverything(engine tutor.Engine, st *store.Store) {
 	st.Close()
 }
 
-// startTutorEngine implements brief §8's launch sequence: detect RAM, pick a tier from
-// profiles.json, spawn the matching model, pre-warm it. Never fatal on failure — a
-// child's game has to keep working even if the tutor can't start (missing model file on
-// a dev machine, llama-server binary missing on an unusual platform, etc.); every
-// failure just logs and leaves engine nil, and internal/api's handlers already treat a
-// nil engine as "fall back to the verified hint text, no rephrasing."
 // resolveTutor decides whether to spawn llama-server, given the two flags and whether
 // -tutor was actually typed on the command line. Split out of main() purely so the
 // decision is testable without a real flag set, a real drive, or a real model: main() is
@@ -386,6 +380,12 @@ func resolveTutor(classroomHub, tutorFlag, tutorExplicit bool) bool {
 	return tutorFlag
 }
 
+// startTutorEngine implements brief §8's launch sequence: detect RAM, pick a tier from
+// profiles.json, spawn the matching model, pre-warm it. Never fatal on failure — a
+// child's game has to keep working even if the tutor can't start (missing model file on
+// a dev machine, llama-server binary missing on an unusual platform, etc.); every
+// failure just logs and leaves engine nil, and internal/api's handlers already treat a
+// nil engine as "fall back to the verified hint text, no rephrasing."
 func startTutorEngine(driveRoot string) tutor.Engine {
 	profilesPath := filepath.Join(driveRoot, "profiles.json")
 	profiles, err := tutor.LoadProfiles(profilesPath)

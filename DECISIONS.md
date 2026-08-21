@@ -522,3 +522,55 @@ change, and every component that already worked was lifted into the new shell ve
   - **Merged in order (cursor, then offline-thesis-polish, then teacher-dashboard) onto a local `master` reset to match `origin/master` exactly**, verifying after each step rather than merging all three blind. Every conflict was in `DECISIONS.md` alone (its own append-only convention colliding with itself across branches written in parallel) -- resolved by concatenating both sides in the order they were actually written, never picking one side over the other. `.gitignore` and `README.md` auto-merged cleanly both times; read in full afterward rather than trusted, since `README.md` had three different branches' worth of independent edits landing in the same file.
   - **`AppHeader.tsx`'s merge was checked for more than textual cleanliness**: the branch predates this session's camera-scan work, so confirmed `fetchTierInfo`/`TierInfo` (the API surface the new badge calls) were untouched by everything that landed since, and live-verified the badge in a real browser at desktop width (it correctly hides below the `sm` breakpoint, by design, to leave room for the subject-tab strip -- confirmed both states, not just one).
   - Verified after all three merges, not after each in isolation only: `go build/vet/test` clean across all 12 packages, `tsc -b` clean, `vitest run` 184/184, `npm run build` clean, manifest re-baselined against the merged build, and a live run of both binaries -- player mode (zero console errors, the offline badge visible and correctly worded, the Pochacco cursor resolving to a real asset URL) and hub mode (loopback allowed on `/classroom`, the real LAN IP still getting 403, re-confirming the security work survived the merge rather than assuming it did). Pushed as a clean fast-forward (`eb7381d..92415d8`) after a final fetch confirmed nobody else had pushed to master in the meantime.
+
+
+## Graceful startup and shutdown for the hub: a systemd service, not new shutdown code (2026-08-21)
+
+- **The launcher already shut down gracefully; nothing in Go needed changing.**
+  `cmd/server` has installed `signal.NotifyContext(os.Interrupt, syscall.SIGTERM)` since
+  the orphan work, drains in-flight HTTP with a 5s timeout, closes the SQLite store, and
+  kills the `llama-server` child. Checked that before writing anything, because the
+  obvious reading of "add graceful shutdown" would have been to add a second signal
+  handler on top of a working one. The actual gap was the *system* half -- those handlers
+  only fire if something sends the signal at the right moment, and nothing did.
+- **What was actually missing was appliance behaviour.** Run by hand over SSH, the hub
+  dies with the session; a power cut comes back to nothing running; a crash needs a human
+  to notice and reconnect; and `sudo reboot` can SIGKILL mid-write. `pi/tessera-hub.service`
+  fixes all four: `WantedBy=multi-user.target` for boot, `Restart=on-failure` with a 5s
+  backoff so a broken config cannot spin the journal, and `TimeoutStopSec=30` set well
+  above the launcher's own 5s drain so systemd never escalates to SIGKILL while a clean
+  shutdown is still running. A SIGKILL mid-write is precisely the corruption `backup.db`
+  exists to survive, and inviting it on every reboot would be leaning on a safety net as
+  if it were a routine.
+- **`After=` *and* `Wants=network-online.target`, deliberately both.** `After=` alone only
+  orders against a target that may never be pulled in, which is the classic "works when I
+  restart it by hand, fails on boot" bug for anything that binds an address.
+- **The secret is in a root-only `EnvironmentFile`, and the residual exposure is stated
+  rather than papered over.** `/etc/tessera-hub.env` is 0600 root:root; systemd reads it
+  as root before dropping to `User=`, so the service account never needs access and the
+  secret is not sitting in a world-readable unit. It is still visible in `ps` to a local
+  user, because the launcher takes it as a flag -- which matches the threat model the
+  flag's own help text describes (a low-stakes classroom LAN) and is written down in
+  `pi/README.md` rather than left for someone to discover.
+- **`Type=exec` works because `start-tessera-quest.sh` ends in `exec`.** The shell
+  replaces itself with the launcher, so the unit's main PID *is* the launcher and SIGTERM
+  reaches it directly rather than dying with a wrapper shell. `KillMode=mixed` then signals
+  only that main process, which is correct here because the launcher manages its own
+  `llama-server` child and already kills it.
+- **The installer renders the unit rather than shipping a fixed one**, since user, group,
+  drive-root path and listen address all differ per machine. Verified by dry-rendering the
+  template and confirming zero substitution tokens survive. It is idempotent by design --
+  re-running it is how you rotate the secret or change the port -- and preflights the
+  launcher, the start script and `systemctl` so a failure produces a sentence a human can
+  act on instead of systemd's `status=203/EXEC`.
+- **`pi/` and `scripts/` are now part of the drive payload.** Previously neither shipped,
+  so `pi-setup.sh` was documented as the Pi bring-up path while being absent from the
+  drive the Pi was supposed to boot from. Both are a few KB.
+- **Not verified on hardware.** No Pi has run any of this; only `bash -n`, argument
+  parsing, and a dry render of the unit were exercised. Line endings were checked
+  explicitly on the assembled drive (a CRLF shebang is a "bad interpreter" failure on
+  Linux, which `.gitattributes` already warns about) -- all shell scripts and the unit
+  file land as LF on the exFAT drive.
+- **Fixed a doc-comment defect introduced earlier the same day:** inserting `resolveTutor`
+  above `startTutorEngine` left the latter's doc comment orphaned above the former.
+  Reattached.
