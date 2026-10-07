@@ -1,0 +1,69 @@
+# systemd unit for the Tessera Quest classroom hub.
+#
+# Do not install this file by hand -- run pi/install-hub-service.sh, which fills in the
+# three things that differ per machine (the user, the drive-root path, and the listen
+# address) and writes the secret to a separate root-only file. The at-sign-delimited
+# tokens below are substituted at install time; a rendered unit contains none of them.
+#
+# WHY A SERVICE AT ALL: without one, the hub only lives as long as the SSH session that
+# started it. Closing the terminal kills the roster, and a power cut comes back with
+# nothing running -- a teacher would have to SSH in to restart the classroom. A hub is an
+# appliance; it should behave like one.
+
+[Unit]
+Description=Tessera Quest classroom hub
+Documentation=file://@DRIVEROOT@/pi/README.md
+# The hub is only useful once the LAN is up: students reach it by address, and binding
+# before the network is configured is the classic "works after a manual restart, fails
+# on boot" bug. network-online.target is deliberately both After= and Wants= -- After=
+# alone does not pull the target in, so it would order against something that never runs.
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=exec
+User=@USER@
+Group=@GROUP@
+
+# The launcher resolves content/, app/, models/ and profiles.json relative to the drive
+# root, so this must be the drive root and not, say, the user's home.
+WorkingDirectory=@DRIVEROOT@
+ExecStart=@DRIVEROOT@/start-tessera-quest.sh -addr @ADDR@ -classroom-hub -open=false
+
+# The secret lives here rather than on the ExecStart line so it is not sitting in a
+# world-readable unit file. systemd reads this as root before dropping to User=, so the
+# file can stay root-only (0600) and the service account never needs to read it.
+# Honest caveat: the launcher takes the secret as a flag, so it is still visible in `ps`
+# to a local user on this Pi. That is acceptable for the threat model the flag's own help
+# text describes (a low-stakes classroom LAN); it is not a substitute for a trusted
+# network if you ever need one.
+EnvironmentFile=-/etc/tessera-hub.env
+
+# GRACEFUL STOP. The launcher already does the right thing on SIGTERM -- cmd/server
+# installs signal.NotifyContext for os.Interrupt and SIGTERM, drains in-flight HTTP with
+# a 5s timeout, closes the SQLite store, and kills the llama-server child. SIGTERM is
+# systemd's default KillSignal, stated here only so it cannot be changed by accident.
+# TimeoutStopSec is set well above the launcher's own 5s drain so systemd never escalates
+# to SIGKILL while a clean shutdown is still in progress -- a SIGKILL mid-write is
+# exactly the corruption the store's backup.db machinery exists to survive, and not
+# something to invite on every reboot.
+KillSignal=SIGTERM
+TimeoutStopSec=30
+# Only the main process should get the signal: it is responsible for its own child.
+KillMode=mixed
+
+# A crashed hub should come back. RestartSec spaces attempts out so a genuinely broken
+# config (bad path, port in use) does not spin in a tight loop filling the journal.
+Restart=on-failure
+RestartSec=5
+
+# The roster is the only state worth protecting, and it is an ordinary file on disk.
+ProtectSystem=full
+ProtectHome=false
+NoNewPrivileges=true
+
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

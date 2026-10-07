@@ -11,10 +11,13 @@ any other dictionary would silently never match.
 """
 from __future__ import annotations
 
+from collections import Counter
 from typing import Any, TypedDict
 
 import cv2
 import numpy as np
+
+DEFAULT_BURST_FRAMES = 8
 
 
 class Detection(TypedDict):
@@ -83,16 +86,34 @@ def order_markers(detections: list[Detection], row_threshold: float | None = Non
     return ordered
 
 
-def capture_frame(camera_index: int = 0) -> np.ndarray:
-    """Grabs a single frame from a plain laptop/USB webcam (brief handoff acceptance
-    #5 -- Pi camera comes later, this must not block on it)."""
+def capture_frame(camera_index: int = 0, burst: int = DEFAULT_BURST_FRAMES) -> np.ndarray:
+    """Grabs a stable frame from a plain laptop/USB webcam (brief handoff acceptance
+    #5 -- Pi camera comes later, this must not block on it).
+
+    A single cap.read() right after opening turned out not to be reliable: live
+    testing against real printed cards (2026-08-20, see DECISIONS.md) showed the
+    detected marker count flickering by one, frame to frame, even with the camera
+    held steady -- a plain single-shot capture has a real chance of silently missing
+    a card. Reads a short burst instead and keeps whichever frame's detection is the
+    *modal* reading across the burst (ties broken toward more markers, since a missed
+    marker is the observed failure mode, not a spurious extra one) -- a dropout on any
+    one frame no longer determines the result.
+    """
     cap = cv2.VideoCapture(camera_index)
     if not cap.isOpened():
         raise RuntimeError(f"could not open camera index {camera_index}")
     try:
-        ok, frame = cap.read()
-        if not ok:
+        frames: list[np.ndarray] = []
+        for _ in range(burst):
+            ok, frame = cap.read()
+            if ok:
+                frames.append(frame)
+        if not frames:
             raise RuntimeError(f"failed to read a frame from camera index {camera_index}")
-        return frame
+
+        readings = [tuple(order_markers(detect_markers(f))) for f in frames]
+        counts = Counter(readings)
+        best_reading = max(counts, key=lambda r: (counts[r], len(r)))
+        return frames[readings.index(best_reading)]
     finally:
         cap.release()

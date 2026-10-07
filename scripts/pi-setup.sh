@@ -173,24 +173,51 @@ check "app" "the frontend won't load without a built bundle here (npm run build 
 # --- Step 5: start ---------------------------------------------------------------------
 cd "$root"
 if [[ "$mode" == "classroom-hub" ]]; then
+    # A hub without a shared secret refuses to start (cmd/server checks this), because an
+    # unsigned hub lets any device in the building forge or read a child's progress.
+    # Generate one rather than making the teacher think of it: a random 16 bytes is
+    # strictly better than whatever a human types under time pressure, and the whole point
+    # is that it gets copied verbatim onto the student machines anyway.
+    generated_secret=0
+    if [[ -z "$secret" ]]; then
+        if command -v openssl >/dev/null 2>&1; then
+            secret="$(openssl rand -hex 16)"
+        else
+            # No openssl on a minimal Pi image: the kernel's own entropy source is fine.
+            secret="$(head -c 16 /dev/urandom | od -An -tx1 | tr -d ' \n')"
+        fi
+        generated_secret=1
+    fi
+
     step "starting the classroom hub (Ctrl-C to stop)"
+    pi_ip="$(hostname -I 2>/dev/null | awk '{print $1}')"
     echo ""
-    echo "    Teacher dashboard:  http://$(hostname -I 2>/dev/null | awk '{print $1}')${addr}/classroom"
+    if [[ "$generated_secret" == "1" ]]; then
+        echo "    Generated a classroom secret for this room:"
+        echo ""
+        echo "        $secret"
+        echo ""
+        echo "    WRITE THIS DOWN. Every student machine needs the same value, and this"
+        echo "    script generates a NEW one each run -- a hub and a student machine with"
+        echo "    different secrets will simply refuse to talk to each other."
+        echo ""
+    fi
+    echo "    Teacher dashboard:  http://localhost${addr}/classroom"
+    echo ""
+    echo "    The dashboard is readable ONLY from this Pi -- it holds every child's name"
+    echo "    and progress, so it is not served to the rest of the network. To read it"
+    echo "    from your own laptop, forward the port over SSH:"
+    echo "        ssh -L 8080:localhost:8080 $(whoami)@${pi_ip}"
+    echo "    then open http://localhost:8080/classroom there."
     echo ""
     echo "    Point each student machine at this Pi with:"
-    echo "      ./bin/linux/launcher -classroom-addr http://<this-pi-ip>${addr}"
+    echo "      ./bin/linux/launcher -classroom-addr http://${pi_ip}${addr} -classroom-secret $secret"
     echo "    (or the equivalent on Windows), then use the Classroom panel on the home screen."
     echo ""
     # -open=false: a hub is a headless appliance, not something anyone sits in front of.
     # The launcher would otherwise try to xdg-open a browser tab on a Pi that may well
     # have no display attached at all.
-    hub_args=(-addr "$addr" -classroom-hub -open=false)
-    if [[ -n "$secret" ]]; then
-        # Signs sync/restore so another device on the room's LAN can't forge a child's
-        # progress. Must match on every student machine -- see cmd/server's flag help.
-        hub_args+=(-classroom-secret "$secret")
-    fi
-    exec ./bin/linux/launcher "${hub_args[@]}"
+    exec ./bin/linux/launcher -addr "$addr" -classroom-hub -open=false -classroom-secret "$secret"
 else
     step "starting the game (Ctrl-C to stop)"
     exec ./bin/linux/launcher -addr "$addr"

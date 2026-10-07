@@ -1,12 +1,25 @@
 # Tessera Quest
 
-A gamified, fully offline coding platform for kids 8–13. A child produces a program one
-of two ways — moving physical printed cards on a desk, read by a camera, or dragging the
-same blocks in a browser — and both compile to the same JSON program representation,
-which runs on a deterministic executor. A small local LLM (no cloud, no API key)
-rephrases pre-verified hint text in the voice of an in-game pet companion, Pip. Every
-child's entire progress — levels, points, the pet's state — lives in one SQLite file on
-a USB drive: no accounts, no server, no internet, ever.
+**The problem this solves: a school with computers and no working internet.** A shared
+Raspberry Pi and a stack of USB drives turn a room like that into a computer lab —
+every child's entire identity is their own drive, not an account, so there's no
+password for a nine-year-old to forget and no server anyone has to keep running. A
+child produces a program one of two ways — moving physical printed cards on a desk,
+read by the Pi's camera, or dragging the same blocks in a browser on whatever laptop is
+in front of them — and both compile to the same JSON program representation, run by a
+deterministic executor. Every child's entire progress — levels, points, the pet's
+state — lives in that one SQLite file on their drive: no accounts, no cloud, no
+internet, ever.
+
+A small LLM (Qwen3, via llama.cpp, running entirely on-device) rephrases pre-verified,
+human-written hint text in the voice of an in-game pet companion, Pip — it only sets
+tone, it never decides whether a child's code is correct, which is what makes a model
+small enough to fit a donated school laptop's RAM safe to put in front of a kid. That
+constraint is also why this isn't just a web app talking to a cloud API: a cloud tutor
+means a child's work and a per-request bill leaving the building on every hint, for
+every child, for as long as the school runs it. This one doesn't, ever — see the
+[classroom hub](#the-classroom-hub) below for the other half, recovering a lost drive
+without anyone's data having left the room in the first place.
 
 ## Architecture, briefly
 
@@ -37,11 +50,14 @@ verified end to end against a fresh clone with no prior build artifacts):
 ```
 cd web && npm install && npm run build   # builds the frontend into ../app
 cd ..
-go run ./cmd/server                      # serves the API and app/ on :8080
+go run ./cmd/server                      # serves the API and app/ on 127.0.0.1:8080
 ```
 
 Then open <http://localhost:8080>. `go run ./cmd/server` accepts `-addr` (default
-`:8080`), `-open=false` (skip auto-opening a browser tab — useful on a headless hub),
+`127.0.0.1:8080` — loopback, so a child's save file isn't served to the school network;
+see [`SECURITY.md`](SECURITY.md)), `-open=false` (skip auto-opening a browser tab — useful
+on a headless hub), `-write-manifest` (record a checksum of the drive at the end of prep)
+and `-skip-integrity-check` (start despite a mismatch),
 `-lite` (disable decorative animation), `-prewarm-hints=false`, `-hint-timeout`, and
 `-tutor=false` (skip `llama-server` entirely; hints fall back to their verified text,
 which is what the classroom hub below runs with, and what a machine with no
@@ -69,6 +85,13 @@ drive root and start the launcher, so everything resolves relative to wherever t
 is mounted — no hardcoded path. Full script-by-script detail in
 [`scripts/README.md`](scripts/README.md).
 
+As the **last** step of drive prep, once `app/`, `content/` and `bin/` are all in place,
+run `launcher -write-manifest` at the drive root. That records a checksum of the drive so
+a later launch can tell whether its contents changed on some machine it was plugged into —
+a USB drive that travels between unmanaged computers is this project's largest security
+exposure, and [`SECURITY.md`](SECURITY.md) is honest about what the check does and doesn't
+prove.
+
 ## The classroom Hub
 
 Ordinary play is unchanged by any of this and needs none of it: no accounts, no server,
@@ -80,14 +103,19 @@ recover from.
 One machine in the room (a Raspberry Pi 5 is the intended one) runs as the aggregator:
 
 ```
-./bin/linux/launcher -classroom-hub -open=false          # the Pi
-./bin/linux/launcher -classroom-addr http://<pi-ip>:8080 # each student machine
+./bin/linux/launcher -classroom-hub -classroom-secret <value> -open=false      # the Pi
+./bin/linux/launcher -classroom-addr http://<pi-ip>:8080 -classroom-secret <value>  # students
 ```
 
-`scripts/pi-setup.sh --classroom-hub` does the Pi side end to end, including printing the
-dashboard URL and the exact command for the student machines. Add `-classroom-secret`
-(the same value on the Pi and every student machine) to HMAC-sign sync and restore, so
-another device on the room's LAN can't forge a child's progress.
+`scripts/pi-setup.sh --classroom-hub` does the Pi side end to end, generating the secret,
+printing it, and printing the exact command for the student machines.
+
+`-classroom-secret` is **required** on a hub — it HMAC-signs sync and restore so another
+device on the room's LAN can't forge or read a child's progress, and a hub without one
+refuses to start rather than coming up silently unauthenticated. The teacher dashboard is
+**readable only from the Pi itself**; to see it from your own laptop, forward the port
+(`ssh -L 8080:localhost:8080 <user>@<pi-ip>`). Full reasoning in
+[`SECURITY.md`](SECURITY.md).
 
 Students still play on their own laptop or lab machine off their own drive — the Pi is
 only the aggregator, and it **mirrors** what each drive already decided rather than
@@ -152,3 +180,10 @@ Known gaps, honestly:
 See [`AUDIT.md`](AUDIT.md) for the full pre-hackathon audit this list is drawn from, and
 [`DEMO.md`](DEMO.md) for an honest, step-by-step account of what a live demo can
 currently show.
+
+## Credits
+
+- **Cursor set**: "Strawberry Pochacco" by [Britichi6](http://www.rw-designer.com/user/110962)
+  ([source](http://www.rw-designer.com/cursor-set/strawberry-pochacco)), licensed
+  Creative Commons Attribution-NonCommercial. `web/public/cursors/`.
+- **Font**: Baloo 2 (SIL Open Font License), `web/public/fonts/`.

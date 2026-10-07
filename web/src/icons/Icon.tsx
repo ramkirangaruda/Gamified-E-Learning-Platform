@@ -5,7 +5,7 @@
 // Same discipline as animals/AnimalMascot.tsx and BackgroundScene.tsx: hand-authored
 // shapes, not sourced from anywhere, so there's nothing to license.
 
-export type IconName = "star" | "trophy" | "apple" | "check" | "party" | "play" | "reset" | "step" | "pause" | "lock";
+export type IconName = "star" | "trophy" | "apple" | "check" | "party" | "play" | "reset" | "step" | "pause" | "lock" | "camera";
 
 interface IconProps {
   name: IconName;
@@ -94,6 +94,14 @@ export default function Icon({ name, size = 18, className }: IconProps) {
         <svg {...props}>
           <path d="M5 5 L14 12 L5 19 Z" fill="currentColor" />
           <rect x="16" y="5" width="3" height="14" rx="1" fill="currentColor" />
+        </svg>
+      );
+    case "camera":
+      return (
+        <svg {...props}>
+          <path d="M9 5 L10.2 3 H13.8 L15 5 H19 A2 2 0 0 1 21 7 V17 A2 2 0 0 1 19 19 H5 A2 2 0 0 1 3 17 V7 A2 2 0 0 1 5 5 Z" fill="currentColor" />
+          <circle cx="12" cy="12.5" r="4" fill="white" />
+          <circle cx="12" cy="12.5" r="2.2" fill="currentColor" />
         </svg>
       );
   }

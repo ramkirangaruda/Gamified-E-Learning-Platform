@@ -1,0 +1,19 @@
+Strawberry Pochacco Cursor Set
+By: Britichi6 (http://www.rw-designer.com/user/110962)
+Source: http://www.rw-designer.com/cursor-set/strawberry-pochacco
+
+License: Creative Commons Attribution-NonCommercial
+  - Share and remix permitted.
+  - Attribution required (this file, plus the credit in README.md).
+  - Noncommercial use only.
+
+pointer.cur is a single static frame extracted from the pack's animated
+"Link Select.ani", since browsers only support static cursor images
+(.cur/.png/.svg) via CSS `cursor:`, not Windows .ani animation -- same
+underlying artwork, just one frame of it.
+
+Files used here (renamed from the pack's originals):
+  default.cur      <- Strawberry Pochacco Normal Select.cur
+  pointer.cur       <- Strawberry Pochacco Link Select.ani (first frame)
+  not-allowed.cur   <- Strawberry Pochacco Unavailable.cur
+  text.cur          <- Strawberry Pochacco Text Select.cur

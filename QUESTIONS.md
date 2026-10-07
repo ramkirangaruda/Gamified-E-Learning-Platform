@@ -500,8 +500,10 @@ Everything below this line is the original log, oldest first.
    `hub/hub.py`'s default mode with no `--image` flag) but only smoke-tested against
    synthetic in-memory photos, not a live webcam feed, since this dev environment has no
    camera attached to test against. Worth a real run before the demo, not just the code
-   review. **Still open** -- neither of the two machines that have reviewed this branch so
-   far has a camera attached either.
+   review. **Resolved 2026-08-20** -- see `DECISIONS.md`'s "Live webcam verification"
+   entry. Found and fixed a real bug in the process (single-frame capture flickered
+   between detecting a marker and missing it); acceptance #5 now genuinely verified
+   against real printed cards and a real webcam, not just code review.
 
 **Items 1 and 2 above: resolved, 2026-08-18, on a machine with both a Go toolchain and
 the real `print/composited/*.png` cards** -- see `DECISIONS.md`'s "Verified `hub-mode`

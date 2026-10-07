@@ -2,7 +2,7 @@ import { useState } from "react";
 import BackgroundScene from "./BackgroundScene";
 import ChemLabPage from "./ChemLabPage";
 import Icon from "./icons/Icon";
-import MathPage from "./MathPage";
+import MathLabPage from "./MathLabPage";
 import Pet from "./pet/Pet";
 import { usePet } from "./pet/PetProvider";
 import { loadPhysicsSolved, physicsLevelsCleared, PHYSICS_LEVEL_KEYS } from "./physics/progress";
@@ -141,19 +141,11 @@ export default function SubjectPage({ subjectId, onNavigate }: SubjectPageProps)
     );
   }
 
-  // ---- Any other standalone subject: real content, not levels-shaped, and with no
-  // dedicated branch of its own above (today: Math's iframe). Checked last among the
-  // "real content" branches -- Chemistry and Physics are ALSO `standalone`/non-levels in
-  // spirit, but each has its own specific branch above that must win first, or every
-  // standalone subject would render Math's iframe regardless of which one a child opened.
-  if (subject.standalone) {
-    return (
-      <div className="relative min-h-[calc(100vh-var(--app-header-h))] w-full overflow-x-clip">
-        <BackgroundScene solvedCount={solvedCount} />
-        {header}
-        <MathPage />
-      </div>
-    );
+  // ---- Math Lab: four native mini-games, the same non-trail shape as Chemistry above --
+  // own full header (built inside MathLabPage itself, not `header` here, for the same
+  // reason Chemistry skips it: there's no "X of Y levels" total for this content).
+  if (subjectId === "math") {
+    return <MathLabPage subjectLetter={subject.letter} subjectTitle={subject.title} />;
   }
 
   // ---- The real thing ----------------------------------------------------
