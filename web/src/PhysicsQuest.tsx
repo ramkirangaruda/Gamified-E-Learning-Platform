@@ -6,7 +6,9 @@ import {
   type PhysicsLevelKey,
   type PhysicsSolved,
 } from "./physics/progress";
+import Pet from "./pet/Pet";
 import { usePet } from "./pet/PetProvider";
+import SpeechBubble from "./pet/SpeechBubble";
 import { ChunkyButton } from "./ui/Chunky";
 import { toneClasses } from "./ui/tone";
 
@@ -1044,6 +1046,26 @@ export default function PhysicsQuest() {
         </div>
 
         <div className="flex flex-col gap-4">
+          {/* The pet as a physics buddy -- the same companion, the same "reacts to what
+              just happened" pattern ChemLabPage's Lab Assistant uses, just tuned to
+              round results instead of a guess. Real species/inventory (not a placeholder
+              character) since, unlike Math's offline iframe, this is native React with
+              full access to the real pet state. */}
+          <div className={`rounded-chunk-xl border-[3px] ${t.border} ${t.soft} p-4`}>
+            <div className={`mx-auto mb-3 w-fit rounded-chunk-sm border-2 ${t.border} ${t.bg} px-4 py-1.5 font-display text-sm font-bold uppercase tracking-wide ${t.text}`}>
+              Physics Buddy
+            </div>
+            <div className="flex flex-col items-center gap-3">
+              <Pet
+                state={result ? (result.ok ? "celebrating" : "confused") : "playful"}
+                species={petState?.pet.species}
+                size={100}
+                inventory={petState?.inventory}
+              />
+              <SpeechBubble text={result ? result.msg : "Try adjusting the controls and see what happens!"} />
+            </div>
+          </div>
+
           <div className="rounded-chunk-lg border-(length:--outline-chunk) border-quest-locked bg-quest-paper p-4 shadow-chunk">
             <p className="font-display text-[10px] font-bold uppercase tracking-wide text-quest-repeat-dark">Your goal</p>
             <p className="mt-2 text-sm text-quest-ink">
